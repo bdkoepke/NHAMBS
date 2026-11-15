@@ -1,6 +1,22 @@
 bin/
 obj/
-pools/
+downloads/
 pool_urls.txt
 out/
-cht_circulars/
+
+# Fable / Vite
+src/NHAMBS.Client/node_modules/
+src/NHAMBS.Client/.fable/
+src/NHAMBS.Client/dist/
+src/NHAMBS.Server/wwwroot/
+
+# Pulumi
+src/NHAMBS.Pulumi/.pulumi/
+src/NHAMBS.Pulumi/bin/
+src/NHAMBS.Pulumi/obj/
+
+# Local configuration
+.env
+
+# Local runner state
+.build/

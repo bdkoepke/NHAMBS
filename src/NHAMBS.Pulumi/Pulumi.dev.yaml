@@ -1,0 +1,7 @@
+config:
+  nhambs:image: postgres:17-alpine
+  nhambs:port: "54322"
+  nhambs:database: nhambs
+  nhambs:username: nhambs
+  nhambs:password: nhambs
+encryptionsalt: v1:6M5OySlwSy0=:v1:W6r7Gd38UfxyBUEV:w30HdZ+D4x8O7hjh9/qEeTFbPfLOnw==

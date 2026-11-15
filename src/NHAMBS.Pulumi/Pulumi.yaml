@@ -1,0 +1,3 @@
+name: nhambs
+description: NHA MBS securitization dashboard infrastructure
+runtime: dotnet

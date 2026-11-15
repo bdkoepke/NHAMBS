@@ -30,7 +30,11 @@ let here = __SOURCE_DIRECTORY__ |> Path.GetFullPath
 let root = Path.GetFullPath(Path.Combine(here, "..", ".."))
 
 let schemas =
-    [ "cmhc-cht-debt-issues.schema.json"; "cmhc-cht-offering-circular.schema.json" ]
+    [
+        "cmhc-cht-debt-issues.schema.json"
+        "cmhc-cht-offering-circular.schema.json"
+        "cmhc-cht-outstanding-history.schema.json"
+    ]
 
 // Keywords that do not influence the provider's type inference. Keeping them
 // would only make the generated files harder to read.

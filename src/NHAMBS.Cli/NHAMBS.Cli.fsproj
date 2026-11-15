@@ -4,6 +4,12 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
+  <PropertyGroup>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="10.1.404" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="PdfText.fs" />
@@ -11,6 +17,7 @@
     <Compile Include="CoveredBondHtml.fs" />
     <Compile Include="ChtPdfText.fs" />
     <Compile Include="ChtHtml.fs" />
+    <Compile Include="OutstandingHistoryXlsx.fs" />
     <Compile Include="OfferingCircularPdf.fs" />
     <Compile Include="CircularCommand.fs" />
     <Compile Include="CoveredBondCommand.fs" />
@@ -20,7 +27,8 @@
 
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.2.5" />
-    <PackageReference Include="FSharp.Data" Version="8.1.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.9.0" />
+    <PackageReference Include="FSharp.Data" Version="8.2.0" />
   </ItemGroup>
 
   <ItemGroup>

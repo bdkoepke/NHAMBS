@@ -29,7 +29,7 @@ module Program =
             member this.Usage =
                 match this with
                 | Source _ -> "source URL or local file to parse."
-                | Output _ -> "write the JSON output to this file instead of stdout."
+                | Output _ -> "write the JSON output to this file (or, for cht-history, directory) instead of stdout."
 
     /// Dataset types that the unified batch command can run together.
     [<RequireQualifiedAccess>]
@@ -72,6 +72,7 @@ module Program =
         | [<Unique>] Cht_Debt_Issues of path: string
         | [<AltCommandLine("--pdf-dir"); Unique>] Cht_Pdf_Directory of path: string
         | [<AltCommandLine("--cht-out"); Unique>] Cht_Output of path: string
+        | [<AltCommandLine("--cht-history-out"); Unique>] Cht_History_Output of path: string
         | [<Unique>] Cht_Urls of path: string
 
         interface IArgParserTemplate with
@@ -90,8 +91,11 @@ module Program =
                 | Covered_Bonds_Html _ -> "directory used to cache/download covered bond HTML pages."
                 | Covered_Bonds_Urls _ -> "optional covered bond URL manifest to write."
                 | Cht_Debt_Issues _ -> "CHT debt-issues JSON snapshot (required for cht-circulars)."
-                | Cht_Pdf_Directory _ -> "CHT offering circular PDF directory (default: cht_circulars)."
+                | Cht_Pdf_Directory _ ->
+                    "CHT download directory for offering circular PDFs and outstanding history workbooks (default: cht_circulars)."
                 | Cht_Output _ -> "CHT offering circular output directory (default: cht_circulars_out)."
+                | Cht_History_Output _ ->
+                    "CHT per-series outstanding history JSON output directory (default: cht_history_out)."
                 | Cht_Urls _ -> "optional CHT offering circular URL manifest to write."
 
     type CliArguments =
@@ -101,6 +105,7 @@ module Program =
         | [<CustomCommandLine("covered-bonds-program")>] CoveredBondsProgram of ParseResults<SourceArguments>
         | [<CustomCommandLine("cht-debt-issues")>] ChtDebtIssues of ParseResults<SourceArguments>
         | [<CustomCommandLine("cht-circular")>] ChtCircular of ParseResults<SourceArguments>
+        | [<CustomCommandLine("cht-history")>] ChtHistory of ParseResults<SourceArguments>
 
         interface IArgParserTemplate with
             member this.Usage =
@@ -111,6 +116,7 @@ module Program =
                 | CoveredBondsProgram _ -> "parse one Canadian registered covered bond program page."
                 | ChtDebtIssues _ -> "parse the list of outstanding CHT debt issues."
                 | ChtCircular _ -> "parse one CHT offering circular PDF."
+                | ChtHistory _ -> "parse one CHT outstanding history workbook, writing one JSON file per series."
 
     let private runSingle (handler: string -> string option -> int) (args: ParseResults<SourceArguments>) =
         handler (args.GetResult Source) (args.TryGetResult Output)
@@ -232,6 +238,10 @@ module Program =
                         args.TryGetResult BatchArguments.Cht_Output
                         |> Option.defaultValue "cht_circulars_out"
 
+                    let historyOutputDirectory =
+                        args.TryGetResult BatchArguments.Cht_History_Output
+                        |> Option.defaultValue "cht_history_out"
+
                     let urlsPath = args.TryGetResult BatchArguments.Cht_Urls
 
                     let downloadCode =
@@ -246,6 +256,7 @@ module Program =
                                 debtIssuesPath
                                 pdfDirectory
                                 outputDirectory
+                                historyOutputDirectory
                                 (if download then None else urlsPath)
                         else
                             0
@@ -277,5 +288,6 @@ module Program =
                 | CoveredBondsProgram args -> runSingle CoveredBondCommand.program args
                 | ChtDebtIssues args -> runSingle ChtCommand.debtIssues args
                 | ChtCircular args -> runSingle ChtCommand.circular args
+                | ChtHistory args -> runSingle ChtCommand.history args
         with CliExit code ->
             code

@@ -90,6 +90,97 @@ let ``parseDebtIssues reads Government of Canada issuance and circular links`` (
     Assert.StartsWith("https://assets.cmhc-schl.gc.ca/", circulars.[0].["url"].GetValue<string>())
 
 [<Fact>]
+let ``outstandingHistoryFiles deduplicates the linked history workbook`` () =
+    let issues = ChtHtml.parseDebtIssues "" html |> ChtHtml.toJson |> DebtIssues.parse
+
+    let files = ChtCommand.outstandingHistoryFiles issues
+
+    Assert.Single files |> ignore
+    Assert.Equal("history-bond-purchases-cancellation-en.xlsx", snd files.[0])
+    Assert.StartsWith("https://assets.cmhc-schl.gc.ca/", fst files.[0])
+
+let private historyWorkbook = fixture "history-bond-purchases-cancellation-en.xlsx"
+
+[<Fact>]
+let ``parseHistory writes each workbook block as a separate document`` () =
+    let documents = OutstandingHistoryXlsx.parse "" historyWorkbook
+
+    Assert.Equal(44, documents.Length)
+
+    let first = documents.Head
+    Assert.Equal("2026-10-15", stringAt [ "asOfDate" ] first)
+    Assert.Equal("History of Bond Purchases for Cancellation as of October 15, 2026", stringAt [ "title" ] first)
+    Assert.Equal("Series 77", stringAt [ "series" ] first)
+    Assert.Equal("2.35%", stringAt [ "coupon"; "displayText" ] first)
+    Assert.Equal(2.35M, decimalAt [ "coupon"; "fixedRatePercent" ] first)
+    Assert.Equal("2027-06-15", stringAt [ "maturityDate" ] first)
+    Assert.Equal("13509PFX6", stringAt [ "identifier" ] first)
+    Assert.Empty(first.["cancellations"].AsArray())
+
+    let floating =
+        documents
+        |> List.find (fun document -> stringAt [ "series" ] document = "Series 103")
+
+    Assert.Equal("floating", stringAt [ "coupon"; "kind" ] floating)
+    Assert.Equal("3m CDOR", stringAt [ "coupon"; "index" ] floating)
+    Assert.Equal(-0.18M, decimalAt [ "coupon"; "spreadPercent" ] floating)
+
+    for document in documents do
+        match OutstandingHistorySchema.validate (OutstandingHistoryXlsx.toJson document) with
+        | Ok _ -> ()
+        | Error errors -> failwithf "Expected every history document to validate, but got %A" errors
+
+[<Fact>]
+let ``parseHistory reads cancellation periods`` () =
+    let documents =
+        OutstandingHistoryXlsx.parse "" (fixture "history-cancellations-sample.xlsx")
+
+    let cancellation = documents.Head.["cancellations"].AsArray().[0]
+
+    Assert.Equal("2023-03-15", stringAt [ "fromDate" ] cancellation)
+    Assert.Equal("2023-04-14", stringAt [ "toDate" ] cancellation)
+    Assert.Equal(125.5M, decimalAt [ "cancelledAmount" ] cancellation)
+
+    match OutstandingHistorySchema.validate (OutstandingHistoryXlsx.toJson documents.Head) with
+    | Ok _ -> ()
+    | Error errors -> failwithf "Expected the parsed history to validate, but got %A" errors
+
+[<Fact>]
+let ``outstanding history JSON validates and parses through the provider`` () =
+    let json =
+        OutstandingHistoryXlsx.parse "" historyWorkbook
+        |> List.head
+        |> OutstandingHistoryXlsx.toJson
+
+    match OutstandingHistorySchema.validate json with
+    | Ok _ -> ()
+    | Error errors -> failwithf "Expected the parsed history to validate, but got %A" errors
+
+    match OutstandingHistory.parseValidated json with
+    | Ok history ->
+        Assert.Equal(DateTime(2026, 10, 15), history.AsOfDate)
+        Assert.Equal("Series 77", history.Series)
+        Assert.Equal("13509PFX6", history.Identifier)
+        Assert.Empty history.Cancellations
+    | Error errors -> failwithf "Expected the parsed history to load, but got %A" errors
+
+[<Fact>]
+let ``history command writes one JSON file per series`` () =
+    let directory =
+        Path.Combine(Path.GetTempPath(), "nhambs-history-" + Guid.NewGuid().ToString("N"))
+
+    Directory.CreateDirectory directory |> ignore
+
+    try
+        Assert.Equal(0, ChtCommand.history historyWorkbook (Some directory))
+
+        let files = Directory.GetFiles(directory, "*.json")
+        Assert.Equal(44, files.Length)
+        Assert.True(File.Exists(Path.Combine(directory, "series-77-history.json")))
+    finally
+        Directory.Delete(directory, true)
+
+[<Fact>]
 let ``parseDebtIssues output passes full schema validation`` () =
     let json = ChtHtml.parseDebtIssues "" html |> ChtHtml.toJson
 

@@ -44,8 +44,10 @@ Common and type-specific options:
   covered bond output, HTML cache and manifest. Defaults: `covered_bonds_out`
   and `covered_bonds_html`.
 - `--cht-debt-issues` is required for `cht-circulars`.
-- `--pdf-dir` / `--cht-out` / `--cht-urls` configure CHT input PDFs, output and
-  manifest. Defaults: `cht_circulars` and `cht_circulars_out`.
+- `--pdf-dir` / `--cht-out` / `--cht-history-out` / `--cht-urls` configure the
+  CHT download directory (offering circular PDFs and history workbooks),
+  circular JSON output, per-series history JSON output and manifest. Defaults:
+  `cht_circulars`, `cht_circulars_out`, `cht_history_out`.
 
 For example, download and process all three pipelines:
 
@@ -53,13 +55,15 @@ For example, download and process all three pipelines:
 dotnet run --project src/NHAMBS.Cli -- batch \
   --types nhambs,covered-bonds,cht-circulars \
   --covered-bonds-registry 'https://www.cmhc-schl.gc.ca/professionals/project-funding-and-mortgage-financing/securitization/canadian-registered-covered-bonds/canadian-covered-bonds-registry' \
-  --cht-debt-issues cht_out/debt-issues.json \
+  --cht-debt-issues out/debt-issues.json \
   --download \
   --process
 ```
 
-Each selected pipeline's process phase writes its own resumable report in its
-output directory.
+Each selected pipeline's process phase writes a resumable `batch-report.json` in
+its output directory, using the same report format for NHA MBS, CHT and covered
+bonds. A legacy `batch-report.csv` (or, for CHT, `circulars-report.csv`) is
+imported once when the JSON report does not exist yet.
 
 ### NHA MBS pool URLs
 
@@ -190,8 +194,11 @@ Parse the outstanding debt issues page:
 dotnet run --project src/NHAMBS.Cli -- \
   cht-debt-issues \
   https://www.cmhc-schl.gc.ca/professionals/project-funding-and-mortgage-financing/securitization/canada-mortgage-bonds/list-of-outstanding-cht-debt-issues \
-  --output cht_out/debt-issues.json
+  --output out/debt-issues.json
 ```
+
+The debt-issues snapshot is written as a single `out/debt-issues.json` file; no
+intermediate `cht/` directory is needed.
 
 Parse one offering circular PDF:
 
@@ -199,7 +206,17 @@ Parse one offering circular PDF:
 dotnet run --project src/NHAMBS.Cli -- \
   cht-circular \
   cht_circulars/series-77-initial-issue.pdf \
-  --output cht_circulars_out/series-77-initial-issue.json
+  --output out/cht_circulars/series-77-initial-issue.json
+```
+
+Parse one history of bond purchases for cancellation workbook, writing one
+JSON file per series:
+
+```bash
+dotnet run --project src/NHAMBS.Cli -- \
+  cht-history \
+  cht_circulars/history-bond-purchases-cancellation-en.xlsx \
+  --output out/cht_history
 ```
 
 Parse every offering circular linked from a debt-issues snapshot, downloading
@@ -208,21 +225,27 @@ missing PDFs and optionally writing a manifest:
 ```bash
 dotnet run --project src/NHAMBS.Cli -- batch \
   --types cht-circulars \
-  --cht-debt-issues cht_out/debt-issues.json \
+  --cht-debt-issues out/debt-issues.json \
   --pdf-dir cht_circulars \
-  --cht-out cht_circulars_out \
+  --cht-out out/cht_circulars \
+  --cht-history-out out/cht_history \
   --download \
   --process \
   --cht-urls cht_circular_urls.txt
 ```
 
 Without `--download`, `cht-circulars` only uses PDFs already present in the PDF
-directory and reports missing ones. It validates each parsed result, prints
-progress, and writes a resumable `circulars-report.json` plus a `manifest.csv`
-mapping series/designation to file name and source URL. That `manifest.csv` has
-the same shape as a `pool_urls.txt` manifest and is compatible with
-`--cht-urls`. A second run skips circulars already marked `parsed` or `skipped`
-when their JSON output still exists.
+directory and reports missing ones. `--download` also fetches the history of
+bond purchases and cancellations workbook linked from the outstanding amounts
+on the debt-issues page (currently `history-bond-purchases-cancellation-en.xlsx`)
+into the same directory. `--process` splits each linked history workbook into
+one JSON document per series and writes them to `--cht-history-out`; the file
+name is the series, for example `series-77-history.json`. It validates each
+parsed result, prints progress, and writes a resumable `batch-report.json` plus
+a `manifest.csv` mapping series/designation to file name and source URL. That
+`manifest.csv` has the same shape as a `pool_urls.txt` manifest and is
+compatible with `--cht-urls`. A second run skips circulars already marked
+`parsed` or `skipped` when their JSON output still exists.
 
 ## Validation
 
@@ -234,6 +257,7 @@ before writing it:
 - `cmhc-covered-bond-program.schema.json`
 - `cmhc-cht-debt-issues.schema.json`
 - `cmhc-cht-offering-circular.schema.json`
+- `cmhc-cht-outstanding-history.schema.json`
 
 Parsing modules live in the corresponding libraries (`NHAMBS.Circular`,
 `NHAMBS.CoveredBonds`, `NHAMBS.Cht`); this CLI is the single entry point for

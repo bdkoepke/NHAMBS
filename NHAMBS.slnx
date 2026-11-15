@@ -5,51 +5,28 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/src/">
-    <Project Path="src/NHAMBS.Cht/NHAMBS.Cht.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="src/NHAMBS.Cli/NHAMBS.Cli.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="src/NHAMBS.CoveredBonds/NHAMBS.CoveredBonds.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="src/NHAMBS.Sources/NHAMBS.Sources.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
+    <Project Path="src/NHAMBS.Cht/NHAMBS.Cht.fsproj" />
+    <Project Path="src/NHAMBS.Cli/NHAMBS.Cli.fsproj" />
+    <Project Path="src/NHAMBS.Client/NHAMBS.Client.fsproj" />
+    <Project Path="src/NHAMBS.CoveredBonds/NHAMBS.CoveredBonds.fsproj" />
+    <Project Path="src/NHAMBS.Data/NHAMBS.Data.fsproj" />
+    <Project Path="src/NHAMBS.Etl.Core/NHAMBS.Etl.Core.fsproj" />
+    <Project Path="src/NHAMBS.Etl/NHAMBS.Etl.fsproj" />
+    <Project Path="src/NHAMBS.Migrations/NHAMBS.Migrations.fsproj" />
+    <Project Path="src/NHAMBS.Pulumi/NHAMBS.Pulumi.fsproj" />
+    <Project Path="src/NHAMBS.Server/NHAMBS.Server.fsproj" />
+    <Project Path="src/NHAMBS.Shared/NHAMBS.Shared.fsproj" />
+    <Project Path="src/NHAMBS.Sources/NHAMBS.Sources.fsproj" />
+    <Project Path="src/NHAMBS.Workflows/NHAMBS.Workflows.fsproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/NHAMBS.Cht.Tests/NHAMBS.Cht.Tests.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="tests/NHAMBS.Circular.Tests/NHAMBS.Circular.Tests.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="tests/NHAMBS.Cli.Tests/NHAMBS.Cli.Tests.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="tests/NHAMBS.CoveredBonds.Tests/NHAMBS.CoveredBonds.Tests.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
-    <Project Path="tests/NHAMBS.Tests/NHAMBS.Tests.fsproj">
-      <Platform Solution="*|x64" Project="Any CPU" />
-      <Platform Solution="*|x86" Project="Any CPU" />
-    </Project>
+    <Project Path="tests/NHAMBS.Cht.Tests/NHAMBS.Cht.Tests.fsproj" />
+    <Project Path="tests/NHAMBS.Circular.Tests/NHAMBS.Circular.Tests.fsproj" />
+    <Project Path="tests/NHAMBS.Cli.Tests/NHAMBS.Cli.Tests.fsproj" />
+    <Project Path="tests/NHAMBS.CoveredBonds.Tests/NHAMBS.CoveredBonds.Tests.fsproj" />
+    <Project Path="tests/NHAMBS.Tests/NHAMBS.Tests.fsproj" />
+    <Project Path="tests/NHAMBS.Workflows.Tests/NHAMBS.Workflows.Tests.fsproj" />
   </Folder>
-  <Project Path="src/NHAMBS.Circular/NHAMBS.Circular.fsproj">
-    <Platform Solution="*|x64" Project="Any CPU" />
-    <Platform Solution="*|x86" Project="Any CPU" />
-  </Project>
-  <Project Path="src/NHAMBS.Mbs/NHAMBS.Mbs.fsproj">
-    <Platform Solution="*|x64" Project="Any CPU" />
-    <Platform Solution="*|x86" Project="Any CPU" />
-  </Project>
+  <Project Path="src/NHAMBS.Circular/NHAMBS.Circular.fsproj" />
+  <Project Path="src/NHAMBS.Mbs/NHAMBS.Mbs.fsproj" />
 </Solution>

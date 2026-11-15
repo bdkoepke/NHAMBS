@@ -2,6 +2,7 @@ module NHAMBS.Cli.ChtCommand
 
 open System
 open System.IO
+open System.Text.Json.Nodes
 open System.Text.RegularExpressions
 open NHAMBS.Cht
 open NHAMBS.Sources
@@ -122,8 +123,97 @@ let circular (source: string) (output: string option) =
 let private slug (value: string) =
     Regex.Replace(value.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-')
 
+let private historyFileName (series: string) = slug series + "-history.json"
+
+let private readHistoryWorkbook (source: string) =
+    if Source.isUrl source then
+        Source.withTempFile ".xlsx" (fun path ->
+            Source.downloadFile source path
+            OutstandingHistoryXlsx.parse source path)
+    else
+        OutstandingHistoryXlsx.parse source source
+
+let private writeHistoryDocuments (source: string) (documents: JsonObject list) (outputDir: string) =
+    Directory.CreateDirectory outputDir |> ignore
+
+    let mutable written = 0
+    let mutable cancellations = 0
+    let mutable failed = 0
+
+    for document in documents do
+        let json = OutstandingHistoryXlsx.toJson document
+
+        let label =
+            if document.ContainsKey "series" && not (isNull document.["series"]) then
+                document.["series"].GetValue<string>()
+            else
+                source
+
+        match OutstandingHistorySchema.validate json with
+        | Error errors ->
+            eprintfn "Failed to validate %s:" label
+
+            for error in errors do
+                eprintfn "  %s: %s" error.Path error.Message
+
+            failed <- failed + 1
+        | Ok _ ->
+            let history = OutstandingHistory.parse json
+
+            let path = Path.Combine(outputDir, historyFileName history.Series)
+
+            File.WriteAllText(path, json + Environment.NewLine)
+            written <- written + 1
+            cancellations <- cancellations + history.Cancellations.Length
+
+    eprintfn
+        "Wrote %d CHT outstanding history files to %s with %d cancellation periods, failed %d."
+        written
+        outputDir
+        cancellations
+        failed
+
+    if failed = 0 then 0 else 1
+
+/// Parse one history of bond purchases for cancellation workbook, writing one
+/// JSON file per issue series to the output directory.
+let history (source: string) (output: string option) =
+    try
+        let outputDir = output |> Option.defaultValue "cht_history_out"
+        let documents = readHistoryWorkbook source
+        writeHistoryDocuments source documents outputDir
+    with ex ->
+        eprintfn "Failed to parse %s: %s" source ex.Message
+
+        if Environment.GetEnvironmentVariable "NHAMBS_DEBUG" = "1" then
+            eprintfn "%O" ex
+
+        1
+
 let private circularFileName (series: string) (designation: string) =
     slug series + "-" + slug designation + ".pdf"
+
+let private fileNameFromUrl (url: string) =
+    let name =
+        if Source.isUrl url then
+            Path.GetFileName(Uri(url).AbsolutePath)
+        else
+            Path.GetFileName url
+
+    if String.IsNullOrWhiteSpace name then
+        "outstanding-history.xlsx"
+    else
+        name
+
+/// Distinct history-of-bond-purchases workbooks linked from the outstanding
+/// amounts in a debt-issues snapshot, paired with their download file names.
+let outstandingHistoryFiles (issues: DebtIssues.Root) =
+    issues.Issues
+    |> Array.choose (fun issue ->
+        issue.OutstandingHistoryUrl
+        |> Option.filter (String.IsNullOrWhiteSpace >> not)
+        |> Option.map (fun url -> url, fileNameFromUrl url))
+    |> Array.distinctBy fst
 
 let private manifestRows (issues: DebtIssues.Root) =
     [
@@ -159,8 +249,8 @@ let private circularEntries (outputDir: string) (issues: DebtIssues.Root) =
                 issue, circular, fileName, outputPath
     ]
 
-/// Download every offering circular PDF linked from a debt-issues snapshot.
-/// Existing non-empty PDFs are reused.
+/// Download every offering circular PDF and outstanding history workbook linked
+/// from a debt-issues snapshot. Existing non-empty files are reused.
 let download (debtIssuesPath: string) (pdfDir: string) (urlsPath: string option) =
     try
         match DebtIssues.load debtIssuesPath with
@@ -199,7 +289,30 @@ let download (debtIssuesPath: string) (pdfDir: string) (urlsPath: string option)
 
             eprintfn "Downloaded %d offering circulars (%d already present), failed %d." downloaded existing failed
 
-            if failed = 0 then 0 else 1
+            let mutable historyDownloaded = 0
+            let mutable historyExisting = 0
+            let mutable historyFailed = 0
+
+            for url, fileName in outstandingHistoryFiles issues do
+                let path = Path.Combine(pdfDir, fileName)
+
+                if File.Exists path && FileInfo(path).Length > 0L then
+                    historyExisting <- historyExisting + 1
+                else
+                    try
+                        Source.downloadFile url path
+                        historyDownloaded <- historyDownloaded + 1
+                    with ex ->
+                        eprintfn "Failed to download %s: %s" url ex.Message
+                        historyFailed <- historyFailed + 1
+
+            eprintfn
+                "Downloaded %d outstanding history workbooks (%d already present), failed %d."
+                historyDownloaded
+                historyExisting
+                historyFailed
+
+            if failed = 0 && historyFailed = 0 then 0 else 1
     with ex ->
         eprintfn "Failed to download CHT offering circulars: %s" ex.Message
 
@@ -208,18 +321,46 @@ let download (debtIssuesPath: string) (pdfDir: string) (urlsPath: string option)
 
         1
 
+let private processHistoryFiles (issues: DebtIssues.Root) (pdfDir: string) (outputDir: string) =
+    let mutable failed = 0
+
+    for url, fileName in outstandingHistoryFiles issues do
+        let workbookPath = Path.Combine(pdfDir, fileName)
+
+        try
+            if not (File.Exists workbookPath) || FileInfo(workbookPath).Length = 0L then
+                failwithf "Workbook is missing; rerun with --download to fetch %s" url
+
+            let source = if url <> "" then url else workbookPath
+            let documents = OutstandingHistoryXlsx.parse source workbookPath
+
+            if writeHistoryDocuments source documents outputDir <> 0 then
+                failed <- failed + 1
+        with ex ->
+            eprintfn "Failed to parse %s: %s" workbookPath ex.Message
+            failed <- failed + 1
+
+    if failed = 0 then 0 else 1
+
 /// Parse every offering circular linked from a debt-issues snapshot. PDFs must
 /// already be present in the PDF directory; run the download phase first.
-/// A second run resumes from `circulars-report.json`, skipping circulars that
-/// are already complete.
-let processBatch (debtIssuesPath: string) (pdfDir: string) (outputDir: string) (urlsPath: string option) =
+/// A second run resumes from `batch-report.json`, skipping circulars that are
+/// already complete. Downloadable history workbooks are parsed into
+/// `historyOutputDir`.
+let processBatch
+    (debtIssuesPath: string)
+    (pdfDir: string)
+    (outputDir: string)
+    (historyOutputDir: string)
+    (urlsPath: string option)
+    =
     if not (Directory.Exists pdfDir) then
         Directory.CreateDirectory pdfDir |> ignore
 
     if not (Directory.Exists outputDir) then
         Directory.CreateDirectory outputDir |> ignore
 
-    let reportPath = Path.Combine(outputDir, "circulars-report.json")
+    let reportPath = Path.Combine(outputDir, "batch-report.json")
 
     match DebtIssues.load debtIssuesPath with
     | Error errors ->
@@ -280,4 +421,6 @@ let processBatch (debtIssuesPath: string) (pdfDir: string) (outputDir: string) (
             failed
             reportPath
 
-        if failed = 0 then 0 else 1
+        let historyCode = processHistoryFiles issues pdfDir historyOutputDir
+
+        if failed = 0 && historyCode = 0 then 0 else 1

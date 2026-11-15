@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="10.1.404" />
+    <Compile Include="Provider.fs" />
+    <Compile Include="Database.fs" />
+    <Compile Include="MbsRepository.fs" />
+    <Compile Include="ChtRepository.fs" />
+    <Compile Include="CoveredBondRepository.fs" />
+    <Compile Include="EtlRepository.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SQLProvider.PostgreSql" Version="1.5.32" />
+    <PackageReference Include="Npgsql" Version="9.0.5" />
+    <PackageReference Include="FSharp.Data" Version="8.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NHAMBS.Shared\NHAMBS.Shared.fsproj" />
+  </ItemGroup>
+</Project>

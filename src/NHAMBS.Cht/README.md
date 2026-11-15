@@ -8,19 +8,26 @@ Typed mapping and validation for CMHC Canada Housing Trust (CHT) JSON.
   (Draft 2020-12) for the "List of outstanding CHT debt issues" page.
 - `schema/cmhc-cht-offering-circular.schema.json` — the authoritative JSON
   Schema for the key terms printed on an offering circular PDF.
+- `schema/cmhc-cht-outstanding-history.schema.json` — the authoritative JSON
+  Schema for one issue block from the history of bond purchases for
+  cancellation workbook linked from the outstanding amounts on the debt issues
+  page.
 - `schema/*.provider.schema.json` — flattened copies used only by
   `FSharp.Data.JsonProvider`.
 - `Schema.fs` — full schema validation with `JsonSchema.Net`.
 - `DebtIssues.fs` — the `JsonProvider` type and `DebtIssues.load` helpers.
 - `OfferingCircular.fs` — the `JsonProvider` type and
   `OfferingCircular.load` helpers.
+- `OutstandingHistory.fs` — the `JsonProvider` type and
+  `OutstandingHistory.load` helpers.
 
-The HTML and PDF parsing lives in `NHAMBS.Cli` (the `cht-*` commands).
-`NHAMBS.Cli batch --types cht-circulars --download --cht-urls` can fetch
-missing offering circular PDFs and write a `circular_urls.txt` manifest in the
-same style as NHA MBS `pool_urls.txt`.
+The HTML, PDF and XLSX parsing lives in `NHAMBS.Cli` (the `cht-*` commands).
+`NHAMBS.Cli batch --types cht-circulars --download --process` fetches missing
+offering circular PDFs and the outstanding history workbook linked from the
+debt-issues page, and writes JSON for both in the same style as NHA MBS
+`pool_urls.txt` manifests.
 
-## Why two schemas?
+## Why provider schemas?
 
 `FSharp.Data`'s `JsonProvider` can infer types from a JSON Schema via the
 `Schema` static parameter, but its schema reader only understands `type`,
@@ -32,7 +39,7 @@ directly would therefore produce untyped `IJsonDocument` properties.
 validation-only keywords to produce the flattened provider schemas. The real
 schemas remain the single source of truth.
 
-Regenerate the provider schemas after changing either real schema:
+Regenerate the provider schemas after changing any real schema:
 
 ```bash
 cd src/NHAMBS.Cht
@@ -44,7 +51,7 @@ dotnet fsi generate-provider-schema.fsx
 ```fsharp
 open NHAMBS.Cht
 
-match DebtIssues.load "cht_out/debt-issues.json" with
+match DebtIssues.load "out/debt-issues.json" with
 | Ok issues ->
     printfn "%d issues as of %O" issues.Issues.Length issues.AsOfDate
 
@@ -54,16 +61,23 @@ match DebtIssues.load "cht_out/debt-issues.json" with
     for error in errors do
         printfn "%s: %s" error.Path error.Message
 
-match OfferingCircular.load "cht_circulars_out/series-77-initial-issue.json" with
+match OfferingCircular.load "out/cht_circulars/series-77-initial-issue.json" with
 | Ok circular ->
     printfn "%s issued %M" circular.Series circular.AggregatePrincipalAmount
 | Error errors ->
     for error in errors do
         printfn "%s: %s" error.Path error.Message
+
+match OutstandingHistory.load "out/cht_history/series-77-history.json" with
+| Ok history ->
+    printfn "%s has %d cancellation periods as of %O" history.Series history.Cancellations.Length history.AsOfDate
+| Error errors ->
+    for error in errors do
+        printfn "%s: %s" error.Path error.Message
 ```
 
-`DebtIssues.parse` and `OfferingCircular.parse` skip validation and are useful
-when the input is already known to be valid.
+`DebtIssues.parse`, `OfferingCircular.parse` and `OutstandingHistory.parse`
+skip validation and are useful when the input is already known to be valid.
 
 ## Data notes
 
@@ -92,3 +106,22 @@ when the input is already known to be valid.
 - Identifiers are taken from the last occurrence in the PDF so that temporary
   codes on a re-opening circular resolve to the permanent common code, ISIN and
   CUSIP.
+
+### Outstanding history workbook
+
+- The workbook contains one block per series. Each block becomes its own JSON
+  file named from the series, for example `series-77-history.json`, so it can be
+  associated with every offering circular for that series.
+- The workbook heading supplies `title` and `asOfDate`; the October 15, 2026
+  workbook reads "History of Bond Purchases for Cancellation as of October 15,
+  2026".
+- Fixed coupons are stored as Excel percentage fractions (for example
+  `2.35E-2`) and are normalized to `fixedRatePercent: 2.35`.
+- Floating coupons keep their printed text but gain an `index` and
+  `spreadPercent`; `CDOR à 3 mois - 0.18%` becomes `3m CDOR` and `-0.18`, and
+  `CORRA + 0.30%` becomes `CORRA` and `0.30`.
+- Series values are normalized to the debt-issues form (`77` becomes
+  `Series 77`) so the datasets can be matched.
+- Excel serial dates are converted to ISO 8601 calendar dates.
+- Cancellation periods are an array within each series document and are empty
+  when the workbook records no cancellations for that series.

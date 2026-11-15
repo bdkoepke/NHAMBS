@@ -1,0 +1,17 @@
+namespace NHAMBS.Shared
+
+open NHAMBS.Shared.Domain
+
+/// Fable.Remoting contract. Every function below is exposed by the Saturn API
+/// and consumed directly by the Elmish client.
+type DashboardApi =
+    {
+        GetOverview: unit -> Async<OverviewData>
+        GetMbsAnalytics: MbsPoolFilter -> Async<MbsAnalytics>
+        GetMbsPools: MbsPoolQuery -> Async<MbsPoolPage>
+        GetMbsPool: string -> Async<MbsPoolDetail[]>
+        GetMbsFilterOptions: unit -> Async<MbsFilterOptions>
+        GetCht: unit -> Async<ChtData>
+        GetCoveredBonds: unit -> Async<CoveredBondData>
+        GetFreshness: unit -> Async<DatasetFreshness[]>
+    }

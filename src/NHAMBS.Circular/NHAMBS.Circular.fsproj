@@ -5,6 +5,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RootNamespace>NHAMBS.Circular</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="10.1.404" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Include="Schema.fs" />
@@ -12,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FSharp.Data" Version="8.1.0" />
-    <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
+    <PackageReference Include="FSharp.Data" Version="8.2.0" />
+    <PackageReference Include="JsonSchema.Net" Version="9.7.0" />
   </ItemGroup>
 
   <ItemGroup>

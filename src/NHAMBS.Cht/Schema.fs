@@ -104,3 +104,12 @@ module OfferingCircularSchema =
 
     /// Validate raw JSON text against `cmhc-cht-offering-circular.schema.json`.
     let validate (json: string) = Validator.validate resourceName json
+
+/// Validation against the CMHC CHT outstanding history workbook schema embedded
+/// in this assembly.
+module OutstandingHistorySchema =
+
+    let private resourceName = "NHAMBS.Cht.cmhc-cht-outstanding-history.schema.json"
+
+    /// Validate raw JSON text against `cmhc-cht-outstanding-history.schema.json`.
+    let validate (json: string) = Validator.validate resourceName json

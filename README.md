@@ -1,0 +1,396 @@
+# NHA MBS Securitization Dashboard
+
+A SAFE Stack dashboard for CMHC's NHA mortgage-backed securities, Canada
+Mortgage Bonds and Canadian registered covered bonds. It turns the parsed JSON
+extracts in `out/` into a PostgreSQL analytics database, exposes a typed
+Saturn / Fable.Remoting API, and renders the client with Fable, Elmish, Feliz
+and AG Grid.
+
+The experience follows the Computershare NHA MBS Data Site securitization
+dashboard: market KPIs, issuance and maturity charts, issuer/province/insurer
+breakdowns, and filterable, sortable pool and security tables with CSV export.
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Market overview](docs/dashboard-overview.png) | ![NHA MBS pool explorer](docs/dashboard-pools.png) |
+| Market overview | NHA MBS pool explorer with AG Grid |
+| ![Pool detail](docs/dashboard-pool-detail.png) | ![Canada Mortgage Bonds](docs/dashboard-cht.png) |
+| Pool detail drawer | Canada Mortgage Bonds |
+| ![Covered bonds](docs/dashboard-covered-bonds.png) | ![Data & ETL](docs/dashboard-data-etl.png) |
+| Covered bond registry | Data & ETL operations |
+
+## Architecture
+
+```text
+CMHC source PDFs / pages
+        │
+        ▼
+out/pools/*.json  out/debt-issues.json  out/cht_circulars/  out/cht_history/  out/covered_bonds/
+        │
+        ▼
+NHAMBS.Etl (Elsa host + CLI)
+        │
+        ▼
+NHAMBS.Workflows (Elsa workflows + activities)
+        │
+        ▼
+NHAMBS.Etl.Core ── bulk COPY ──▶ PostgreSQL (schema: nhambs)
+        │                         │
+        │                         ├── FluentMigrator migrations
+        │                         ├── typed reads via SQLProvider
+        │                         └── reporting queries via parameterized SQL
+        ▼
+NHAMBS.Server (Saturn + Fable.Remoting)
+        │
+        ▼
+NHAMBS.Client (Fable + Elmish + Feliz + AG Grid)
+```
+
+The ETL is orchestrated by **Elsa Workflows**. `NHAMBS.Etl` is a thin host
+that resolves `IWorkflowRunner` and runs one of the workflows defined in
+`NHAMBS.Workflows`; the resumable database loaders and bulk COPY code live in
+`NHAMBS.Etl.Core`.
+
+Infrastructure is managed with **Pulumi** (`src/NHAMBS.Pulumi/`). The local
+stack uses the Pulumi Docker provider to run PostgreSQL 17 with a named volume
+and health check. There is no hand-rolled `docker-compose.yml`.
+
+## Features
+
+- **Market overview** — NHA MBS principal, pool/issuer/loan counts, average
+  coupon, CHT outstanding, covered bond coverage, monthly issuance, rate-type
+  mix, province and maturity profiles, a current/prior-month/last-year period
+  pivot with charts, top issuers with share bars and 12-month sparklines, and
+  ETL freshness.
+- **NHA MBS pool explorer** — filter 50,000+ circulars by search, issuer, rate
+  type, pool type, province, insurer, issue date and maturity date. Results
+  include 5 KPI cards, 4 charts, loaded-row issuer/coupon charts and an AG Grid
+  table.
+- **Pool detail drawer** — key facts, loan type profile, provincial and insurer
+  allocations, scheduled maturity buckets, interest adjustment profile, rate
+  bands, prepayment provisions and a direct link to the source PDF.
+- **Canada Mortgage Bonds** — outstanding CHT series, issuance, coupon and
+  maturity analytics, plus the parsed offering-circular library with ratings,
+  ISIN/CUSIP identifiers and source links. A third tab shows the per-series
+  history of bond purchases for cancellation.
+- **Covered bonds** — registered programme and bond analytics, currency and
+  maturity charts, programme/bond/registry tabs and a CMHC registry view.
+- **Data & ETL** — Elsa workflow runs, loader audit trail, row/file counts,
+  durations, database schema guide and reproducible local commands.
+- **CSV export** — export the currently loaded pool result set from the grid.
+
+## Project layout
+
+| Project | Purpose |
+| --- | --- |
+| `src/NHAMBS.Shared` | Transport-safe DTOs and the Fable.Remoting `DashboardApi` contract. |
+| `src/NHAMBS.Data` | SQLProvider context, typed repository reads and reporting queries. |
+| `src/NHAMBS.Migrations` | FluentMigrator schema and dashboard view migrations. |
+| `src/NHAMBS.Etl.Core` | Resumable, bulk-loading loaders for MBS, CHT and covered bond JSON. |
+| `src/NHAMBS.Workflows` | Elsa activities and workflow definitions for each dataset. |
+| `src/NHAMBS.Etl` | Elsa workflow host and command-line entry point. |
+| `src/NHAMBS.Server` | Saturn API, Fable.Remoting handler and SPA hosting. |
+| `src/NHAMBS.Client` | Fable/Elmish/Feliz front end, AG Grid integration and charts. |
+| `src/NHAMBS.Pulumi` | Pulumi infrastructure (PostgreSQL container, volume, outputs). |
+| `build.fsx` | Local orchestration: infra, migrations, ETL, build, server and client. |
+| `tools` | SQLProvider offline-schema generation helper. |
+
+The pre-existing `NHAMBS.Mbs`, `NHAMBS.Cli`, `NHAMBS.Cht`,
+`NHAMBS.Circular`, `NHAMBS.CoveredBonds` and `NHAMBS.Sources` projects are left
+untouched and continue to produce the JSON extracts consumed by the ETL.
+
+## One-command local runner
+
+`build.fsx` orchestrates the local stack: Pulumi, PostgreSQL readiness,
+FluentMigrator, the ETL, npm dependencies, the Saturn API and the Vite/Fable
+client.
+
+```bash
+./build.fsx
+```
+
+or, if you prefer invoking F# Interactive explicitly:
+
+```bash
+dotnet fsi build.fsx -- --target dev
+```
+
+That is the `dev` target. It:
+
+1. Checks in with Pulumi and brings up the local PostgreSQL container.
+2. Waits for PostgreSQL to accept connections.
+3. Applies migrations.
+4. Loads `out/` through the Elsa ETL workflows.
+5. Installs client dependencies if needed.
+6. Starts the API and Vite client together.
+
+Press `Ctrl+C` to stop the child processes. If a process outlives a terminal
+session, run `./build.fsx --target stop`.
+
+If `NHAMBS_CONNECTION` is already set, the runner uses that database and skips
+Pulumi unless `--with-infra` is passed.
+
+For a local Pulumi backend (`pulumi login --local` or `file://...`), the runner
+supplies `PULUMI_CONFIG_PASSPHRASE=nhambs-local-dev` when no passphrase is
+configured. Set `PULUMI_CONFIG_PASSPHRASE` or `PULUMI_CONFIG_PASSPHRASE_FILE`
+yourself when using shared state or an existing encrypted stack.
+
+If you switch to a different passphrase for a local stack, remove the
+`encryptionsalt` line from `src/NHAMBS.Pulumi/Pulumi.dev.yaml` before initializing the
+stack, or recreate the stack with `pulumi stack rm dev` first.
+
+```bash
+./build.fsx --target run       # use an already-loaded database
+./build.fsx --target build     # compile .NET and the production client
+./build.fsx --target ci        # build-only, npm ci when possible
+./build.fsx --skip-etl         # launch without reloading data
+./build.fsx --skip-infra       # use NHAMBS_CONNECTION instead of Pulumi
+./build.fsx --target help
+```
+
+When invoking through `dotnet fsi` directly, F# Interactive parses leading
+options itself, so put script options after `--`:
+
+```bash
+dotnet fsi build.fsx -- --target run
+```
+
+Available targets are `dev`, `run`, `build`, `ci`, `infra`, `migrate`, `etl`,
+`server`, `client`, `stop` and `help`. The runner records child PIDs under `.build/` so
+`--target stop` can clean up processes that outlive a terminal session.
+
+## Prerequisites
+
+- .NET SDK 10
+- Node.js 20+ and npm
+- Docker (used by the Pulumi Docker provider)
+- Pulumi CLI
+- PostgreSQL client tools are useful, but not required
+
+## Quick start
+
+### 1. Start PostgreSQL with Pulumi
+
+```bash
+cd src/NHAMBS.Pulumi
+pulumi login --local          # or use your Pulumi Cloud organization
+pulumi stack init dev
+pulumi up
+pulumi stack output connectionString --show-secrets
+```
+
+The default stack configuration is in `src/NHAMBS.Pulumi/Pulumi.dev.yaml`:
+
+```yaml
+config:
+  nhambs:image: postgres:17-alpine
+  nhambs:port: "54322"
+  nhambs:database: nhambs
+  nhambs:username: nhambs
+  nhambs:password: nhambs
+```
+
+Change the password for anything beyond local development:
+
+```bash
+pulumi config set --secret nhambs:password 'a-strong-password'
+pulumi up
+```
+
+### 2. Configure the connection
+
+```bash
+export NHAMBS_CONNECTION='Host=localhost;Port=54322;Database=nhambs;Username=nhambs;Password=nhambs'
+```
+
+All .NET projects read `NHAMBS_CONNECTION`. The default already points at the
+local Pulumi stack, so this is only required if you change it.
+
+### 3. Create the schema and load the extracts
+
+```bash
+dotnet tool restore
+dotnet run --project src/NHAMBS.Migrations
+dotnet run --project src/NHAMBS.Etl -- --dataset all
+```
+
+The ETL host runs an Elsa workflow from `NHAMBS.Workflows`. `--dataset all`
+runs `NhambsEtlWorkflow`, which composes the MBS, CHT and covered bond
+activities in order; the per-dataset options select the matching workflow
+instead. The workflows load from `out/` and the pool manifest from
+`src/NHAMBS.Mbs/pool_urls.txt` by default. CHT reads the debt-issues snapshot
+directly from `out/debt-issues.json`, its offering circulars from
+`out/cht_circulars/` and the per-series cancellation history from
+`out/cht_history/`. Useful options:
+
+```bash
+dotnet run --project src/NHAMBS.Etl -- --dataset mbs
+dotnet run --project src/NHAMBS.Etl -- --dataset cht
+dotnet run --project src/NHAMBS.Etl -- --dataset covered
+dotnet run --project src/NHAMBS.Etl -- --data-root out --pools-dir out/pools
+```
+
+Every run is recorded in `nhambs.etl_runs`. A failed run rolls back its data
+transaction while preserving the audit row and error message. Elsa reports
+activity failures as workflow incidents; the host prints those incidents and
+exits with status `1`.
+
+The workflow definitions are intentionally isolated from the database loaders:
+
+- `NHAMBS.Workflows` contains `MbsEtlWorkflow`, `ChtEtlWorkflow`,
+  `CoveredBondEtlWorkflow` and `NhambsEtlWorkflow`, plus the three
+  `CodeActivity` wrappers and the `Registration.register` helper.
+- `NHAMBS.Etl.Core` contains the reusable MBS, CHT and covered bond loaders,
+  JSON helpers and the binary `COPY` writer.
+- `NHAMBS.Etl` only parses arguments, builds the Elsa service provider, selects
+  a workflow and surfaces its result.
+
+### 4. Run the API
+
+```bash
+dotnet run --project src/NHAMBS.Server
+```
+
+The API listens on `http://localhost:8085`. `GET /health` returns `ok`.
+
+### 5. Run the client in development
+
+```bash
+cd src/NHAMBS.Client
+npm install
+npm run dev
+```
+
+Vite serves the UI at `http://localhost:5173` and proxies `/api` to the Saturn
+server. The Fable watcher compiles `.fs` files to `.fable/src/*.js`.
+
+### 6. Build the production client into the server
+
+```bash
+cd src/NHAMBS.Client
+npm run build
+```
+
+Vite writes the client bundle to `src/NHAMBS.Server/wwwroot/`. The server serves
+that directory and falls back to `index.html` for client-side routes. Restart
+the server and open `http://localhost:8085`.
+
+## Database model
+
+Schema `nhambs`:
+
+- `mbs_pools` — one row per NHA MBS pool keyed by CUSIP, with issuer, coupon,
+  principal, dates, loan counts, scheduled maturity totals and JSONB series.
+- `mbs_pool_insurers` — insurer dollar and percentage allocations.
+- `mbs_pool_locations` — provincial loan and principal allocations.
+- `mbs_pool_scheduled_maturity` — 1/2/3/4/5-month, at-maturity and total buckets.
+- `mbs_pool_rate_bands` — interest-rate bands and remaining face values by date.
+- `cht_issues` / `cht_offering_circulars` — outstanding CHT series and circular
+  links.
+- `cht_circulars` / `cht_circular_ratings` / `cht_circular_payment_dates` —
+  parsed offering circular library.
+- `cht_outstanding_history` / `cht_outstanding_history_cancellations` —
+  per-series history of bond purchases for cancellation and its periods.
+- `covered_bond_programs` / `covered_bond_parties` / `covered_bonds` /
+  `covered_bond_isins` / `covered_bond_registry` — covered bond registry.
+- `etl_runs` — loader audit trail.
+
+Dashboard views include `v_mbs_pool_grid`, `v_mbs_monthly`,
+`v_mbs_issuer_summary`, `v_mbs_province_summary`, `v_mbs_rate_type_summary`,
+`v_mbs_pool_type_summary`, `v_mbs_insurer_summary`, `v_mbs_maturity_summary`,
+`v_covered_bond_program_summary`, `v_covered_bond_registry_summary`,
+`v_cht_summary` and `v_cht_history_summary`.
+
+The ETL normalizes issuer names before load so variants such as
+`The Bank of Nova Scotia` and `Bank of Nova Scotia`, or upper/lower-case
+`MERRILL LYNCH CANADA INC.`, group together in the issuer views. It also
+repairs a recurring font-encoding artifact found in a small number of source
+circulars so the issuer filters stay readable.
+
+## SQLProvider offline schema
+
+`src/NHAMBS.Data/Provider.fs` uses SQLProvider's `ContextSchemaPath` so the
+solution compiles without a live database. The committed schema file is
+`src/NHAMBS.Data/sqlprovider.schema`.
+
+After changing migrations or views, regenerate it:
+
+```bash
+rm src/NHAMBS.Data/sqlprovider.schema
+./tools/generate-provider-schema.sh
+```
+
+The helper opens the local database, touches every table and view, and writes
+the schema used at compile time. Runtime data access still uses
+`NHAMBS_CONNECTION`.
+
+SQLProvider is used for typed entity reads (pool detail, filter options, ETL
+metadata and other low-cardinality reads). The high-cardinality, dynamically
+filtered reporting endpoints use parameterized `NpgsqlCommand` queries through
+the same data layer, with sort columns and directions selected from a
+whitelist.
+
+## API contract
+
+`NHAMBS.Shared/Api.fs` defines the Fable.Remoting contract:
+
+- `GetOverview`
+- `GetMbsAnalytics`
+- `GetMbsPools`
+- `GetMbsPool`
+- `GetMbsFilterOptions`
+- `GetCht`
+- `GetCoveredBonds`
+- `GetFreshness`
+
+The server route builder maps these to `/api/DashboardApi/{method}`. Fable
+clients call the same functions directly through `Fable.Remoting.Client`.
+
+## Dependency versions
+
+All direct NuGet packages are on the latest stable versions available for
+`net10.0`, with three compatibility pins:
+
+- **FSharp.Core 10.1.404** — `Fable.Remoting.Server` 6.1.0 requires
+  `FSharp.Core >= 10.1.202 < 10.2.0`.
+- **Npgsql 9.0.5** — `SQLProvider.PostgreSql` 1.5.32 reads PostgreSQL `date`
+  columns through `DateTime`; Npgsql 10 switches those columns to `DateOnly`
+  by default and breaks the provider. 9.0.5 is the latest compatible release.
+- **Microsoft.AspNetCore.WebUtilities 10.0.15** — version 11.0.0 only targets
+  `net11.0`, while this solution targets `net10.0`.
+
+The ETL workflows use **Elsa 3.10.1**, which targets `net10.0` directly and is
+hosted in-process by `NHAMBS.Etl`; no separate workflow server is required.
+
+Transitive security advisories were cleared by adding explicit newer versions
+of `System.Security.Cryptography.Pkcs`, `Microsoft.IdentityModel.*`,
+`System.IdentityModel.Tokens.Jwt`, `Microsoft.AspNetCore.WebUtilities` and the
+OpenTelemetry packages. `dotnet list package --vulnerable` reports no
+vulnerable packages.
+
+## Notes and limitations
+
+- `out/` is intentionally ignored by git; it contains the parsed source
+  extracts. The ETL expects the existing directory layout.
+- The pool grid requests up to 20,000 matching rows for client-side AG Grid
+  sorting/filtering and flags when results are capped. Filters and CSV exports
+  are complete when the cap note is absent.
+- Nominal covered bond amounts are grouped by issuance currency and are not
+  converted across currencies.
+- CHT amounts are stored as published (CAD millions) and formatted as dollars
+  in the UI.
+- SQLProvider is compiled against the committed offline schema; if the schema
+  is out of date relative to the database, regenerate the schema file and
+  rebuild.
+
+## Verification
+
+```bash
+./build.fsx --target build
+./build.fsx --target migrate
+./build.fsx --target etl
+./build.fsx --target server
+curl http://localhost:8085/health
+```
