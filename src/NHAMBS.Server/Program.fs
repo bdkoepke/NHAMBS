@@ -37,6 +37,7 @@ let private dashboardApi: DashboardApi =
         GetCht = fun () -> async { return ChtRepository.getData () }
         GetCoveredBonds = fun () -> async { return CoveredBondRepository.getData () }
         GetFreshness = fun () -> async { return EtlRepository.getFreshness () }
+        GetForwardCurves = fun () -> async { return ForwardCurveRepository.get () }
     }
 
 let private apiHandler =

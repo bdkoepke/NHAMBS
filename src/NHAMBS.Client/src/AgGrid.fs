@@ -214,6 +214,14 @@ let linkColumn field header minWidth =
 [<ReactComponent>]
 let AgGrid (options: GridOptions) =
     let containerRef = React.useRef<Element option>(None)
+    let apiRef = React.useRef<obj option>(None)
+    let (pageSizeChoice, setPageSizeChoice) = React.useState ("25")
+
+    let pageSize =
+        if pageSizeChoice = "all" then
+            max 1 options.Rows.Length
+        else
+            int pageSizeChoice
 
     React.useEffect (
         (fun () ->
@@ -233,8 +241,8 @@ let AgGrid (options: GridOptions) =
                                         "minWidth" ==> 96
                                     ]
                             "pagination" ==> true
-                            "paginationPageSize" ==> 25
-                            "paginationPageSizeSelector" ==> [| 25; 50; 100 |]
+                            "paginationPageSize" ==> pageSize
+                            "paginationPageSizeSelector" ==> false
                             "animateRows" ==> false
                             "rowHeight" ==> 40
                             "headerHeight" ==> 42
@@ -253,16 +261,73 @@ let AgGrid (options: GridOptions) =
                         ]
 
                 let api = Interop.createGrid element gridOptions
-                fun () -> Interop.destroyGrid api
+                apiRef.current <- Some api
+
+                fun () ->
+                    apiRef.current <- None
+                    Interop.destroyGrid api
             | None -> fun () -> ()),
         [| box options.Rows; box options.Columns |]
     )
 
+    let changePageSize (value: string) =
+        setPageSizeChoice value
+
+        let size =
+            if value = "all" then
+                max 1 options.Rows.Length
+            else
+                match Int32.TryParse value with
+                | true, parsed when parsed > 0 -> parsed
+                | _ -> 25
+
+        match apiRef.current with
+        | Some api -> Interop.setPaginationPageSize api size
+        | None -> ()
+
     Html.div
         [
-            prop.className "ag-theme-quartz grid-shell"
-            prop.style [ style.custom ("height", options.Height) ]
-            prop.ref (fun element -> containerRef.current <- Some element)
+            prop.className "grid-wrap"
+            prop.children
+                [
+                    Html.div
+                        [
+                            prop.className "grid-page-size"
+                            prop.children
+                                [
+                                    Html.label
+                                        [
+                                            prop.children
+                                                [
+                                                    Html.span [ prop.text "Rows per page" ]
+                                                    Html.select
+                                                        [
+                                                            prop.className "grid-page-size-select"
+                                                            prop.value pageSizeChoice
+                                                            prop.onChange (fun (event: Event) ->
+                                                                changePageSize (string event.target?value))
+                                                            prop.children
+                                                                [
+                                                                    Html.option [ prop.value "25"; prop.text "25" ]
+                                                                    Html.option [ prop.value "50"; prop.text "50" ]
+                                                                    Html.option [ prop.value "100"; prop.text "100" ]
+                                                                    Html.option [ prop.value "250"; prop.text "250" ]
+                                                                    Html.option [ prop.value "500"; prop.text "500" ]
+                                                                    Html.option [ prop.value "1000"; prop.text "1000" ]
+                                                                    Html.option [ prop.value "all"; prop.text "All" ]
+                                                                ]
+                                                        ]
+                                                ]
+                                        ]
+                                ]
+                        ]
+                    Html.div
+                        [
+                            prop.className "ag-theme-quartz grid-shell"
+                            prop.style [ style.custom ("height", options.Height) ]
+                            prop.ref (fun element -> containerRef.current <- Some element)
+                        ]
+                ]
         ]
 
 let exportCsv (fileName: string) (headers: string[]) (rows: string[][]) =

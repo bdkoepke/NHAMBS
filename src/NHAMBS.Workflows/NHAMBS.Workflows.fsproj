@@ -8,6 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Activities.fs" />
+    <Compile Include="Defaults.fs" />
     <Compile Include="Workflows.fs" />
     <Compile Include="Registration.fs" />
   </ItemGroup>

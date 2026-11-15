@@ -19,6 +19,7 @@ type PoolsProps =
         SelectedPool: string option
         Detail: Loadable<MbsPoolDetail[]>
         OnFilterChange: MbsPoolFilter -> unit
+        OnStatusChange: string -> unit
         OnApply: unit -> unit
         OnReset: unit -> unit
         OnSelectPool: string -> unit
@@ -931,6 +932,32 @@ let private detailDrawer (props: PoolsProps) =
                 ]
         ]
 
+let private statusToggle (props: PoolsProps) =
+    let optionButton (value: string) (label: string) =
+        Html.button
+            [
+                prop.className (
+                    if props.Filter.Status = value then
+                        "status-filter-option active"
+                    else
+                        "status-filter-option"
+                )
+                prop.onClick (fun _ -> props.OnStatusChange value)
+                prop.text label
+            ]
+
+    Html.div
+        [
+            prop.className "status-filter"
+            prop.children
+                [
+                    Html.span [ prop.className "status-filter-label"; prop.text "Status" ]
+                    optionButton "" "All"
+                    optionButton "active" "Active"
+                    optionButton "inactive" "Inactive"
+                ]
+        ]
+
 [<ReactComponent>]
 let PoolsPage (props: PoolsProps) =
     let analyticsView =
@@ -948,27 +975,27 @@ let PoolsPage (props: PoolsProps) =
                                                 "Filtered principal"
                                                 (moneyCompact analytics.TotalPrincipal)
                                                 (sprintf "%s matching pools" (number (decimal analytics.PoolCount)))
-                                                "#18a999"
+                                                "#2e5771"
                                             KpiCard
                                                 "Mortgage loans"
                                                 (number (decimal analytics.LoanCount))
                                                 (sprintf "%s issuers" (number (decimal analytics.IssuerCount)))
-                                                "#4f8ef7"
+                                                "#f47c3c"
                                             KpiCard
                                                 "Average coupon"
                                                 (rate analytics.AverageCoupon)
                                                 (sprintf "%s WAM" (months analytics.AverageWam))
-                                                "#d8a84e"
+                                                "#93c54b"
                                             KpiCard
                                                 "Newest issue"
                                                 (dateShort analytics.NewestIssueDate)
                                                 "Latest issue date in selection"
-                                                "#7c6ee6"
+                                                "#29abe0"
                                             KpiCard
                                                 "Provinces"
                                                 (string analytics.ByProvince.Length)
                                                 "Represented in selection"
-                                                "#e2725b"
+                                                "#d9534f"
                                         ]
                                 ]
 
@@ -1108,13 +1135,6 @@ let PoolsPage (props: PoolsProps) =
                                                                             (number (decimal page.Rows.Length))
                                                                     )
                                                                 ]
-                                                            if page.Capped then
-                                                                Html.span
-                                                                    [
-                                                                        prop.className "cap-note"
-                                                                        prop.text
-                                                                            " · results capped at 20,000; narrow the filters for a complete export"
-                                                                    ]
                                                         ]
                                                 ]
                                             Html.div
@@ -1166,6 +1186,7 @@ let PoolsPage (props: PoolsProps) =
                         "Pool explorer"
                         "Filter 50,000+ CMHC information circulars by issuer, rate structure, province, insurer and maturity."
                         [
+                            statusToggle props
                             Html.button
                                 [
                                     prop.className "btn btn-ghost"

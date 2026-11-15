@@ -199,27 +199,27 @@ let ChtPage (props: ChtProps) =
                                                             "Outstanding"
                                                             (moneyFromMillions analytics.OutstandingMillions)
                                                             (sprintf "%d series" analytics.IssueCount)
-                                                            "#18a999"
+                                                            "#2e5771"
                                                         KpiCard
                                                             "Total issuance"
                                                             (moneyFromMillions analytics.TotalIssuanceMillions)
                                                             (sprintf "%d circulars parsed" analytics.CircularCount)
-                                                            "#4f8ef7"
+                                                            "#f47c3c"
                                                         KpiCard
                                                             "Average coupon"
                                                             (rate analytics.AverageCoupon)
                                                             "Weighted by outstanding amount"
-                                                            "#d8a84e"
+                                                            "#93c54b"
                                                         KpiCard
                                                             "Next maturity"
                                                             (dateShort analytics.NextMaturityDate)
                                                             "Nearest outstanding maturity"
-                                                            "#7c6ee6"
+                                                            "#29abe0"
                                                         KpiCard
                                                             "Currencies"
                                                             (number (decimal byCurrency.Length))
                                                             "Issuance currencies"
-                                                            "#e2725b"
+                                                            "#d9534f"
                                                     ]
                                             ]
 

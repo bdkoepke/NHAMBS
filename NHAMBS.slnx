@@ -11,12 +11,14 @@
     <Project Path="src/NHAMBS.CoveredBonds/NHAMBS.CoveredBonds.fsproj" />
     <Project Path="src/NHAMBS.Data/NHAMBS.Data.fsproj" />
     <Project Path="src/NHAMBS.Etl.Core/NHAMBS.Etl.Core.fsproj" />
+    <Project Path="src/NHAMBS.ElsaServer/NHAMBS.ElsaServer.csproj" />
     <Project Path="src/NHAMBS.Etl/NHAMBS.Etl.fsproj" />
     <Project Path="src/NHAMBS.Migrations/NHAMBS.Migrations.fsproj" />
     <Project Path="src/NHAMBS.Pulumi/NHAMBS.Pulumi.fsproj" />
     <Project Path="src/NHAMBS.Server/NHAMBS.Server.fsproj" />
     <Project Path="src/NHAMBS.Shared/NHAMBS.Shared.fsproj" />
     <Project Path="src/NHAMBS.Sources/NHAMBS.Sources.fsproj" />
+    <Project Path="src/NHAMBS.Studio/NHAMBS.Studio.csproj" />
     <Project Path="src/NHAMBS.Workflows/NHAMBS.Workflows.fsproj" />
   </Folder>
   <Folder Name="/tests/">

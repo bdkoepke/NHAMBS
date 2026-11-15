@@ -334,6 +334,11 @@ let private extractOcr (path: string) (needCover: bool) (needAddendum: bool) =
 
         normalizeOcr text)
 
+/// OCR only the cover pages. Used as a targeted retry when a text-based PDF
+/// has a graphic field (amount, coupon or date) that pdftotext cannot see.
+let extractOcrCover (path: string) =
+    withTempDirectory (fun directory -> extractOcrRange path 1 4 directory |> normalizeOcr)
+
 /// Serializes writes when `NHAMBS_DUMP_TEXT` is set, since batch mode can
 /// extract several PDFs concurrently.
 let private dumpTextLock = obj ()

@@ -7,9 +7,9 @@ open NHAMBS.Client.Formatting
 type Page =
     | Overview
     | Pools
+    | ForwardCurves
     | Cht
     | CoveredBonds
-    | DataQuality
 
 type Loadable<'T> =
     | NotLoaded
@@ -21,24 +21,24 @@ let pageTitle =
     function
     | Overview -> "Overview"
     | Pools -> "NHA MBS pools"
+    | ForwardCurves -> "Forward curves"
     | Cht -> "Canada Mortgage Bonds"
     | CoveredBonds -> "Covered bonds"
-    | DataQuality -> "Data & ETL"
 
 let pageHash =
     function
     | Overview -> "#/overview"
     | Pools -> "#/pools"
+    | ForwardCurves -> "#/forward-curves"
     | Cht -> "#/cht"
     | CoveredBonds -> "#/covered-bonds"
-    | DataQuality -> "#/data"
 
 let pageFromHash (hash: string) =
     match hash with
     | "#/pools" -> Pools
+    | "#/forward-curves" -> ForwardCurves
     | "#/cht" -> Cht
     | "#/covered-bonds" -> CoveredBonds
-    | "#/data" -> DataQuality
     | _ -> Overview
 
 let PageHeader (eyebrow: string) (title: string) (subtitle: string) (actions: ReactElement list) =

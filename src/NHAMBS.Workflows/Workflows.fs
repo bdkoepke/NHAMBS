@@ -7,6 +7,8 @@ open Elsa.Workflows.Activities
 type MbsEtlWorkflow(poolsDir: string, manifestPath: string) =
     inherit WorkflowBase()
 
+    new() = MbsEtlWorkflow(Defaults.poolsDir (), Defaults.manifestPath ())
+
     override this.Build(builder: IWorkflowBuilder) =
         builder.Name <- "NHA MBS pool ETL"
         builder.Root <- LoadMbsPoolsActivity(poolsDir, manifestPath)
@@ -14,6 +16,8 @@ type MbsEtlWorkflow(poolsDir: string, manifestPath: string) =
 /// Loads the Canada Mortgage Bond dataset.
 type ChtEtlWorkflow(dataRoot: string) =
     inherit WorkflowBase()
+
+    new() = ChtEtlWorkflow(Defaults.dataRoot ())
 
     override this.Build(builder: IWorkflowBuilder) =
         builder.Name <- "CHT ETL"
@@ -23,6 +27,8 @@ type ChtEtlWorkflow(dataRoot: string) =
 type CoveredBondEtlWorkflow(dataRoot: string) =
     inherit WorkflowBase()
 
+    new() = CoveredBondEtlWorkflow(Defaults.dataRoot ())
+
     override this.Build(builder: IWorkflowBuilder) =
         builder.Name <- "Covered bond ETL"
         builder.Root <- LoadCoveredBondsActivity(dataRoot)
@@ -30,6 +36,8 @@ type CoveredBondEtlWorkflow(dataRoot: string) =
 /// Loads every parsed dataset in dependency order.
 type NhambsEtlWorkflow(dataRoot: string, poolsDir: string, manifestPath: string) =
     inherit WorkflowBase()
+
+    new() = NhambsEtlWorkflow(Defaults.dataRoot (), Defaults.poolsDir (), Defaults.manifestPath ())
 
     override this.Build(builder: IWorkflowBuilder) =
         builder.Name <- "NHA MBS securitization ETL"

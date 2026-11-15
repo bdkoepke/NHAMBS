@@ -866,7 +866,7 @@
             "percentOfTotal",
             "wac"
           ],
-          "description": "Table 'MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT DATE'. Six interest-adjustment-date columns; each rate-band row contains the remaining face value for each date, a total, and a percentage of total. The form provides up to thirteen rate-band rows.",
+          "description": "Table 'MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT DATE'. One or more printed interest-adjustment-date columns; each rate-band row contains the remaining face value for each date, a total, and a percentage of total. Older forms may print fewer than six columns.",
           "properties": {
             "interestAdjustmentDates": {
               "type": "array",
@@ -875,7 +875,7 @@
                 "format": "date",
                 "description": "An ISO 8601 calendar date (YYYY-MM-DD). The printed form uses long English dates such as 'October 1, 2026' or 'Feb/2026'; normalize before validation."
               },
-              "description": "The six date column headings (e.g. Feb/2026 through Jul/2026), normalized to ISO 8601 dates."
+              "description": "The printed interest-adjustment date column headings (for example Feb/2026 through Jul/2026), normalized to ISO 8601 dates. Older forms may print fewer than six columns."
             },
             "rateBands": {
               "type": "array",
@@ -898,7 +898,7 @@
                       "type": "number",
                       "description": "A monetary amount in Canadian dollars. Use a JSON number, not a formatted string; for example 13459779.76."
                     },
-                    "description": "Remaining face values for the six interest adjustment dates, in the same order as interestAdjustmentDates."
+                    "description": "Remaining face values for the printed interest adjustment dates, in the same order as interestAdjustmentDates."
                   },
                   "total": {
                     "type": "number",
@@ -926,7 +926,7 @@
                     "type": "number",
                     "description": "A monetary amount in Canadian dollars. Use a JSON number, not a formatted string; for example 13459779.76."
                   },
-                  "description": "Totals for the six interest adjustment dates."
+                  "description": "Totals for the printed interest adjustment dates."
                 },
                 "total": {
                   "type": "number",
@@ -953,7 +953,7 @@
                     "type": "number",
                     "description": "A percentage expressed as a number in the range 0–100 (for example 3.4769, not 0.034769)."
                   },
-                  "description": "Percentage-of-total values for the six interest adjustment dates."
+                  "description": "Percentage-of-total values for the printed interest adjustment dates."
                 },
                 "total": {
                   "type": "number",
@@ -980,7 +980,7 @@
                     "type": "number",
                     "description": "An annual interest rate expressed as a percentage in the range 0–100."
                   },
-                  "description": "Weighted-average coupon rate for each of the six interest adjustment dates."
+                  "description": "Weighted-average coupon rate for each of the printed interest adjustment dates."
                 },
                 "total": {
                   "type": "number",

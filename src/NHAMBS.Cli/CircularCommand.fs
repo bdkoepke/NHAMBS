@@ -9,21 +9,48 @@ open NHAMBS.Sources
 
 /// Parse and validate one NHA MBS circular from already-extracted text.
 let private parseTextResult input text =
-    try
-        let jsonObject = CircularPdf.parseText text
-        let json = CircularPdf.toJson jsonObject
+    let attempt (value: string) =
+        try
+            let jsonObject = CircularPdf.parseText value
+            let json = CircularPdf.toJson jsonObject
 
-        match Schema.validate json with
-        | Error errors ->
-            errors
-            |> List.map (fun error -> sprintf "%s: %s" error.Path error.Message)
-            |> Error
-        | Ok _ -> Ok(json, Circular.parse json)
-    with ex ->
-        if Environment.GetEnvironmentVariable "NHAMBS_DEBUG" = "1" then
-            Error [ ex.ToString() ]
-        else
-            Error [ ex.Message ]
+            match Schema.validate json with
+            | Error errors ->
+                errors
+                |> List.map (fun error -> sprintf "%s: %s" error.Path error.Message)
+                |> Error
+            | Ok _ -> Ok(json, Circular.parse json)
+        with ex ->
+            if Environment.GetEnvironmentVariable "NHAMBS_DEBUG" = "1" then
+                Error [ ex.ToString() ]
+            else
+                Error [ ex.Message ]
+
+    let shouldRetryWithOcr (errors: string list) =
+        errors
+        |> List.exists (fun error ->
+            error.Contains("aggregate principal", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("Mortgage-Backed Securities coupon", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("FIRST PAYMENT DUE", StringComparison.OrdinalIgnoreCase)
+            || error.Contains("pool number", StringComparison.OrdinalIgnoreCase))
+
+    match attempt text with
+    | Error errors when
+        shouldRetryWithOcr errors
+        && Environment.GetEnvironmentVariable "NHAMBS_OCR_RETRY" = "1"
+        ->
+        try
+            let ocr = PdfText.extractOcrCover input
+
+            if String.IsNullOrWhiteSpace ocr then
+                Error errors
+            else
+                match attempt (text + "\n" + ocr) with
+                | Error _ -> Error errors
+                | result -> result
+        with _ ->
+            Error errors
+    | result -> result
 
 let private printErrors input errors =
     eprintfn "Failed to parse %s:" input

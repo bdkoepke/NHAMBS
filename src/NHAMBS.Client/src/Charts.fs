@@ -7,15 +7,15 @@ open NHAMBS.Client.Formatting
 
 let palette =
     [|
-        "#18a999"
-        "#4f8ef7"
-        "#d8a84e"
-        "#7c6ee6"
-        "#e2725b"
-        "#3fbf7f"
-        "#5aa9c9"
-        "#b56cd6"
-        "#8d99ae"
+        "#2e5771" // CMB steel blue
+        "#f47c3c" // Sandstone warning
+        "#93c54b" // Sandstone success
+        "#29abe0" // Sandstone info
+        "#d9534f" // Sandstone danger
+        "#8e8c84" // Sandstone secondary
+        "#5c8aa6"
+        "#c2a878"
+        "#6b7a8f"
     |]
 
 let private chartWidth = 900.0
@@ -89,9 +89,9 @@ let areaChart (points: SeriesPoint[]) =
                                         svg.children
                                             [
                                                 Svg.stop
-                                                    [ svg.offset 0.0; svg.stopColor "#18a999"; svg.stopOpacity 0.34 ]
+                                                    [ svg.offset 0.0; svg.stopColor "#2e5771"; svg.stopOpacity 0.34 ]
                                                 Svg.stop
-                                                    [ svg.offset 1.0; svg.stopColor "#18a999"; svg.stopOpacity 0.02 ]
+                                                    [ svg.offset 1.0; svg.stopColor "#2e5771"; svg.stopOpacity 0.02 ]
                                             ]
                                     ]
                             ]
@@ -106,7 +106,7 @@ let areaChart (points: SeriesPoint[]) =
                                     svg.x2 (chartWidth - padRight)
                                     svg.y1 yPos
                                     svg.y2 yPos
-                                    svg.stroke "#e7edf4"
+                                    svg.stroke "#e6dfd3"
                                     svg.strokeWidth 1.0
                                 ]
 
@@ -115,7 +115,7 @@ let areaChart (points: SeriesPoint[]) =
                                     svg.x (padLeft - 9.0)
                                     svg.y (yPos + 4.0)
                                     svg.custom ("text-anchor", "end")
-                                    svg.fill "#7b8794"
+                                    svg.fill "#8e8c84"
                                     svg.fontSize 11.0
                                     svg.children [ Html.text (moneyCompact value) ]
                                 ]
@@ -125,7 +125,7 @@ let areaChart (points: SeriesPoint[]) =
                             [
                                 svg.d linePath
                                 svg.fill "none"
-                                svg.stroke "#18a999"
+                                svg.stroke "#2e5771"
                                 svg.strokeWidth 2.6
                                 svg.custom ("stroke-linecap", "round")
                                 svg.custom ("stroke-linejoin", "round")
@@ -140,7 +140,7 @@ let areaChart (points: SeriesPoint[]) =
                                         svg.x (x index)
                                         svg.y (chartHeight - 10.0)
                                         svg.custom ("text-anchor", "middle")
-                                        svg.fill "#7b8794"
+                                        svg.fill "#8e8c84"
                                         svg.fontSize 11.0
                                         svg.children [ Html.text (monthLabel point.Label) ]
                                     ]
@@ -154,7 +154,7 @@ let areaChart (points: SeriesPoint[]) =
                                     svg.cy (y point.Value)
                                     svg.r (if points.Length > 120 then 0.0 else 3.0)
                                     svg.fill "#ffffff"
-                                    svg.stroke "#18a999"
+                                    svg.stroke "#2e5771"
                                     svg.strokeWidth 1.4
                                     svg.children
                                         [
@@ -221,7 +221,7 @@ let donut (items: (string * decimal)[]) =
                                                 svg.cy 90.0
                                                 svg.r radius
                                                 svg.fill "none"
-                                                svg.stroke "#eef3f8"
+                                                svg.stroke "#f1ece3"
                                                 svg.strokeWidth 26.0
                                             ]
                                         yield! segments
@@ -230,7 +230,7 @@ let donut (items: (string * decimal)[]) =
                                                 svg.x 90.0
                                                 svg.y 86.0
                                                 svg.custom ("text-anchor", "middle")
-                                                svg.fill "#0b2239"
+                                                svg.fill "#3e3f3a"
                                                 svg.fontSize 21.0
                                                 svg.custom ("font-weight", "700")
                                                 svg.children [ Html.text (moneyCompact total) ]
@@ -240,7 +240,7 @@ let donut (items: (string * decimal)[]) =
                                                 svg.x 90.0
                                                 svg.y 104.0
                                                 svg.custom ("text-anchor", "middle")
-                                                svg.fill "#7b8794"
+                                                svg.fill "#8e8c84"
                                                 svg.fontSize 10.0
                                                 svg.children [ Html.text "TOTAL PRINCIPAL" ]
                                             ]
@@ -309,7 +309,7 @@ let verticalBarsWith (formatValue: decimal -> string) (points: SeriesPoint[]) =
                                     svg.x2 (chartWidth - padRight)
                                     svg.y1 yPos
                                     svg.y2 yPos
-                                    svg.stroke "#e7edf4"
+                                    svg.stroke "#e6dfd3"
                                     svg.strokeWidth 1.0
                                 ]
 
@@ -318,7 +318,7 @@ let verticalBarsWith (formatValue: decimal -> string) (points: SeriesPoint[]) =
                                     svg.x (padLeft - 9.0)
                                     svg.y (yPos + 4.0)
                                     svg.custom ("text-anchor", "end")
-                                    svg.fill "#7b8794"
+                                    svg.fill "#8e8c84"
                                     svg.fontSize 11.0
                                     svg.children [ Html.text (formatValue value) ]
                                 ]
@@ -335,7 +335,7 @@ let verticalBarsWith (formatValue: decimal -> string) (points: SeriesPoint[]) =
                                     svg.width barWidth
                                     svg.height (max 1.0 barHeight)
                                     svg.rx 4.0
-                                    svg.fill palette.[4]
+                                    svg.fill palette.[0]
                                     svg.children
                                         [
                                             Svg.title (
@@ -354,7 +354,7 @@ let verticalBarsWith (formatValue: decimal -> string) (points: SeriesPoint[]) =
                                         svg.x (xPos + barWidth / 2.0)
                                         svg.y (chartHeight - 10.0)
                                         svg.custom ("text-anchor", "middle")
-                                        svg.fill "#7b8794"
+                                        svg.fill "#8e8c84"
                                         svg.fontSize 11.0
                                         svg.children [ Html.text point.Label ]
                                     ]

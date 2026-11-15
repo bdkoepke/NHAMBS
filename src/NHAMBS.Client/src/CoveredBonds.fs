@@ -158,27 +158,27 @@ let CoveredBondsPage (props: CoveredBondsProps) =
                                                             "Registered programmes"
                                                             (number (decimal analytics.ProgramCount))
                                                             (sprintf "%d issuers" analytics.IssuerCount)
-                                                            "#18a999"
+                                                            "#2e5771"
                                                         KpiCard
                                                             "Bonds"
                                                             (number (decimal analytics.BondCount))
                                                             "Outstanding series in the registry"
-                                                            "#4f8ef7"
+                                                            "#f47c3c"
                                                         KpiCard
                                                             "Currencies"
                                                             (number (decimal analytics.CurrencyCount))
                                                             "Issuance currencies represented"
-                                                            "#d8a84e"
+                                                            "#93c54b"
                                                         KpiCard
                                                             "Earliest maturity"
                                                             (dateShort analytics.EarliestMaturity)
                                                             "Nearest outstanding bond"
-                                                            "#7c6ee6"
+                                                            "#29abe0"
                                                         KpiCard
                                                             "Latest maturity"
                                                             (dateShort analytics.LatestMaturity)
                                                             "Longest-dated bond"
-                                                            "#e2725b"
+                                                            "#d9534f"
                                                     ]
                                             ]
 

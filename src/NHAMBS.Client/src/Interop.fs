@@ -12,6 +12,9 @@ let destroyGrid (api: obj) : unit = jsNative
 [<Emit("$0.setGridOption('rowData', $1)")>]
 let setGridRowData (api: obj) (rows: obj) : unit = jsNative
 
+[<Emit("$0.setGridOption('paginationPageSize', $1)")>]
+let setPaginationPageSize (api: obj) (size: int) : unit = jsNative
+
 [<Emit("window.location.hash = $0")>]
 let setHash (hash: string) : unit = jsNative
 

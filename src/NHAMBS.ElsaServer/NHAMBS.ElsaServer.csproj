@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Elsa" Version="3.10.1" />
+    <PackageReference Include="Elsa.Dashboard.Api" Version="3.10.1" />
+    <PackageReference Include="Elsa.Expressions.CSharp" Version="3.10.1" />
+    <PackageReference Include="Elsa.Expressions.JavaScript" Version="3.10.1" />
+    <PackageReference Include="Elsa.Expressions.Liquid" Version="3.10.1" />
+    <PackageReference Include="Elsa.Identity" Version="3.10.1" />
+    <PackageReference Include="Elsa.Persistence.EFCore.PostgreSql" Version="3.10.1" />
+    <PackageReference Include="Elsa.Scheduling" Version="3.10.1" />
+    <PackageReference Include="Elsa.Workflows.Api" Version="3.10.1" />
+    <PackageReference Include="Elsa.Workflows.Runtime.Dashboard" Version="3.10.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.15" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NHAMBS.Studio\NHAMBS.Studio.csproj" />
+    <ProjectReference Include="..\NHAMBS.Workflows\NHAMBS.Workflows.fsproj" />
+  </ItemGroup>
+
+</Project>

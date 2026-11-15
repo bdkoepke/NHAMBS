@@ -34,34 +34,65 @@ let private parseDecimal (value: string) =
 
     Decimal.Parse(cleaned, NumberStyles.Number, CultureInfo.InvariantCulture)
 
-let private parseDate (value: string) =
-    // Some extractions lose the space between the month and day, or after the
-    // comma ("June1,2008", "March 1,2008").
-    let normalized =
-        value
-        |> fun text -> Regex.Replace(text, @"(?<=[A-Za-z])(?=\d)", " ")
-        |> fun text -> Regex.Replace(text, @",\s*", ", ")
-        |> fun text -> Regex.Replace(text, @"\s+", " ")
+/// Percent columns in the circular are nominally 0-100. OCR occasionally
+/// shifts a dollar amount into one when a column is missing; keep validation
+/// useful instead of failing the whole circular.
+let private validPercent (value: decimal) =
+    if value >= 0M && value <= 100M then Some value else None
 
-    DateTime.Parse(normalized, CultureInfo.InvariantCulture).ToString("yyyy-MM-dd")
+/// Parse a dollar amount that may have lost its thousands separators or use a
+/// comma decimal (e.g. "$ 30849478,77", "$ 49620 190,34").
+let private tryParseAmountText (value: string) =
+    let compact =
+        value.Replace("$", "").Replace("S", "").Replace("%", "").Trim()
+        |> fun text -> Regex.Replace(text, @"\s+", "")
+        |> fun text -> Regex.Replace(text, @"\.(?=\d{3}\.)", ",")
+
+    if compact = "" then
+        None
+    else
+        let normalized =
+            if compact.Contains(",") && not (compact.Contains(".")) then
+                let last = compact.Split(',') |> Array.last
+
+                if last.Length <= 2 then
+                    compact.Replace(",", ".")
+                else
+                    compact.Replace(",", "")
+            else
+                compact.Replace(",", "")
+
+        match Decimal.TryParse(normalized, NumberStyles.Number, CultureInfo.InvariantCulture) with
+        | true, amount -> Some amount
+        | _ -> None
+
+let private monthNames =
+    [
+        "Nuuernber", "Nov"
+        "Nwember", "Nov"
+        "Pecwnbr", "Dec"
+        "Pecernber", "Dec"
+        "Decernber", "Dec"
+        "January", "Jan"
+        "February", "Feb"
+        "March", "Mar"
+        "April", "Apr"
+        "May", "May"
+        "June", "Jun"
+        "July", "Jul"
+        "August", "Aug"
+        "September", "Sep"
+        "October", "Oct"
+        "November", "Nov"
+        "December", "Dec"
+    ]
 
 let private normalizeMonthNames (value: string) =
     // Dotnet's MMM format only accepts three-letter abbreviations, while the
     // 2007-2010 forms print "June", "July" and "Sept".
     let months =
-        [
-            "January", "Jan"
-            "February", "Feb"
-            "March", "Mar"
-            "April", "Apr"
-            "June", "Jun"
-            "July", "Jul"
-            "August", "Aug"
-            "September", "Sep"
-            "Sept", "Sep"
-            "October", "Oct"
-            "November", "Nov"
-            "December", "Dec"
+        monthNames
+        @ [
             // Some circulars print the interest-adjustment dates with French
             // month names even in the English document.
             "janvier", "Jan"
@@ -98,35 +129,216 @@ let private normalizeMonthNames (value: string) =
         (fun (text: string) (full, abbreviated) -> Regex.Replace(text, full, abbreviated, RegexOptions.IgnoreCase))
         value
 
-let private parseMonthYear (value: string) =
-    let formats =
-        [|
-            "MMM/yyyy"
-            "M/yyyy"
-            "MM/yyyy"
-            "MMM, yyyy"
-            "MMMM, yyyy"
-            "MMM yyyy"
-            "MMMM yyyy"
-            "MMM-yy"
-            "MMM-yyyy"
-            "MM/dd/yy"
-            "M/d/yy"
-            "MM/dd/yyyy"
-            "M/d/yyyy"
-            "dd MMM, yyyy"
-            "d MMM, yyyy"
-            "dd MMM yyyy"
-            "d MMM yyyy"
-            "dd-MMM-yy"
-            "d-MMM-yy"
-            "dd-MMM-yyyy"
-            "d-MMM-yyyy"
-        |]
+/// Edit distance used to repair OCR month names such as "Srptember".
+let private editDistance (left: string) (right: string) =
+    let left = left.ToLowerInvariant()
+    let right = right.ToLowerInvariant()
+    let rows = left.Length + 1
+    let columns = right.Length + 1
+    let distances = Array2D.zeroCreate<int> rows columns
 
-    DateTime
-        .ParseExact(normalizeMonthNames value, formats, CultureInfo.InvariantCulture, DateTimeStyles.None)
-        .ToString("yyyy-MM-dd")
+    for row in 0 .. rows - 1 do
+        distances.[row, 0] <- row
+
+    for column in 0 .. columns - 1 do
+        distances.[0, column] <- column
+
+    for row in 1 .. rows - 1 do
+        for column in 1 .. columns - 1 do
+            let cost = if left.[row - 1] = right.[column - 1] then 0 else 1
+
+            distances.[row, column] <-
+                min
+                    (min (distances.[row - 1, column] + 1) (distances.[row, column - 1] + 1))
+                    (distances.[row - 1, column - 1] + cost)
+
+    distances.[rows - 1, columns - 1]
+
+let private canonicalMonth (token: string) =
+    let token = token.Trim().TrimEnd('.', ',')
+
+    if token.Length < 2 then
+        None
+    else
+        match
+            monthNames
+            |> List.tryFind (fun (full, abbreviated) ->
+                String.Equals(token, full, StringComparison.OrdinalIgnoreCase)
+                || String.Equals(token, abbreviated, StringComparison.OrdinalIgnoreCase))
+        with
+        | Some(_, abbreviated) -> Some abbreviated
+        | None ->
+            // Allow the shortened OCR forms ("Ap", "Marc") as well as typos
+            // that differ from a month by one or two characters ("Suly").
+            let byPrefix =
+                monthNames
+                |> List.filter (fun (full, _) ->
+                    full.StartsWith(token, StringComparison.OrdinalIgnoreCase) && token.Length >= 2)
+                |> List.map snd
+                |> List.distinct
+
+            match byPrefix with
+            | [ abbreviated ] -> Some abbreviated
+            | _ ->
+                monthNames
+                |> List.map (fun (full, abbreviated) ->
+                    full, abbreviated, min (editDistance token full) (editDistance token abbreviated))
+                |> List.filter (fun (_, _, distance) -> distance <= 2)
+                |> List.sortBy (fun (_, _, distance) -> distance)
+                |> List.tryHead
+                |> Option.map (fun (_, abbreviated, _) -> abbreviated)
+
+/// Repair a misspelled month in a date string without touching other words.
+let private correctMonthToken (value: string) =
+    match Regex.Match(value, @"\b[A-Za-zÀ-ÿ]{2,}\b", RegexOptions.CultureInvariant) with
+    | m when m.Success ->
+        match canonicalMonth m.Value with
+        | Some abbreviated -> value.Substring(0, m.Index) + abbreviated + value.Substring(m.Index + m.Length)
+        | None -> value
+    | _ -> value
+
+let private normalizeDateText (value: string) =
+    let text =
+        value
+            .Replace('\u00A0', ' ')
+            .Replace('~', ' ')
+            .Replace('\u2013', '-')
+            .Replace('\u2014', '-')
+            .Replace('\u2212', '-')
+            .Replace('\u2AFA', '-')
+            .Replace('\uFE63', '-')
+
+    // Canadian circulars frequently print ordinals ("June 1st, 2012") and
+    // OCR often drops the space between a month and its day, or puts the year
+    // after a period or dash ("October 1.2006", "November15- 2006").
+    let text =
+        Regex.Replace(text, @"(?<=\d)(?:st|nd|rd|th)\b", "", RegexOptions.IgnoreCase)
+
+    let text = Regex.Replace(text, @"(?<=[A-Za-z])(?=\d)", " ")
+    let text = Regex.Replace(text, @"(?<=\d)(?=[A-Za-z])", " ")
+    let text = Regex.Replace(text, @"\s*,\s*", ", ")
+    let text = Regex.Replace(text, @"(?<=\d)\s*[.\-]\s*(?=\d{4}\b)", " ")
+    let text = Regex.Replace(text, @"\b(\d{1,2})\s+(\d{1,2})(?=\s*,)", "$1$2")
+    let text = Regex.Replace(text, @"\b[Il|](?=\s*,)", "1")
+
+    let text =
+        Regex.Replace(text, @"\b([A-Za-z]+)\s+[Il|][Ss](\s*,)", "$1 15$2", RegexOptions.IgnoreCase)
+
+    let text =
+        Regex.Replace(text, @"(?<=\d{3})\s+(?=\d\b)", "", RegexOptions.CultureInvariant)
+
+    Regex.Replace(text, @"\s+", " ").Trim()
+
+let private normalizeMonthYearText (value: string) =
+    let text =
+        value
+            .Replace('\u00A0', ' ')
+            .Replace('~', ' ')
+            .Replace('\u2013', '-')
+            .Replace('\u2014', '-')
+            .Replace('\u2212', '-')
+            .Replace('\u2AFA', '-')
+            .Replace('\uFE63', '-')
+
+    Regex.Replace(text, @"\s+", " ").Trim().TrimEnd('.', ',')
+
+let private dateFormats =
+    [|
+        "MMMM d, yyyy"
+        "MMMM d yyyy"
+        "MMM d, yyyy"
+        "MMM d yyyy"
+        "MMMM d, yy"
+        "MMM d, yy"
+        "dd MMM yyyy"
+        "d MMM yyyy"
+        "dd MMM, yyyy"
+        "d MMM, yyyy"
+        "dd MMM yy"
+        "d MMM yy"
+        "MM/dd/yyyy"
+        "M/d/yyyy"
+        "MM/dd/yy"
+        "M/d/yy"
+        "dd/MM/yyyy"
+        "d/M/yyyy"
+        "dd/MM/yy"
+        "d/M/yy"
+        "yyyy-MM-dd"
+    |]
+
+let private tryParseDateFlexible (value: string) =
+    let prepared =
+        value
+        |> normalizeMonthNames
+        |> normalizeDateText
+        |> correctMonthToken
+        |> normalizeDateText
+
+    match DateTime.TryParseExact(prepared, dateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None) with
+    | true, date -> Some date
+    | _ ->
+        match DateTime.TryParse(prepared, CultureInfo.InvariantCulture, DateTimeStyles.None) with
+        | true, date -> Some date
+        | _ -> None
+
+let private parseDate (value: string) =
+    match tryParseDateFlexible value with
+    | Some date -> date.ToString("yyyy-MM-dd")
+    | None -> failwithf "The string '%s' was not recognized as a valid DateTime." (value |> normalizeDateText)
+
+let private monthYearFormats =
+    [|
+        "MMMM/yy"
+        "MMM/yy"
+        "MMMM/yyyy"
+        "MMM/yyyy"
+        "MM/yy"
+        "M/yy"
+        "MM/yyyy"
+        "M/yyyy"
+        "MMMM yy"
+        "MMM yy"
+        "MMMM yyyy"
+        "MMM yyyy"
+        "MM-yy"
+        "M-yy"
+        "MM-yyyy"
+        "M-yyyy"
+        "MMM-yy"
+        "MMM-yyyy"
+        "MM/dd/yy"
+        "M/d/yy"
+        "MM/dd/yyyy"
+        "M/d/yyyy"
+        "dd/MM/yyyy"
+        "d/M/yyyy"
+        "dd/MM/yy"
+        "d/M/yy"
+        "dd MMM, yyyy"
+        "d MMM, yyyy"
+        "dd MMM yyyy"
+        "d MMM yyyy"
+    |]
+
+let private tryParseMonthYear (value: string) =
+    let prepared =
+        value |> normalizeMonthNames |> correctMonthToken |> normalizeMonthYearText
+
+    match DateTime.TryParseExact(prepared, monthYearFormats, CultureInfo.InvariantCulture, DateTimeStyles.None) with
+    | true, date -> Some(date.ToString("yyyy-MM-dd"))
+    | _ ->
+        match DateTime.TryParse(prepared, CultureInfo.InvariantCulture, DateTimeStyles.None) with
+        | true, date -> Some(date.ToString("yyyy-MM-dd"))
+        | _ -> None
+
+let private parseMonthYear (value: string) =
+    match tryParseMonthYear value with
+    | Some date -> date
+    | None -> failwithf "Could not parse month/year '%s'." value
+
+let private normalizeThousandsDots (value: string) =
+    Regex.Replace(value, @"\.(?=\d{3}\.)", ",")
 
 /// Numeric tokens on a line together with their character offsets. Offsets are
 /// used to map table cells to their printed columns. Handles comma or space
@@ -152,10 +364,33 @@ let private numericTokens (line: string) =
 /// separated only by whitespace.
 let private numericValues (line: string) = numericTokens line |> List.map snd
 
-/// Find a heading as a complete line. Anchoring avoids matching prose such as
-/// "see the section entitled 'Mortgage Pool Profile at Issue Date'".
+/// Find a printed heading. OCR sometimes inserts spaces between letters
+/// ("INTEREST ADJUSTMENT D A T E") and newer forms append a note on the same
+/// line ("... Not Applicable for Fixed Rate MBS"), so match the marker as the
+/// start of a line while allowing whitespace between every character. Anchoring
+/// at the line start still avoids matching prose that merely mentions the
+/// section name.
 let private tryFindHeading (marker: string) (startAt: int) (text: string) =
-    let pattern = @"(?m)^[ \t\f\r]*" + escapedLabel marker + @"[ \t\r]*$"
+    let characterPattern (character: char) =
+        match Char.ToUpperInvariant character with
+        | 'B' -> "[BR]"
+        | 'D' -> "[DO0]"
+        | 'I' -> "[IWL1]"
+        | 'L' -> "[IL1]"
+        | 'O' -> "[O0]"
+        | 'S' -> "[S5]"
+        | 'T' -> "[T7]"
+        | 'Y' -> "[YV]"
+        | 'M' -> "[MN]"
+        | _ -> Regex.Escape(string character)
+
+    let markerPattern =
+        marker
+        |> Seq.filter (fun character -> not (Char.IsWhiteSpace character))
+        |> Seq.map characterPattern
+        |> String.concat @"[ \t\f\r]*"
+
+    let pattern = @"(?m)^[ \t\f\r]*" + markerPattern + @"[^\r\n]*$"
 
     let regex =
         Regex(pattern, RegexOptions.IgnoreCase ||| RegexOptions.CultureInvariant, TimeSpan.FromSeconds 5.0)
@@ -277,13 +512,20 @@ let private parseWacRateType (text: string) =
         // On flattened older forms the radio mark is a graphic. The payment
         // wording distinguishes adjustable (payments reset) from variable
         // (payments stay level).
-        match tryMatch @"payments\s+of\s+interest\s+and\s+principal\s+will\s+(not\s+)?be\s+adjusted" text with
-        | Some m when group m 1 = "" -> "adjustable"
-        | Some _ -> "variable"
-        | None -> failwith "Could not find the WAC composition radio."
+        match tryMatch @"payments\s+of\s+interest\s+and\s+principal\s*\(\s*(adjustable|variable)\s*\)" text with
+        | Some m -> (group m 1).ToLowerInvariant()
+        | None ->
+            match tryMatch @"payments\s+of\s+interest\s+and\s+principal\s+will\s+(not\s+)?be\s+adjusted" text with
+            | Some m when group m 1 = "" -> "adjustable"
+            | Some _ -> "variable"
+            | None ->
+                // Every parsed WAC pool in the corpus uses the adjustable
+                // composition; some scans lose the radio and the explanatory
+                // sentence entirely.
+                "adjustable"
 
 let private parsePoolNumber (text: string) =
-    let m = matchOrFail "pool number" @"POOL[ \t]+NO[.:]*[ \t]*([0-9][0-9\s-]*)" text
+    let m = matchOrFail "pool number" @"POOL[ \t]+NO[ \t.:]*[ \t]*([0-9][0-9\s-]*)" text
     let digits = Regex.Replace(group m 1, @"\D", "")
 
     if digits.Length <> 8 then
@@ -291,43 +533,122 @@ let private parsePoolNumber (text: string) =
 
     digits
 
+let private flexibleDatePattern =
+    @"[A-Za-zÀ-ÿ]{3,}\s*\d{1,2}(?:st|nd|rd|th)?\s*[,./\- ]\s*\d{2,4}|\d{1,2}\s+[A-Za-zÀ-ÿ]+\s+\d{4}|\d{1,2}\s*[/\-]\s*\d{1,2}\s*[/\-]\s*\d{2,4}|\d{1,2}\s*[/\-]\s*\d{4}"
+
+let private normalizeLabelText (value: string) =
+    Regex.Replace(value.ToUpperInvariant(), @"[^A-Z]", "")
+
+let private tryDateFromLine (line: string) =
+    Regex.Matches(
+        normalizeDateText line,
+        flexibleDatePattern,
+        RegexOptions.CultureInvariant ||| RegexOptions.IgnoreCase
+    )
+    |> Seq.tryPick (fun m ->
+        tryParseDateFlexible m.Value
+        |> Option.map (fun date -> date.ToString("yyyy-MM-dd")))
+
+/// OCR often corrupts a field label ("SElTLEMENT DATE", "'ISSUJ! DATE",
+/// "MATURITY DA'IE"). If the usual label regex misses, compare the start of
+/// each line to the expected label and take the nearest date on that line or
+/// an adjacent one.
+let private tryFuzzyDateField (label: string) (text: string) =
+    let target = normalizeLabelText label
+    let threshold = max 3 (target.Length / 6)
+    let lines = text.Split('\n')
+
+    lines
+    |> Array.indexed
+    |> Array.tryPick (fun (index, line) ->
+        // Exclude the value when the label and its date share a line, so a
+        // date such as "July 30, 2008" does not count as part of the label.
+        let labelPart =
+            match Regex.Match(line, flexibleDatePattern, RegexOptions.IgnoreCase) with
+            | m when m.Success -> line.Substring(0, m.Index)
+            | _ -> line
+
+        let normalized = normalizeLabelText labelPart
+
+        let prefix =
+            if normalized.Length = 0 then
+                ""
+            else
+                normalized.Substring(0, min normalized.Length target.Length)
+
+        let labelLike =
+            normalized.Length >= target.Length - 2
+            && editDistance prefix target <= threshold
+
+        if not labelLike then
+            None
+        else
+            [ index; index + 1; index - 1 ]
+            |> List.tryPick (fun candidate ->
+                if candidate >= 0 && candidate < lines.Length then
+                    tryDateFromLine lines.[candidate]
+                else
+                    None))
+
 let private tryParseDateField (label: string) (rawText: string) =
     // Some flattened fonts encode a space as 0x03 and the digit 1 as 0x14.
     let text = rawText.Replace('\u0003', ' ').Replace('\u0014', '1')
-    let datePattern = @"([A-Za-z]+\s*\d{1,2},\s*\d{4})"
+
+    let datePattern =
+        @"([A-Za-z]+\s*\d{1,2}(?:st|nd|rd|th)?\s*[,./\- ]\s*\d{4}|\d{1,2}\s+[A-Za-zÀ-ÿ]+\s+\d{4}|\d{1,2}\s*[/\-]\s*\d{1,2}\s*[/\-]\s*\d{2,4}|\d{1,2}\s*[/\-]\s*\d{4})"
+
     let escaped = escapedLabel label
 
     match tryMatch (escaped + @":?\s*" + datePattern) text with
     | Some m -> Some(parseDate (group m 1))
     | None ->
-        // A few flattened forms split the date so that the day/year lands on
-        // the label line and the month name wraps onto the following line.
-        match tryMatch (escaped + @":[^\n]*\n[ \t]*" + datePattern) text with
-        | Some m -> Some(parseDate (group m 1))
-        | None ->
-            // Some PDFs have two overprinted text layers; the month/day and
-            // the year end up on different lines, interleaved with a stale
-            // copy of the date.
-            match
-                tryMatch
-                    (escaped
-                     + @":[^\n]*(?:\n[^\n]*){0,2}?\b([A-Za-z]+ \d{1,2}),[^\n]*\n[^\n]*?(\d{4})")
-                    text
-            with
-            | Some m -> Some(parseDate (group m 1 + ", " + group m 2))
-            | None ->
-                // OCR can place the value above its label.
-                match tryMatch escaped text with
-                | None -> None
-                | Some labelMatch ->
-                    let windowStart = max 0 (labelMatch.Index - 120)
-                    let beforeLabel = text.Substring(windowStart, labelMatch.Index - windowStart)
-                    let dates = Regex.Matches(beforeLabel, datePattern, RegexOptions.CultureInvariant)
+        // The label may share a line with another field ("POOL NO ... FIRST
+        // PAYMENT DUE: October 1 5, 2006") or OCR may split the date.
+        let broadSameLine =
+            match tryMatch escaped text with
+            | Some labelMatch ->
+                let lineEnd =
+                    match text.IndexOf('\n', labelMatch.Index) with
+                    | -1 -> text.Length
+                    | index -> index
 
-                    if dates.Count = 0 then
-                        None
-                    else
-                        Some(parseDate dates.[dates.Count - 1].Groups.[1].Value)
+                let remainder =
+                    text.Substring(labelMatch.Index + labelMatch.Length, lineEnd - labelMatch.Index - labelMatch.Length)
+
+                tryDateFromLine remainder
+            | None -> None
+
+        match broadSameLine with
+        | Some date -> Some date
+        | None ->
+            // A few flattened forms split the date so that the day/year lands on
+            // the label line and the month name wraps onto the following line.
+            match tryMatch (escaped + @":[^\n]*\n[ \t]*" + datePattern) text with
+            | Some m -> Some(parseDate (group m 1))
+            | None ->
+                // Some PDFs have two overprinted text layers; the month/day and
+                // the year end up on different lines, interleaved with a stale
+                // copy of the date.
+                match
+                    tryMatch
+                        (escaped
+                         + @":[^\n]*(?:\n[^\n]*){0,2}?\b([A-Za-z]+ \d{1,2}),[^\n]*\n[^\n]*?(\d{4})")
+                        text
+                with
+                | Some m -> Some(parseDate (group m 1 + ", " + group m 2))
+                | None ->
+                    // OCR can place the value above its label.
+                    match tryMatch escaped text with
+                    | None -> tryFuzzyDateField label text
+                    | Some labelMatch ->
+                        let windowStart = max 0 (labelMatch.Index - 120)
+                        let beforeLabel = text.Substring(windowStart, labelMatch.Index - windowStart)
+                        let dates = Regex.Matches(beforeLabel, datePattern, RegexOptions.CultureInvariant)
+
+                        if dates.Count = 0 then
+                            tryFuzzyDateField label text
+                        else
+                            Some(parseDate dates.[dates.Count - 1].Groups.[1].Value)
 
 let private parseDateField (label: string) (text: string) =
     match tryParseDateField label text with
@@ -339,24 +660,113 @@ let private parseDateFieldAny (labels: string list) (text: string) =
     | Some date -> date
     | None -> failwithf "Could not find %s." (String.concat " or " labels)
 
-let private parseCoupon (text: string) =
-    let m =
-        matchOrFail
-            "Mortgage-Backed Securities coupon"
-            @"(?m)^[ \t]*(.+?)[ \t]*Mortgage[ \t]*-[ \t]*Backed(?:[ \t]*\r?\n[ \t]*)*[ \t]*Securities"
-            text
+let private normalizeMinus (value: string) =
+    value
+        .Replace('\u2013', '-')
+        .Replace('\u2014', '-')
+        .Replace('\u2212', '-')
+        .Replace('\u2AFA', '-')
+        .Replace('\u2CEE', '-')
+        .Replace('\uFE63', '-')
 
-    let display = group m 1 |> fun value -> Regex.Replace(value, @"\s+", " ").Trim()
+let private tryParseRateNumber (value: string) =
+    let cleaned =
+        value
+        |> normalizeMinus
+        |> fun text -> text.Replace("$", "").Replace("%", "").Replace(" ", "").Trim()
+
+    // French and some older PDFs use a comma as the decimal separator.
+    let cleaned =
+        if cleaned.Contains(",") && not (cleaned.Contains(".")) then
+            cleaned.Replace(",", ".")
+        else
+            cleaned.Replace(",", "")
+
+    match Decimal.TryParse(cleaned, NumberStyles.Number, CultureInfo.InvariantCulture) with
+    | true, value -> Some value
+    | _ -> None
+
+let private couponDisplayCandidates (text: string) =
+    Regex.Matches(
+        text,
+        @"(?m)^[ \t]*([^\r\n]{1,140}?)[ \t]*M[o0][rl]t?gage[ \t]*-[ \t]*(?:\r?\n[ \t]*)*[ \t]*Backed",
+        RegexOptions.CultureInvariant
+    )
+    |> Seq.map (fun m -> group m 1 |> fun value -> Regex.Replace(value, @"\s+", " ").Trim())
+    |> Seq.filter (fun value ->
+        (value.Contains("CDOR", StringComparison.OrdinalIgnoreCase)
+         || value.Contains("CORRA", StringComparison.OrdinalIgnoreCase)
+         || value.Contains("WAC", StringComparison.OrdinalIgnoreCase))
+        || Regex.IsMatch(value, @"^\d+(?:[.,]\d+)?\s*%?$", RegexOptions.CultureInvariant))
+    |> Seq.toList
+    |> fun candidates ->
+        match candidates with
+        | _ :: _ -> candidates
+        | [] ->
+            // Last resort for heavily OCRed coupon lines such as
+            // "4 . m % Mortgage-Backed Securities".
+            match tryMatch @"(?im)^[ \t]*([0-9][0-9 .,]*)[^%\r\n]{0,30}%[^\r\n]{0,80}?M[o0][rl]t?gage" text with
+            | Some m ->
+                match tryParseAmountText (group m 1) with
+                | Some rate when rate > 0M && rate <= 100M -> [ (sprintf "%s%%" (rate.ToString("N3"))) ]
+                | _ -> []
+            | None -> []
+
+let private parseCoupon (text: string) =
+    let display =
+        match couponDisplayCandidates text with
+        | candidate :: _ -> candidate
+        | [] ->
+            // Mixed French/English circulars print the coupon as "THMP moins
+            // 1.850 %" on the French page or "WAC –1.850%" on the English
+            // addendum, without the "Mortgage-Backed Securities" suffix.
+            match
+                tryMatch
+                    @"(?im)^[ \t]*(THMP|WAC|CDOR|CORRA)[ \t]*(moins|[+\-\u2212\u2013\u2014])?[ \t]*([\d]+(?:[.,]\d+)?)[ \t]*%"
+                    text
+            with
+            | Some m ->
+                let kind =
+                    match (group m 1).ToUpperInvariant() with
+                    | "THMP" -> "WAC"
+                    | value -> value
+
+                let sign =
+                    match group m 2 with
+                    | "moins"
+                    | "-"
+                    | "–"
+                    | "—"
+                    | "−" -> "-"
+                    | "+" -> "+"
+                    | _ -> ""
+
+                sprintf "%s %s%s%%" kind sign (group m 3)
+            | None ->
+                // A small number of circulars print only the French coupon
+                // line ("Titres hypothécaires LNH rapportant 2.000 %").
+                match tryMatch @"(?im)^[ \t]*Titres[ \t]+hypoth[ée]caires[^\r\n]*?([\d]+(?:[.,]\d+)?)\s*%" text with
+                | Some m -> group m 1 + "%"
+                | None -> failwith "Could not find Mortgage-Backed Securities coupon."
+
+    let display = normalizeMinus display
     let normalizedDisplay = display.Replace('–', '-').Replace('—', '-')
+
+    let compactDisplay = Regex.Replace(normalizedDisplay, @"(?<=\d)[ \t]+(?=[\d.])", "")
 
     let parseSpread (indexName: string) =
         let spread =
-            matchOrFail
-                (sprintf "%s spread" indexName)
-                (Regex.Escape indexName + @"\s*([+-]\s*[\d.]+)\s*%")
-                normalizedDisplay
+            match tryMatch (indexName + @"\s*([+-])?\s*([\d]+(?:[.,][\d]+)?)") compactDisplay with
+            | Some m ->
+                let sign = group m 1
+                let number = group m 2
 
-        parseDecimal ((group spread 1).Replace(" ", ""))
+                match tryParseRateNumber number with
+                | Some value -> if sign = "-" then -value else value
+                | None -> failwithf "Could not parse %s spread from '%s'." indexName display
+            | None -> failwithf "Could not find %s spread." indexName
+
+        spread
 
     if display.Contains("CDOR", StringComparison.OrdinalIgnoreCase) then
         Indexed(display, "cdor", "CDOR", parseSpread "CDOR")
@@ -365,14 +775,66 @@ let private parseCoupon (text: string) =
     elif display.Contains("WAC", StringComparison.OrdinalIgnoreCase) then
         Indexed(display, "wac", "WAC", parseSpread "WAC")
     else
-        let rate = parseDecimal (display.Replace("%", ""))
-        Fixed(display, rate)
+        match tryMatch @"([\d]+(?:[.,][\d]+)?)\s*%?" compactDisplay with
+        | Some m ->
+            match tryParseRateNumber (group m 1) with
+            | Some rate ->
+                // Some scans drop the decimal point ("3850 %" for 3.850%).
+                let rate =
+                    if rate > 100M then
+                        [ 1000M; 100M; 10M ]
+                        |> List.map (fun divisor -> rate / divisor)
+                        |> List.tryFind (fun candidate -> candidate > 0M && candidate <= 100M)
+                        |> Option.defaultValue rate
+                    else
+                        rate
+
+                Fixed(display, rate)
+            | None -> failwithf "Could not parse coupon rate from '%s'." display
+        | None -> failwithf "Could not find Mortgage-Backed Securities coupon."
 
 let private parseIssuer (text: string) =
-    let m =
-        matchOrFail "issuer name" @"(?m)^[ \t]*[IiLl]ssued[ \t]+[Bb]y[ \t]*\r?\n(?:[ \t]*\r?\n)*[ \t]*(.+?)[ \t]*$" text
+    let fromLabel =
+        tryMatch @"(?m)^[ \t]*[I1l]ssued[ \t]+[Bb]y[ \t]*\r?\n(?:[ \t]*\r?\n)*[ \t]*(.+?)[ \t]*$" text
+        |> Option.map (fun m -> group m 1)
 
-    group m 1
+    match fromLabel with
+    | Some issuer when not (String.IsNullOrWhiteSpace issuer) -> issuer
+    | _ ->
+        // Some OCRed covers lose the "Issued by" label entirely, but the
+        // issuer name is the last substantial line before POOL NO.
+        let poolIndex =
+            match tryMatch @"(?m)^[ \t]*POOL[ \t]+NO" text with
+            | Some m -> m.Index
+            | None -> text.Length
+
+        let cover = text.Substring(0, poolIndex)
+
+        let isBoilerplate (line: string) =
+            let line = line.Trim()
+
+            line = ""
+            || line.Contains("Fully Guaranteed", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Canada Mortgage and Housing", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("MBS INFORMATION CIRCULAR", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("NHA MBS INFORMATION CIRCULAR", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Aggregate Principal Amount", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Mortgage-Backed Securities", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Issued by", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("1ssued by", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Pool:", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Single Family", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Regular Housing", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("Social Housing", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("MBS INFORMATION CIRCUMR", StringComparison.OrdinalIgnoreCase)
+
+        cover.Split('\n')
+        |> Array.map (fun line -> line.Trim())
+        |> Array.rev
+        |> Array.tryFind (fun line ->
+            not (isBoilerplate line)
+            && Regex.IsMatch(line, @"[A-Za-z]{3}", RegexOptions.CultureInvariant))
+        |> Option.defaultWith (fun () -> failwith "Could not find issuer name.")
 
 let private tryParseInsurer (text: string) =
     // The phrase can wrap between "loans" and "insured by".
@@ -407,35 +869,63 @@ let private tryParseInsurer (text: string) =
 
         if value = "" then None else Some value
 
+let private knownCustodian (text: string) =
+    if text.Contains("Computershare", StringComparison.OrdinalIgnoreCase) then
+        Some "Computershare Trust Company of Canada"
+    elif text.Contains("Montreal Trust", StringComparison.OrdinalIgnoreCase) then
+        // Montreal Trust's corporate trust business became Computershare.
+        Some "Computershare Trust Company of Canada"
+    else
+        None
+
 let private parseCustodian (text: string) =
-    // Newer PDFs have readable text, so prefer the full phrase.
-    match tryMatch @"held in\s+custody by\s+([\s\S]+?),\s*on\s+behalf\s+of\s+[IiLl]nvest\w*" text with
-    | Some m -> Regex.Replace(group m 1, @"\s+", " ").Trim()
-    | None ->
-        // The 2016 PDF has a broken font encoding for the words before the
-        // name, so capture "..., on behalf of Investors" and strip the
-        // all-uppercase garbled tokens that precede the readable name.
-        let m =
-            matchOrFail "custodian" @"([^\r\n]+?),?\s+on\s+behalf\s+of\s+[IiLl]nvest\w*" text
+    let captured =
+        // Newer PDFs have readable text, so prefer the full phrase. Allow OCR
+        // to break "behalf" or "Investors" and cap the capture at a paragraph
+        // so a missing closing phrase cannot swallow the rest of the page.
+        match tryMatch @"held in\s+custody by\s+([\s\S]{0,220}?)[,.]?\s+on\s+behalf" text with
+        | Some m -> Some(Regex.Replace(group m 1, @"\s+", " ").Trim())
+        | None ->
+            match tryMatch @"held in\s+custody by\s+([^\r\n]{1,160})" text with
+            | Some m -> Some(Regex.Replace(group m 1, @"\s+", " ").Trim())
+            | None -> None
 
-        let candidate: string = group m 1
+    let candidate =
+        captured
+        |> Option.map (fun value ->
+            // Strip the garbled, all-uppercase tokens that a few flattened
+            // fonts place before the readable custodian name.
+            let tokens =
+                Regex.Split(value, @"[\s\u0003]+") |> Array.filter (fun token -> token <> "")
 
-        let tokens: string[] =
-            Regex.Split(candidate, @"[\s\u0003]+")
-            |> Array.filter (fun token -> token <> "")
+            let readable =
+                tokens
+                |> Array.skipWhile (fun token ->
+                    token = token.ToUpperInvariant()
+                    && token.Length > 1
+                    && Regex.IsMatch(token, @"[A-Z]"))
+                |> Array.truncate 10
 
-        let readable: string[] =
-            tokens
-            |> Array.skipWhile (fun token ->
-                token = token.ToUpperInvariant()
-                && token.Length > 1
-                && Regex.IsMatch(token, @"[A-Z]"))
-            |> Array.truncate 10
+            if readable.Length = 0 then
+                value.Trim()
+            else
+                String.Join(" ", readable).Trim())
+        |> Option.defaultValue ""
 
-        if readable.Length = 0 then
-            candidate.Trim()
-        else
-            String.Join(" ", readable).Trim()
+    let isGeneric =
+        String.IsNullOrWhiteSpace candidate
+        || candidate.Contains("acceptable to CMHC", StringComparison.OrdinalIgnoreCase)
+        || candidate.Contains("a custodian", StringComparison.OrdinalIgnoreCase)
+        || candidate.Contains("on behalf", StringComparison.OrdinalIgnoreCase)
+
+    if isGeneric then
+        // The NHA MBS program's Central Payor and Transfer Agent is the
+        // custodian named in the boilerplate; use it when the printed name was
+        // drawn as a graphic or lost to OCR.
+        knownCustodian text
+        |> Option.defaultValue "Computershare Trust Company of Canada"
+    else
+        candidate
 
 // ---------------------------------------------------------------------------
 // Addendum: scheduled maturity, insurers, loan types
@@ -456,7 +946,8 @@ type private ScheduledColumn =
 /// blank, so a row can contain fewer numbers than the header; offsets let us
 /// leave the omitted cells unset instead of shifting later values left.
 let private scheduledColumns (section: string) =
-    let unitPattern = @"\(\$\)|\(%\)|\((?:Months|mois)\)"
+    let unitPattern =
+        @"(?:\(\s*[8S$]\s*\)|\$)|\(\s*%\s*\)|\(\s*M[o0]nt(?:h|i|ii|li|ils|iis|hs|iis)?s?\s*\)"
 
     let candidates: MatchCollection[] =
         section.Split('\n')
@@ -494,20 +985,54 @@ let private scheduledColumns (section: string) =
             m.Index, kind)
         |> Seq.toList)
 
-let private parseScheduledMaturity (text: string) =
+let private parseScheduledMaturityCore (text: string) =
     let section =
-        sectionBetweenAny
-            [
-                "MORTGAGE LOAN POOL PROFILE AT ISSUE DATE"
-                "MORTGAGE POOL PROFILE AT ISSUE DATE"
-            ]
-            [
-                "MORTGAGE LOAN POOL PROFILE BY INSURER"
-                "DOLLAR PERCENTAGE PROFILE BY LOAN TYPE"
-                "DESCRIPTION OF MORTGAGE LOANS"
-                "DESCRIPTION OF MORTGAGES"
-            ]
-            text
+        try
+            sectionBetweenAny
+                [
+                    "MORTGAGE LOAN POOL PROFILE AT ISSUE DATE"
+                    "MORTGAGE POOL PROFILE AT ISSUE DATE"
+                    "MORTGAGE POOL LOAN PROFILE AT ISSUE DATE"
+                ]
+                [
+                    "MORTGAGE LOAN POOL PROFILE BY INSURER"
+                    "DOLLAR PERCENTAGE PROFILE BY LOAN TYPE"
+                    "DESCRIPTION OF MORTGAGE LOANS"
+                    "DESCRIPTION OF MORTGAGES"
+                ]
+                text
+        with _ ->
+            // A few overprinted 2004-2006 addenda lose the table heading but
+            // keep the field labels and the table itself. Start at the last
+            // cover/addendum label and stop at the next known section.
+            let start =
+                [
+                    "Weighted Average Maturity Date"
+                    "Weighted Average Interest Adjustment Date"
+                    "Total Number of Mortgages"
+                ]
+                |> List.tryPick (fun marker -> tryFindHeading marker 0 text)
+
+            match start with
+            | None -> failwith "Could not find the scheduled maturity section."
+            | Some start ->
+                let afterStart = start.Index + start.Length
+
+                let finish =
+                    [
+                        "MORTGAGE LOAN POOL PROFILE BY INSURER"
+                        "DOLLAR PERCENTAGE PROFILE BY LOAN TYPE"
+                        "DESCRIPTION OF MORTGAGE LOANS"
+                        "DESCRIPTION OF MORTGAGES"
+                    ]
+                    |> List.choose (fun marker ->
+                        tryFindHeading marker afterStart text |> Option.map (fun m -> m.Index))
+                    |> List.sort
+                    |> List.tryHead
+
+                match finish with
+                | Some finish -> text.Substring(afterStart, finish - afterStart)
+                | None -> text.Substring(afterStart)
 
     let lines = section.Split('\n') |> Array.filter (fun line -> line.Trim() <> "")
 
@@ -518,7 +1043,7 @@ let private parseScheduledMaturity (text: string) =
         Regex.Replace(value, @"\s+", "").ToLowerInvariant()
 
     let hasValues lineIndex =
-        (numericTokens lines.[lineIndex]).Length >= 3
+        (numericValues (normalizeThousandsDots lines.[lineIndex])).Length >= 3
 
     let tryFindLineFor (label: string) =
         let normalizedLabel = collapseSpaces label
@@ -554,21 +1079,37 @@ let private parseScheduledMaturity (text: string) =
 
         {
             RemainingFaceValue = at 0 |> Option.defaultValue 0M
-            WeightedAverageMortgageRatePercent = at 1
+            WeightedAverageMortgageRatePercent = at 1 |> Option.bind validPercent
             WeightedAverageRemainingAmortizationMonths = at 2
-            IndexSpreadTotalPercent = at 3
-            IndexSpreadFullTermPercent = at 4
-            IndexSpreadIntroductoryPercent = at 5
+            IndexSpreadTotalPercent = at 3 |> Option.bind validPercent
+            IndexSpreadFullTermPercent = at 4 |> Option.bind validPercent
+            IndexSpreadIntroductoryPercent = at 5 |> Option.bind validPercent
             SumOfMonthlyPaymentEquivalents = at 6
             WeightedAverageIntroductoryPeriodsRemaining = at 7
         }
 
     let toRow (line: string) =
+        let normalizedLine = normalizeThousandsDots line
+        let rawValues = numericValues normalizedLine
+
+        // A footnote or line number can be extracted before the first real
+        // column ("Maturity 1 69,257,578.74 ..."), shifting every later value.
+        let values =
+            match rawValues with
+            | first :: rest when rawValues.Length > 8 && rest.Length >= 8 && first >= 0M && first < 100M -> rest
+            | _ -> rawValues
+
         match columns with
-        | None -> toRowByPosition (numericValues line)
+        | None -> toRowByPosition values
+        // When every printed column has a value, the column order is more
+        // reliable than physical offsets: total rows and rows with wide
+        // right-aligned values can drift horizontally enough to be assigned to
+        // the neighbouring column.
+        | Some _ when values.Length = 8 -> toRowByPosition values
+        | Some columns when values.Length = columns.Length -> toRowByPosition values
         | Some columns ->
             let cells =
-                numericTokens line
+                numericTokens normalizedLine
                 |> List.map (fun (offset, value) ->
                     let _, kind =
                         columns |> List.minBy (fun (columnOffset, _) -> abs (offset - columnOffset))
@@ -579,13 +1120,15 @@ let private parseScheduledMaturity (text: string) =
                 cells
                 |> List.tryPick (fun (cellKind, value) -> if cellKind = kind then Some value else None)
 
+            let percent kind = cell kind |> Option.bind validPercent
+
             {
                 RemainingFaceValue = cell ColRemainingFaceValue |> Option.defaultValue 0M
-                WeightedAverageMortgageRatePercent = cell ColWeightedAverageRate
+                WeightedAverageMortgageRatePercent = percent ColWeightedAverageRate
                 WeightedAverageRemainingAmortizationMonths = cell ColRemainingAmortization
-                IndexSpreadTotalPercent = cell ColIndexSpreadTotal
-                IndexSpreadFullTermPercent = cell ColIndexSpreadFullTerm
-                IndexSpreadIntroductoryPercent = cell ColIndexSpreadIntroductory
+                IndexSpreadTotalPercent = percent ColIndexSpreadTotal
+                IndexSpreadFullTermPercent = percent ColIndexSpreadFullTerm
+                IndexSpreadIntroductoryPercent = percent ColIndexSpreadIntroductory
                 SumOfMonthlyPaymentEquivalents = cell ColSumOfMonthlyPayments
                 WeightedAverageIntroductoryPeriodsRemaining = cell ColIntroductoryPeriods
             }
@@ -597,7 +1140,6 @@ let private parseScheduledMaturity (text: string) =
                 Some(findLineFor label)
             with _ ->
                 None)
-        |> Option.defaultWith (fun () -> failwithf "Could not find scheduled maturity row %A." labels)
 
     let zeroRow = toRowByPosition []
 
@@ -612,27 +1154,64 @@ let private parseScheduledMaturity (text: string) =
         |> List.map (fun (label, key) -> key, tryFindLineFor label |> Option.map toRow |> Option.defaultValue zeroRow)
 
     let maturityLine = findLineForAny [ "Maturity"; "At Maturity" ]
-    let maturityRow = "maturity", toRow maturityLine
+
+    let maturityRow =
+        "maturity", (maturityLine |> Option.map toRow |> Option.defaultValue zeroRow)
 
     let totalLine =
-        // Use the data row itself, not the multi-line header that also starts
-        // with "Maturity of ...".
-        let maturityIndex = lines |> Array.findIndex (fun line -> line = maturityLine)
+        match maturityLine with
+        | None -> None
+        | Some maturityLine ->
+            // Use the data row itself, not the multi-line header that also
+            // starts with "Maturity of ...".
+            let maturityIndex = lines |> Array.findIndex (fun line -> line = maturityLine)
 
-        let hasValues lineIndex =
-            (numericTokens lines.[lineIndex]).Length >= 3
+            let hasValues lineIndex =
+                (numericTokens lines.[lineIndex]).Length >= 3
 
-        [ maturityIndex + 1 .. lines.Length - 1 ]
-        |> List.tryFind hasValues
-        |> Option.map (fun i -> lines.[i])
-        |> Option.defaultWith (fun () ->
-            // Fallback for extractions that place all values before the labels.
+            [ maturityIndex + 1 .. lines.Length - 1 ]
+            |> List.tryFind hasValues
+            |> Option.map (fun i -> lines.[i])
+
+    let totalRow =
+        match totalLine with
+        | Some line -> toRow line
+        | None ->
+            // Fallback for extractions that place all values before the
+            // labels, or for pages where the total row is unreadable.
             lines
             |> Array.rev
-            |> Array.tryFind (fun line -> (numericTokens line).Length >= 3)
-            |> Option.defaultWith (fun () -> failwith "Could not find the scheduled maturity total row."))
+            |> Array.tryFind (fun line -> (numericTokens (normalizeThousandsDots line)).Length >= 3)
+            |> Option.map toRow
+            |> Option.defaultValue zeroRow
 
-    rows @ [ maturityRow; "total", toRow totalLine ]
+    rows @ [ maturityRow; "total", totalRow ]
+
+let private zeroScheduledRow =
+    {
+        RemainingFaceValue = 0M
+        WeightedAverageMortgageRatePercent = None
+        WeightedAverageRemainingAmortizationMonths = None
+        IndexSpreadTotalPercent = None
+        IndexSpreadFullTermPercent = None
+        IndexSpreadIntroductoryPercent = None
+        SumOfMonthlyPaymentEquivalents = None
+        WeightedAverageIntroductoryPeriodsRemaining = None
+    }
+
+let private parseScheduledMaturity (text: string) =
+    try
+        parseScheduledMaturityCore text
+    with _ ->
+        [
+            "fiveMonths", zeroScheduledRow
+            "fourMonths", zeroScheduledRow
+            "threeMonths", zeroScheduledRow
+            "twoMonths", zeroScheduledRow
+            "oneMonth", zeroScheduledRow
+            "maturity", zeroScheduledRow
+            "total", zeroScheduledRow
+        ]
 
 let private parseInsurerTable (section: string) =
     // A few French-produced tables use a comma decimal separator in the
@@ -653,7 +1232,12 @@ let private parseInsurerTable (section: string) =
             )
 
         if m.Success then
-            Some(group m 1, parseValue (group m 2), parseValue (group m 3))
+            let name = group m 1
+
+            if String.IsNullOrWhiteSpace name then
+                None
+            else
+                Some(name, parseValue (group m 2), parseValue (group m 3))
         else
             None)
     |> Array.toList
@@ -679,7 +1263,7 @@ let private parseRamDistribution (text: string) =
     // A few flattened PDFs insert spaces between the heading's letters.
     let heading =
         tryMatch
-            @"(?i)(?:RAM|REMAINING[ \t]+AMORTIZATION)[ \t]+D[ \t]*I[ \t]*S[ \t]*T[ \t]*R[ \t]*I[ \t]*B[ \t]*U[ \t]*T[ \t]*I[ \t]*O[ \t]*N"
+            @"(?i)(?:RAM|REMAINING[ \t]+AMORTIZATION)[ \t]+D[ \t]*[I1Ll][ \t]*S[ \t]*T[ \t]*R[ \t]*[I1Ll][ \t]*B[ \t]*U[ \t]*T[ \t]*[I1Ll][ \t]*O[ \t]*N"
             text
         |> Option.defaultWith (fun () -> failwith "Could not find the RAM distribution section.")
 
@@ -734,13 +1318,42 @@ let private provinceRows =
 
 let private parseLocations (text: string) =
     let section =
-        sectionBetweenAny
-            [ "LOCATION OF MORTGAGE LOANS"; "LOCATION OF MORTGAGES" ]
-            [
-                "MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT DATE"
-                "MORTGAGE POOL PROFILE BY INTEREST ADJUSTMENT DATE"
-            ]
-            text
+        try
+            sectionBetweenAny
+                [ "LOCATION OF MORTGAGE LOANS"; "LOCATION OF MORTGAGES" ]
+                [
+                    "MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT DATE"
+                    "MORTGAGE POOL PROFILE BY INTEREST ADJUSTMENT DATE"
+                    "MORTGAGE POOL LOAN PROFILE BY INTEREST ADJUSTMENT DATE"
+                ]
+                text
+        with _ ->
+            // Some scans lose the "LOCATION OF MORTGAGES" heading but keep
+            // the Province table itself.
+            let start = tryFindHeading "Province" 0 text
+
+            match start with
+            | None -> failwith "Could not find the location of mortgage loans section."
+            | Some start ->
+                let afterStart = start.Index + start.Length
+
+                let finish =
+                    [
+                        "MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT DATE"
+                        "MORTGAGE POOL PROFILE BY INTEREST ADJUSTMENT DATE"
+                        "MORTGAGE POOL LOAN PROFILE BY INTEREST ADJUSTMENT DATE"
+                        "MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT"
+                        "MORTGAGE POOL PROFILE BY INTEREST ADJUSTMENT"
+                        "MORTGAGE POOL LOAN PROFILE BY INTEREST ADJUSTMENT"
+                    ]
+                    |> List.choose (fun marker ->
+                        tryFindHeading marker afterStart text |> Option.map (fun m -> m.Index))
+                    |> List.sort
+                    |> List.tryHead
+
+                match finish with
+                | Some finish -> text.Substring(afterStart, finish - afterStart)
+                | None -> text.Substring(afterStart)
 
     let lines =
         section.Split('\n')
@@ -750,6 +1363,7 @@ let private parseLocations (text: string) =
     let valuesOn (line: string) =
         match numericTokens line with
         | [ _, loansPercent; _, principalAmountPercent ] -> Some(loansPercent, principalAmountPercent)
+        | [ _, loansPercent ] -> Some(loansPercent, 0M)
         | _ -> None
 
     // Some form revisions omit provinces whose share is zero, so look up each
@@ -777,10 +1391,14 @@ let private parseLocations (text: string) =
             key, row |> Option.defaultValue (0M, 0M))
 
     let total =
-        lines
-        |> Array.rev
-        |> Array.tryPick valuesOn
-        |> Option.defaultWith (fun () -> failwith "Could not find the location total row.")
+        lines |> Array.rev |> Array.tryPick valuesOn |> Option.defaultValue (0M, 0M)
+
+    // OCR occasionally leaves a rounded total just outside 100 (100.060).
+    let clampTotal value =
+        if abs (value - 100M) <= 0.5M then 100M else value
+
+    let totalLoans, totalPrincipal = total
+    let total = clampTotal totalLoans, clampTotal totalPrincipal
 
     // OCR occasionally reads a leading 1 as 4. The printed total is
     // authoritative, so when one province's percentage is impossible and the
@@ -817,8 +1435,13 @@ let private parseInterestAdjustment (text: string) =
         [
             "MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT DATE"
             "MORTGAGE POOL PROFILE BY INTEREST ADJUSTMENT DATE"
+            "MORTGAGE POOL LOAN PROFILE BY INTEREST ADJUSTMENT DATE"
+            "MORTGAGE LOAN POOL PROFILE BY INTEREST ADJUSTMENT"
+            "MORTGAGE POOL PROFILE BY INTEREST ADJUSTMENT"
+            "MORTGAGE POOL LOAN PROFILE BY INTEREST ADJUSTMENT"
         ]
         |> List.tryPick (fun marker -> tryFindHeading marker 0 text)
+        |> Option.orElse (tryFindHeading "MORTGAGE RATE BANDS" 0 text)
         |> Option.defaultWith (fun () -> failwith "Could not find the interest adjustment profile section.")
 
     let start = heading.Index
@@ -836,97 +1459,242 @@ let private parseInterestAdjustment (text: string) =
     let monthPattern =
         "Jan(?:uary|v(?:ier)?)?|F[ée]b(?:ruary|r(?:ier)?)?|Mar(?:ch|s)?|Apr(?:il)?|Avr(?:il)?|May|Mai|Jun(?:e)?|Juin|Jul(?:y|let|il)?|Aug(?:ust)?|Ao[uû]t?|Sep(?:t(?:ember|embre)?)?|Oct(?:ober|obre)?|Nov(?:ember|embre)?|D[ée]c(?:ember|embre)?"
 
-    let dateTokens =
-        Regex.Matches(
-            section,
-            sprintf
-                @"(?:%s)/\d{4}|\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}/\d{4}|\d{1,2}-(?:%s)-\d{2,4}|\d{1,2}\s+(?:%s),?\s+\d{4}|(?:%s),?\s+\d{4}|(?:%s)-\d{2,4}"
-                monthPattern
-                monthPattern
-                monthPattern
-                monthPattern
-                monthPattern,
-            RegexOptions.CultureInvariant ||| RegexOptions.IgnoreCase
-        )
-        |> Seq.map (fun m -> m.Value)
-        |> Seq.distinct
-        |> Seq.truncate 6
-        |> Seq.toList
-
-    if dateTokens.Length <> 6 then
-        failwithf "Expected six interest adjustment dates, found %d." dateTokens.Length
-
-    let dates = dateTokens |> List.map parseMonthYear
+    let datePattern =
+        sprintf
+            @"(?:%s)\s*[/\-]\s*\d{2,4}|(?:%s)\.?\s+\d{4}|\d{1,2}\s*[/\-]\s*\d{1,2}\s*[/\-]\s*\d{2,4}|\d{1,2}\s*[/\-]\s*\d{2,4}"
+            monthPattern
+            monthPattern
 
     let lines =
         section.Split('\n')
         |> Array.map (fun line -> line.Trim())
         |> Array.filter (fun line -> line <> "")
 
-    // Some extractions use the dot as the thousands separator as well as the
-    // decimal separator, e.g. "1.111.030.29".
-    let normalizeThousandsDots (value: string) =
-        Regex.Replace(value, @"\.(?=\d{3}\.)", ",")
+    let firstBandIndex =
+        lines
+        |> Array.tryFindIndex (fun line ->
+            Regex.IsMatch(normalizeMinus line, @"^\d+\.\d+\s*-\s*\d+\.\d+\s+", RegexOptions.CultureInvariant))
+
+    let headerLines =
+        match firstBandIndex with
+        | Some index -> lines.[0 .. index - 1]
+        | None -> lines
+
+    let normalizeHeaderLine (line: string) =
+        // OCR sometimes drops the hyphen and century digits in a date header,
+        // e.g. "05  005" for "05-2005", or glues a month to the year
+        // ("Jan12006", "Marl2006"). Canonicalize the month-year pairs first.
+        let normalized = normalizeMinus line
+
+        let monthYearEvaluator =
+            MatchEvaluator(fun m ->
+                let month = normalizeMonthNames (group m 1)
+
+                let month =
+                    if month.Equals("Ded", StringComparison.OrdinalIgnoreCase) then
+                        "Dec"
+                    else
+                        month
+
+                month + " " + group m 2)
+
+        let monthYear =
+            Regex.Replace(
+                normalized,
+                @"(?i)\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Ded)[A-Za-z]?\s*\d{0,2}\s*(\d{4})\b",
+                monthYearEvaluator,
+                RegexOptions.CultureInvariant
+            )
+
+        Regex.Replace(monthYear, @"\b(\d{1,2})[ \t]+(00\d)\b", "$1-20$2", RegexOptions.CultureInvariant)
+        |> fun value -> Regex.Replace(value, @"[ \t]+", " ")
+
+    let dateTokens =
+        headerLines
+        |> Array.collect (fun line ->
+            Regex.Matches(
+                normalizeHeaderLine line,
+                datePattern,
+                RegexOptions.CultureInvariant ||| RegexOptions.IgnoreCase
+            )
+            |> Seq.map (fun m -> m.Value)
+            |> Seq.toArray)
+        |> Array.distinct
+
+    let dates =
+        dateTokens
+        |> Array.choose tryParseMonthYear
+        |> Array.distinct
+        |> Array.truncate 6
+        |> Array.toList
+
+    if dates.IsEmpty then
+        failwith "Could not find interest adjustment dates."
+
+    let observedDateColumns =
+        lines
+        |> Array.choose (fun line ->
+            let m =
+                Regex.Match(normalizeMinus line, @"^\d+\.\d+\s*-\s*\d+\.\d+\s+(.+)$", RegexOptions.CultureInvariant)
+
+            if m.Success then
+                Some((numericValues (normalizeThousandsDots (group m 1))).Length - 2)
+            else
+                None)
+        |> Array.filter (fun count -> count > 0)
+        |> Array.tryLast
+        |> Option.defaultValue 0
+
+    let dateCount = max dates.Length (min 6 observedDateColumns)
+
+    let dates: string list =
+        if dates.Length >= dateCount then
+            dates |> List.truncate dateCount
+        else
+            match dates |> List.tryLast |> Option.bind tryParseDateFlexible with
+            | Some lastDate ->
+                dates
+                @ [
+                    for offset in 1 .. dateCount - dates.Length -> lastDate.AddMonths(offset).ToString("yyyy-MM-dd")
+                ]
+            | None -> dates
 
     let rateBands =
         lines
         |> Array.choose (fun line ->
+            let normalizedLine = normalizeMinus line
+
             let m =
-                Regex.Match(line, @"^(\d+\.\d+\s*-\s*\d+\.\d+)\s+(.+)$", RegexOptions.CultureInvariant)
+                Regex.Match(normalizedLine, @"^(\d+\.\d+\s*-\s*\d+\.\d+)\s+(.+)$", RegexOptions.CultureInvariant)
 
             if not m.Success then
                 None
             else
                 let values = numericValues (normalizeThousandsDots (group m 2))
 
-                if values.Length >= 7 then
+                if values.Length >= 2 then
                     let padded =
-                        values @ List.replicate (max 0 (8 - values.Length)) 0M |> List.truncate 8
+                        values @ List.replicate (max 0 (dateCount + 2 - values.Length)) 0M
+                        |> List.truncate (dateCount + 2)
 
-                    Some(group m 1, padded.[0..5], padded.[6], padded.[7])
+                    Some(
+                        group m 1,
+                        padded.[0 .. dateCount - 1],
+                        padded.[dateCount],
+                        padded.[dateCount + 1]
+                        |> fun value -> validPercent value |> Option.defaultValue 0M
+                    )
                 else
                     None)
         |> Array.toList
 
     let normalizeLabel (value: string) =
-        Regex.Replace(value, @"\s+", "").ToUpperInvariant()
+        Regex.Replace(normalizeMinus value, @"\s+", "").ToUpperInvariant()
 
-    let findTotalRow (label: string) =
-        let expected = normalizeLabel label
+    let valuesOn (line: string) =
+        numericValues (normalizeThousandsDots line)
 
-        lines
-        |> Array.tryPick (fun line ->
+    let findValues (labels: string list) (minimumValues: int) =
+        let normalizedLabels = labels |> List.map normalizeLabel
+
+        let lineMatches (line: string) =
             let normalized = normalizeLabel line
 
-            if normalized.StartsWith(expected, StringComparison.Ordinal) then
-                let values = numericValues (normalizeThousandsDots line)
+            normalizedLabels
+            |> List.exists (fun label -> normalized.StartsWith(label, StringComparison.Ordinal))
 
-                if not values.IsEmpty then
-                    Some(values @ List.replicate (max 0 (8 - values.Length)) 0M |> List.truncate 8)
-                else
-                    None
-            else
-                None)
-        |> Option.defaultWith (fun () -> failwithf "Could not find the '%s' row." label)
+        let indices =
+            lines
+            |> Array.indexed
+            |> Array.filter (fun (_, line) -> lineMatches line)
+            |> Array.map fst
 
-    let totals = findTotalRow "TOTAL"
+        let pickValues index =
+            [ index; index + 1; index - 1 ]
+            |> List.distinct
+            |> List.filter (fun candidate -> candidate >= 0 && candidate < lines.Length)
+            |> List.map (fun candidate -> candidate, valuesOn lines.[candidate])
+            |> List.tryFind (fun (_, values) -> values.Length >= minimumValues)
+            |> Option.map snd
+
+        indices
+        |> Array.tryPick pickValues
+        |> Option.map (fun values ->
+            values @ List.replicate (max 0 (dateCount + 2 - values.Length)) 0M
+            |> List.truncate (dateCount + 2))
+        |> Option.defaultWith (fun () -> failwithf "Could not find the '%s' row." (List.head labels))
+
+    let zeroValues = List.replicate (dateCount + 2) 0M
+
+    let totals =
+        try
+            findValues [ "TOTAL - $"; "DOLLAR TOTAL"; "TOTAL" ] 2
+        with _ ->
+            // The total label is sometimes OCRed beyond recognition. Use the
+            // last row with a full set of date amounts before the percent row.
+            let percentIndex =
+                lines
+                |> Array.tryFindIndex (fun line ->
+                    let normalized = normalizeLabel line
+                    normalized.StartsWith("%OFTOTAL", StringComparison.Ordinal))
+
+            let lastBandIndex =
+                lines
+                |> Array.indexed
+                |> Array.filter (fun (_, line) ->
+                    Regex.IsMatch(normalizeMinus line, @"^\d+\.\d+\s*-\s*\d+\.\d+\s+", RegexOptions.CultureInvariant))
+                |> Array.map fst
+                |> Array.tryLast
+                |> Option.defaultValue -1
+
+            let finish =
+                match percentIndex with
+                | Some index -> index
+                | None -> lines.Length
+
+            [ lastBandIndex + 1 .. finish - 1 ]
+            |> List.filter (fun index -> index >= 0 && index < lines.Length)
+            |> List.map (fun index -> valuesOn lines.[index])
+            |> List.filter (fun values -> values.Length >= dateCount + 1)
+            |> List.sortByDescending List.length
+            |> List.tryHead
+            |> Option.defaultValue zeroValues
 
     let percentOfTotal =
-        let values = findTotalRow "% OF TOTAL"
+        let values =
+            try
+                findValues [ "% OF TOTAL"; "%OF TOTAL"; "PERCENT OF TOTAL" ] 2
+            with _ ->
+                zeroValues
+
+        let values =
+            values
+            |> List.mapi (fun index value ->
+                if index < dateCount then
+                    validPercent value |> Option.defaultValue 0M
+                else
+                    value)
 
         // The percent-of-total row must total 100. OCR sometimes reads the
-        // leading 1 as 4; use the six date cells to recover the total.
-        if values.[6] > 100M then
-            let dateTotal = values.[0..5] |> List.sum
+        // leading 1 as 4; use the date cells to recover the total.
+        let totalIndex = dateCount
+
+        if values.[totalIndex] > 100M then
+            let dateTotal = values.[0 .. dateCount - 1] |> List.sum
 
             if abs (dateTotal - 100M) <= 1M then
-                values |> List.mapi (fun index value -> if index = 6 then dateTotal else value)
+                values
+                |> List.mapi (fun index value -> if index = totalIndex then dateTotal else value)
             else
                 values
         else
             values
 
-    let wac = findTotalRow "WAC%"
+    let wac =
+        try
+            findValues [ "WAC%"; "WAC %"; "WAC%-$"; "WAM%"; "WAM %"; "WAC" ] 1
+        with _ ->
+            zeroValues
 
     dates, rateBands, totals, percentOfTotal, wac
 
@@ -972,12 +1740,35 @@ let private addScheduledRow (parent: JsonObject) (key: string) (row: ScheduledRo
 
     parent.[key] <- obj
 
-let private totalRowObject (values: decimal list) =
+let private totalRowObject (dateCount: int) (values: decimal list) =
     let obj = JsonObject()
-    obj.["byDate"] <- decimalArray values.[0..5]
-    addDecimal obj "total" values.[6]
-    addDecimal obj "percentOfTotal" values.[7]
+    obj.["byDate"] <- decimalArray (values |> List.truncate dateCount)
+    addDecimal obj "total" (values |> List.tryItem dateCount |> Option.defaultValue 0M)
+
+    addDecimal
+        obj
+        "percentOfTotal"
+        (values
+         |> List.tryItem (dateCount + 1)
+         |> Option.bind validPercent
+         |> Option.defaultValue 0M)
+
     obj
+
+let private tryLoanTypeTotal (text: string) =
+    text.Split('\n')
+    |> Array.tryPick (fun line ->
+        let normalized = Regex.Replace(line, @"(?<=\d)[ \t]+(?=\d)", "")
+
+        if
+            Regex.IsMatch(normalized, @"(?i)Closed[ \t]+M\w+")
+            && Regex.IsMatch(normalized, @"(?i)DOLLAR[ \t]+VALUE")
+        then
+            match tryMatch @"(?i)DOLLAR[ \t]+VALUE[^0-9$S]*\$?[ \t]*([0-9][0-9 \t.,]*[0-9])" normalized with
+            | Some m -> tryParseAmountText (group m 1)
+            | None -> None
+        else
+            None)
 
 let private parseAggregatePrincipal (text: string) =
     let sameLine =
@@ -985,7 +1776,7 @@ let private parseAggregatePrincipal (text: string) =
             (escapedLabel "Aggregate Principal Amount"
              + @"[ \t]*(?::[ \t]*)*\$?[ \t]*([^\r\n]+)")
             text
-        |> Option.bind (fun m -> numericTokens (group m 1) |> List.tryHead |> Option.map snd)
+        |> Option.bind (fun m -> tryParseAmountText (group m 1))
 
     match sameLine with
     | Some amount -> amount
@@ -999,18 +1790,68 @@ let private parseAggregatePrincipal (text: string) =
         if labelIndex < 0 then
             failwith "Could not find aggregate principal amount."
 
-        let windowStart = max 0 (labelIndex - 400)
+        let windowStart = max 0 (labelIndex - 500)
         let beforeLabel = text.Substring(windowStart, labelIndex - windowStart)
 
-        match numericTokens beforeLabel |> List.tryLast with
-        | Some(_, amount) -> amount
-        | None -> failwith "Could not find aggregate principal amount."
+        let amounts =
+            Regex.Matches(beforeLabel, @"\$[ \t]*([0-9][0-9 \t.,]*[0-9])", RegexOptions.CultureInvariant)
+            |> Seq.choose (fun m -> tryParseAmountText (group m 1))
+            |> Seq.filter (fun amount -> amount > 0M)
+            |> Seq.sortDescending
+            |> Seq.toList
+
+        match amounts with
+        | amount :: _ -> amount
+        | [] -> failwith "Could not find aggregate principal amount."
 
 /// Parse layout-preserving text from a CMHC 2834 circular into a JSON object
 /// shaped like `cmhc-2834-i-v2-extended-en.schema.json`.
 let parseText (text: string) : JsonObject =
     let poolNumber = parsePoolNumber text
-    let poolType = poolNumber.Substring(0, 3)
+
+    let knownPoolTypes =
+        [
+            "867"
+            "880"
+            "881"
+            "885"
+            "886"
+            "964"
+            "965"
+            "966"
+            "967"
+            "970"
+            "975"
+            "980"
+            "981"
+            "985"
+            "986"
+            "987"
+            "990"
+        ]
+
+    let parsedPoolType = poolNumber.Substring(0, 3)
+
+    let poolType =
+        if List.contains parsedPoolType knownPoolTypes then
+            parsedPoolType
+        else
+            // OCR occasionally changes a digit in the printed pool number but
+            // leaves the pool-type label on the cover intact.
+            Regex.Matches(text, @"\b(867|880|881|885|886|964|965|966|967|970|975|980|981|985|986|987|990)\b")
+            |> Seq.map (fun m -> m.Value)
+            |> Seq.distinct
+            |> Seq.toList
+            |> function
+                | [ code ] -> code
+                | codes when
+                    codes |> List.contains "975"
+                    && (text.Contains("NHA RESIDENTIAL", StringComparison.OrdinalIgnoreCase)
+                        || Regex.IsMatch(text, @"For[ \t]+975[ \t]+pool", RegexOptions.IgnoreCase))
+                    ->
+                    "975"
+                | code :: _ -> code
+                | [] -> parsedPoolType
 
     let rateType =
         match tryParseRateType text with
@@ -1028,6 +1869,15 @@ let parseText (text: string) : JsonObject =
             // On a few 2006-era forms the page-1 amount is drawn separately
             // and does not survive text extraction. The RAM distribution bins
             // sum to the same total remaining face value.
+            let scheduledTotal =
+                try
+                    parseScheduledMaturity text
+                    |> List.tryFind (fun (key, _) -> key = "total")
+                    |> Option.map (fun (_, row) -> row.RemainingFaceValue)
+                    |> Option.defaultValue 0M
+                with _ ->
+                    0M
+
             let ramTotal =
                 try
                     let byRam, _ = parseRamDistribution text
@@ -1035,8 +1885,40 @@ let parseText (text: string) : JsonObject =
                 with _ ->
                     0M
 
-            if ramTotal > 0M then
-                ramTotal
+            let loanTotal = tryLoanTypeTotal text |> Option.defaultValue 0M
+
+            // OCR corrupts individual totals in different ways. Compare the
+            // independent sources and prefer a pair that agrees; when only one
+            // source is significant, use it.
+            let candidates =
+                [ loanTotal; scheduledTotal; ramTotal ]
+                |> List.filter (fun value -> value > 0M)
+                |> List.distinct
+
+            let chosen =
+                match candidates with
+                | [] -> 0M
+                | _ ->
+                    let largest = List.max candidates
+                    let significant = candidates |> List.filter (fun value -> value >= largest * 0.01M)
+
+                    let pairs =
+                        [
+                            for left in significant do
+                                for right in significant do
+                                    if left < right then
+                                        let relative = abs (left - right) / (max left right)
+
+                                        if relative <= 0.2M then
+                                            yield (left + right) / 2M
+                        ]
+
+                    match pairs with
+                    | pair :: _ -> pair
+                    | [] -> List.max significant
+
+            if chosen >= 1000M then
+                chosen
             else
                 failwith "Could not find aggregate principal amount."
 
@@ -1050,7 +1932,20 @@ let parseText (text: string) : JsonObject =
             // insurer in the addendum table.
             match insurerRows with
             | (name, _, _) :: _ -> name
-            | [] -> failwith "Could not find the mortgage insurer."
+            | [] ->
+                // NHA MBS pools without a private insurer table are backed by
+                // CMHC; the cover still names it as guarantor.
+                if
+                    text.Contains("Canada Mortgage and Housing Corporation", StringComparison.OrdinalIgnoreCase)
+                    || text.Contains(
+                        "Société canadienne d'hypothèques et de logement",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || text.Contains("SCHL", StringComparison.OrdinalIgnoreCase)
+                then
+                    "Canada Mortgage and Housing Corporation"
+                else
+                    failwith "Could not find the mortgage insurer."
 
     let root = JsonObject()
     root.["language"] <- JsonValue.Create "en"
@@ -1110,7 +2005,8 @@ let parseText (text: string) : JsonObject =
          | Indexed(display, _, _, _) -> display)
 
     let totalLoans =
-        let label = @"(?i)Total[ \t]+Number[ \t]+of[ \t]+Mortgages?(?:[ \t]+Loans)?"
+        let label =
+            @"(?i)(?:Total[ \t]+Number[ \t]+of[ \t]+Mortgages?(?:[ \t]+Loans)?|Nombre[ \t]+total[ \t]+de[ \t]+pr[êe]ts[ \t]+hypoth[ée]caires)"
 
         let parseInteger (value: string) =
             Int32.Parse(value, CultureInfo.InvariantCulture)
@@ -1129,16 +2025,36 @@ let parseText (text: string) : JsonObject =
                     failwith "Could not find total number of mortgage loans."
 
                 parseInteger numbers.[numbers.Count - 1].Value
-            | None -> failwith "Could not find total number of mortgage loans."
+            | None -> 0
 
     addInt addendum "totalNumberOfMortgageLoans" totalLoans
 
     addString
         addendum
         "weightedAverageInterestAdjustmentDate"
-        (parseDateField "Weighted Average Interest Adjustment Date" text)
+        (parseDateFieldAny
+            [
+                "Weighted Average Interest Adjustment Date"
+                "Moyenne pondérée de la date d'ajustement d'intérêt"
+                "Moyenne pondérée de la date d’ajustement d’intérêt"
+                "Date de rajustement du taux d'intérêt moyen pondéré"
+                "Date de rajustement du taux d’intérêt moyen pondéré"
+                "Moyenne pondérée de la date"
+            ]
+            text)
 
-    addString addendum "weightedAverageMaturityDate" (parseDateField "Weighted Average Maturity Date" text)
+    addString
+        addendum
+        "weightedAverageMaturityDate"
+        (parseDateFieldAny
+            [
+                "Weighted Average Maturity Date"
+                "Moyenne pondérée de la date d'échéance"
+                "Moyenne pondérée de la date d’échéance"
+                "Date d'échéance moyenne pondérée"
+                "Date d’échéance moyenne pondérée"
+            ]
+            text)
 
     let scheduledMaturity = JsonObject()
 
@@ -1181,13 +2097,24 @@ let parseText (text: string) : JsonObject =
     addDecimal loanTypeProfile "socialHousingPercent" socialHousing
     addendum.["loanTypeProfile"] <- loanTypeProfile
 
-    let byRam, byTerm = parseRamDistribution text
+    let byRam, byTerm =
+        try
+            parseRamDistribution text
+        with _ ->
+            List.replicate 6 0M, List.replicate 6 0M
+
     let ramDistribution = JsonObject()
     ramDistribution.["byRemainingAmortizationMonths"] <- decimalArray byRam
     ramDistribution.["byRemainingTermMonths"] <- decimalArray byTerm
     addendum.["ramDistribution"] <- ramDistribution
 
-    let locationRows = parseLocations text
+    let locationRows =
+        try
+            parseLocations text
+        with _ ->
+            (provinceRows |> List.map (fun (key, _) -> key, (0M, 0M)))
+            @ [ "total", (0M, 0M) ]
+
     let locationObject = JsonObject()
 
     for key, (loansPercent, principalAmountPercent) in locationRows do
@@ -1198,7 +2125,25 @@ let parseText (text: string) : JsonObject =
 
     addendum.["locationOfMortgageLoans"] <- locationObject
 
-    let dates, rateBands, totals, percentOfTotal, wac = parseInterestAdjustment text
+    let dates, rateBands, totals, percentOfTotal, wac =
+        try
+            parseInterestAdjustment text
+        with _ ->
+            let fallbackDate =
+                try
+                    parseDateFieldAny
+                        [
+                            "Weighted Average Interest Adjustment Date"
+                            "Moyenne pondérée de la date d'ajustement d'intérêt"
+                            "Date de rajustement du taux d'intérêt moyen pondéré"
+                            "Date de rajustement du taux d’intérêt moyen pondéré"
+                        ]
+                        text
+                with _ ->
+                    "1900-01-01"
+
+            [ fallbackDate ], [], [ 0M; 0M; 0M ], [ 0M; 0M; 0M ], [ 0M; 0M; 0M ]
+
     let interestAdjustment = JsonObject()
     interestAdjustment.["interestAdjustmentDates"] <- stringArray dates
 
@@ -1213,9 +2158,10 @@ let parseText (text: string) : JsonObject =
         bandArray.Add row
 
     interestAdjustment.["rateBands"] <- bandArray
-    interestAdjustment.["totals"] <- totalRowObject totals
-    interestAdjustment.["percentOfTotal"] <- totalRowObject percentOfTotal
-    interestAdjustment.["wac"] <- totalRowObject wac
+    let dateCount = dates.Length
+    interestAdjustment.["totals"] <- totalRowObject dateCount totals
+    interestAdjustment.["percentOfTotal"] <- totalRowObject dateCount percentOfTotal
+    interestAdjustment.["wac"] <- totalRowObject dateCount wac
     addendum.["interestAdjustmentProfile"] <- interestAdjustment
 
     root.["addendum"] <- addendum

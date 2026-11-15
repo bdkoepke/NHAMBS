@@ -13,6 +13,7 @@ type Model =
     {
         Page: Page
         Overview: Loadable<OverviewData>
+        ForwardCurves: Loadable<ForwardCurveSet>
         Cht: Loadable<ChtData>
         Covered: Loadable<CoveredBondData>
         Freshness: Loadable<DatasetFreshness[]>
@@ -30,6 +31,7 @@ type Msg =
     | ToggleMenu
     | Refresh
     | OverviewLoaded of Result<OverviewData, string>
+    | ForwardCurvesLoaded of Result<ForwardCurveSet, string>
     | ChtLoaded of Result<ChtData, string>
     | CoveredLoaded of Result<CoveredBondData, string>
     | FreshnessLoaded of Result<DatasetFreshness[], string>
@@ -38,6 +40,7 @@ type Msg =
     | PoolsLoaded of Result<MbsPoolPage, string>
     | DetailLoaded of Result<MbsPoolDetail[], string>
     | FilterChanged of MbsPoolFilter
+    | StatusChanged of string
     | ApplyFilters
     | ResetFilters
     | SelectPool of string
@@ -47,6 +50,7 @@ let private emptyModel =
     {
         Page = Overview
         Overview = NotLoaded
+        ForwardCurves = NotLoaded
         Cht = NotLoaded
         Covered = NotLoaded
         Freshness = NotLoaded
@@ -62,6 +66,10 @@ let private emptyModel =
 let private loadOverview =
     Cmd.OfAsync.either (fun () -> Api.api.GetOverview()) () (Ok >> OverviewLoaded) (fun ex ->
         OverviewLoaded(Error ex.Message))
+
+let private loadForwardCurves =
+    Cmd.OfAsync.either (fun () -> Api.api.GetForwardCurves()) () (Ok >> ForwardCurvesLoaded) (fun ex ->
+        ForwardCurvesLoaded(Error ex.Message))
 
 let private loadCht =
     Cmd.OfAsync.either (fun () -> Api.api.GetCht()) () (Ok >> ChtLoaded) (fun ex -> ChtLoaded(Error ex.Message))
@@ -83,12 +91,7 @@ let private loadAnalytics filter =
         AnalyticsLoaded(Error ex.Message))
 
 let private loadPools filter =
-    let query =
-        {
-            Filter = filter
-            Offset = 0
-            Limit = 20000
-        }
+    let query = { Filter = filter }
 
     Cmd.OfAsync.either (fun () -> Api.api.GetMbsPools query) () (Ok >> PoolsLoaded) (fun ex ->
         PoolsLoaded(Error ex.Message))
@@ -107,9 +110,9 @@ let init () =
         match page with
         | Overview -> loadOverview
         | Pools -> Cmd.batch [ loadFilters; loadPoolData emptyMbsFilter ]
+        | ForwardCurves -> loadForwardCurves
         | Cht -> loadCht
         | CoveredBonds -> loadCovered
-        | DataQuality -> Cmd.none
 
     { emptyModel with Page = page }, Cmd.batch [ loadFreshness; pageCommand ]
 
@@ -117,9 +120,9 @@ let private refreshPage model =
     match model.Page with
     | Overview -> Cmd.batch [ loadOverview; loadFreshness ]
     | Pools -> Cmd.batch [ loadFilters; loadFreshness; loadPoolData model.Filter ]
+    | ForwardCurves -> Cmd.batch [ loadForwardCurves; loadFreshness ]
     | Cht -> Cmd.batch [ loadCht; loadFreshness ]
     | CoveredBonds -> Cmd.batch [ loadCovered; loadFreshness ]
-    | DataQuality -> loadFreshness
 
 let update (msg: Msg) (model: Model) =
     match msg with
@@ -141,9 +144,9 @@ let update (msg: Msg) (model: Model) =
                 | Overview when model.Overview = NotLoaded -> Cmd.batch [ loadOverview; loadFreshness ]
                 | Pools when model.Filters = NotLoaded || model.Pools = NotLoaded ->
                     Cmd.batch [ loadFilters; loadPoolData model.Filter ]
+                | ForwardCurves when model.ForwardCurves = NotLoaded -> loadForwardCurves
                 | Cht when model.Cht = NotLoaded -> loadCht
                 | CoveredBonds when model.Covered = NotLoaded -> loadCovered
-                | DataQuality when model.Freshness = NotLoaded -> loadFreshness
                 | _ -> Cmd.none
 
             model, command
@@ -158,6 +161,17 @@ let update (msg: Msg) (model: Model) =
 
     | OverviewLoaded(Ok data) -> { model with Overview = Loaded data }, Cmd.none
     | OverviewLoaded(Error message) -> { model with Overview = Failed message }, Cmd.none
+
+    | ForwardCurvesLoaded(Ok data) ->
+        { model with
+            ForwardCurves = Loaded data
+        },
+        Cmd.none
+    | ForwardCurvesLoaded(Error message) ->
+        { model with
+            ForwardCurves = Failed message
+        },
+        Cmd.none
 
     | ChtLoaded(Ok data) -> { model with Cht = Loaded data }, Cmd.none
     | ChtLoaded(Error message) -> { model with Cht = Failed message }, Cmd.none
@@ -189,6 +203,16 @@ let update (msg: Msg) (model: Model) =
     | DetailLoaded(Error message) -> { model with Detail = Failed message }, Cmd.none
 
     | FilterChanged filter -> { model with Filter = filter }, Cmd.none
+
+    | StatusChanged status ->
+        let filter = { model.Filter with Status = status }
+
+        { model with
+            Filter = filter
+            Analytics = Loading
+            Pools = Loading
+        },
+        loadPoolData filter
 
     | ApplyFilters ->
         { model with
@@ -268,6 +292,12 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                         OnNavigate = Navigate >> dispatch
                         OnRefresh = fun () -> dispatch Refresh
                     })
+        | ForwardCurves ->
+            ForwardCurves.ForwardCurvesPage
+                {
+                    Data = model.ForwardCurves
+                    OnRefresh = fun () -> dispatch Refresh
+                }
         | Pools ->
             Pools.PoolsPage
                 {
@@ -278,6 +308,7 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                     SelectedPool = model.SelectedPool
                     Detail = model.Detail
                     OnFilterChange = FilterChanged >> dispatch
+                    OnStatusChange = StatusChanged >> dispatch
                     OnApply = fun () -> dispatch ApplyFilters
                     OnReset = fun () -> dispatch ResetFilters
                     OnSelectPool = SelectPool >> dispatch
@@ -294,12 +325,6 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
             CoveredBonds.CoveredBondsPage
                 {
                     Data = model.Covered
-                    OnRefresh = fun () -> dispatch Refresh
-                }
-        | DataQuality ->
-            DataQuality.DataQualityPage
-                {
-                    Freshness = model.Freshness
                     OnRefresh = fun () -> dispatch Refresh
                 }
 
@@ -323,7 +348,18 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                             prop.className "brand"
                                             prop.children
                                                 [
-                                                    Html.div [ prop.className "brand-mark"; prop.text "N" ]
+                                                    Html.div
+                                                        [
+                                                            prop.className "brand-mark"
+                                                            prop.children
+                                                                [
+                                                                    Html.img
+                                                                        [
+                                                                            prop.src "/finite_moment-mark.svg"
+                                                                            prop.alt "Finite Moment"
+                                                                        ]
+                                                                ]
+                                                        ]
                                                     Html.div
                                                         [
                                                             prop.children
@@ -351,11 +387,10 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                                     Html.div [ prop.className "nav-section"; prop.text "Market" ]
                                                     navItem Overview "◫" dispatch model.Page
                                                     navItem Pools "▦" dispatch model.Page
+                                                    navItem ForwardCurves "∿" dispatch model.Page
                                                     Html.div [ prop.className "nav-section"; prop.text "Securities" ]
                                                     navItem Cht "◆" dispatch model.Page
                                                     navItem CoveredBonds "◇" dispatch model.Page
-                                                    Html.div [ prop.className "nav-section"; prop.text "Operations" ]
-                                                    navItem DataQuality "⚙" dispatch model.Page
                                                 ]
                                         ]
 
@@ -385,6 +420,18 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                                         [
                                                             prop.className "sidebar-stack"
                                                             prop.text "Saturn · Fable · Feliz · AG Grid"
+                                                        ]
+                                                    Html.div
+                                                        [
+                                                            prop.className "sidebar-brandplate"
+                                                            prop.children
+                                                                [
+                                                                    Html.img
+                                                                        [
+                                                                            prop.src "/finite_moment.svg"
+                                                                            prop.alt "Finite Moment"
+                                                                        ]
+                                                                ]
                                                         ]
                                                 ]
                                         ]

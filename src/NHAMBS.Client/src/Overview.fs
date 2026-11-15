@@ -55,7 +55,7 @@ let private sparklineSvg (months: string[]) (values: decimal[]) =
         let lastY = y values.[values.Length - 1]
 
         sprintf
-            "<svg class=\"sparkline-svg\" viewBox=\"0 0 %.0f %.0f\" preserveAspectRatio=\"none\" role=\"img\"><title>%s</title><polygon points=\"%s\" fill=\"rgba(24,169,153,0.14)\" /><polyline points=\"%s\" fill=\"none\" stroke=\"#18a999\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><circle cx=\"%.2f\" cy=\"%.2f\" r=\"2.2\" fill=\"#ffffff\" stroke=\"#18a999\" stroke-width=\"1.4\" /></svg>"
+            "<svg class=\"sparkline-svg\" viewBox=\"0 0 %.0f %.0f\" preserveAspectRatio=\"none\" role=\"img\"><title>%s</title><polygon points=\"%s\" fill=\"rgba(46,87,113,0.14)\" /><polyline points=\"%s\" fill=\"none\" stroke=\"#2e5771\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\" /><circle cx=\"%.2f\" cy=\"%.2f\" r=\"2.2\" fill=\"#ffffff\" stroke=\"#2e5771\" stroke-width=\"1.4\" /></svg>"
             width
             height
             title
@@ -155,22 +155,22 @@ let OverviewPage (props: OverviewProps) =
                                             "%s pools · since %s"
                                             (number (decimal mbs.PoolCount))
                                             (dateShort mbs.NewestIssueDate))
-                                        "#18a999"
+                                        "#2e5771"
                                     KpiCard
                                         "Mortgage loans"
                                         (number (decimal mbs.LoanCount))
                                         (sprintf "%s issuers" (number (decimal mbs.IssuerCount)))
-                                        "#4f8ef7"
+                                        "#f47c3c"
                                     KpiCard
                                         "Average coupon"
                                         (rate mbs.AverageCoupon)
                                         (sprintf "Weighted · %s WAM" (months mbs.AverageWam))
-                                        "#d8a84e"
+                                        "#93c54b"
                                     KpiCard
                                         "CHT outstanding"
                                         (moneyFromMillions cht.OutstandingMillions)
                                         (sprintf "%d outstanding series" cht.IssueCount)
-                                        "#7c6ee6"
+                                        "#29abe0"
                                     KpiCard
                                         "Covered bonds"
                                         (number (decimal covered.BondCount))
@@ -178,7 +178,7 @@ let OverviewPage (props: OverviewProps) =
                                             "%d programs · %d currencies"
                                             covered.ProgramCount
                                             covered.CurrencyCount)
-                                        "#e2725b"
+                                        "#d9534f"
                                 ]
                         ]
 

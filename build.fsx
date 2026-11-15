@@ -41,6 +41,10 @@ let serverProject =
 let clientProject =
     Path.Combine(root, "src", "NHAMBS.Client", "NHAMBS.Client.fsproj")
 
+let elsaServerDir = Path.Combine(root, "src", "NHAMBS.ElsaServer")
+
+let elsaServerProject = Path.Combine(elsaServerDir, "NHAMBS.ElsaServer.csproj")
+
 let defaultConnection =
     "Host=localhost;Port=54322;Database=nhambs;Username=nhambs;Password=nhambs"
 
@@ -52,6 +56,7 @@ type Options =
         SkipEtl: bool
         NoClient: bool
         NoServer: bool
+        NoElsa: bool
         WithInfra: bool
         Help: bool
     }
@@ -64,6 +69,7 @@ let defaultOptions =
         SkipEtl = false
         NoClient = false
         NoServer = false
+        NoElsa = false
         WithInfra = false
         Help = false
     }
@@ -77,16 +83,17 @@ Usage:
   dotnet fsi build.fsx -- [options]
 
 Targets:
-  dev       Pulumi, migrations, ETL, server and Vite client (default)
-  run       Start the server and Vite client using the current database
+  dev       Pulumi, migrations, ETL, API, Elsa Studio and Vite client (default)
+  run       Start the API, Elsa Studio and Vite client using the current database
   build     Compile the dashboard .NET projects and the production Fable/Vite client
   ci        Same as build, using npm ci when a lockfile is present
   infra     Bring up PostgreSQL with Pulumi only
   migrate   Run FluentMigrator migrations only
   etl       Run the ETL only
   server    Start the API only
+  elsa      Start Elsa Server + Studio only
   client    Start the Vite/Fable client only
-  stop      Stop server/client processes started by this runner
+  stop      Stop server/client/Elsa processes started by this runner
   help      Show this help
 
 Options:
@@ -97,12 +104,16 @@ Options:
   --skip-etl        Do not reload the database
   --no-client       Do not start the Vite client
   --no-server       Do not start the API
+  --no-elsa         Do not start Elsa Server + Studio
   -h, --help        Show this help
 
 Environment:
   NHAMBS_CONNECTION          PostgreSQL connection string
   NHAMBS_PULUMI_STACK        Pulumi stack name (default: dev)
   NHAMBS_SERVER_URL          Server URL used when waiting/printing (default: http://localhost:8085)
+  NHAMBS_ELSA_ADMIN_USER     Elsa Studio administrator user (default: admin)
+  NHAMBS_ELSA_ADMIN_PASSWORD Elsa Studio administrator password (local development default)
+  NHAMBS_ELSA_SIGNING_KEY    Elsa identity signing key (local development default)
 """
 
 let parseArgs (argv: string[]) =
@@ -131,6 +142,7 @@ let parseArgs (argv: string[]) =
             | "--skip-etl" -> loop (index + 1) { options with SkipEtl = true }
             | "--no-client" -> loop (index + 1) { options with NoClient = true }
             | "--no-server" -> loop (index + 1) { options with NoServer = true }
+            | "--no-elsa" -> loop (index + 1) { options with NoElsa = true }
             | "-h"
             | "--help" -> loop (index + 1) { options with Help = true }
             | value when value.StartsWith("--target=", StringComparison.OrdinalIgnoreCase) ->
@@ -304,6 +316,7 @@ let stopAll (procs: Process list) =
     procs |> List.iter stopProcess
     clearPid "server"
     clearPid "client"
+    clearPid "elsa"
 
 let activeProcesses = ref ([]: Process list)
 let shutdownRequested = ref false
@@ -494,6 +507,7 @@ let buildDotnet () =
         [
             serverProject
             clientProject
+            elsaServerProject
             migrationsProject
             etlCoreProject
             workflowsProject
@@ -563,6 +577,33 @@ let startServer (connection: string) =
     writePid "server" proc.Id
     proc
 
+let elsaServerDll =
+    Path.Combine(elsaServerDir, "bin", "Debug", "net10.0", "NHAMBS.ElsaServer.dll")
+
+let buildElsaServer () =
+    run "Building Elsa Server + Studio" "dotnet" [ "build"; elsaServerProject; "-v:q"; "-nologo"; "-m:1" ] root []
+
+let startElsaServer (connection: string) =
+    if not (File.Exists elsaServerDll) then
+        buildElsaServer ()
+
+    stopTrackedProcess "elsa"
+
+    let proc =
+        startBackground
+            "elsa"
+            "dotnet"
+            [ "exec"; elsaServerDll ]
+            elsaServerDir
+            ((environmentWith connection)
+             @ [
+                 "ASPNETCORE_URLS", "http://localhost:8090"
+                 "ASPNETCORE_ENVIRONMENT", "Development"
+             ])
+
+    writePid "elsa" proc.Id
+    proc
+
 let startClient (connection: string) =
     stopTrackedProcess "client"
 
@@ -587,11 +628,14 @@ let printReady (options: Options) =
     if not options.NoServer then
         printfn " API:    %s" serverUrl
 
+    if not options.NoElsa then
+        printfn " Elsa:   http://localhost:8090"
+
     if not options.NoClient then
         printfn " Client: http://localhost:5173"
 
     printfn ""
-    printfn " Press Ctrl+C to stop the server and client."
+    printfn " Press Ctrl+C to stop the server, Elsa Studio and client."
     printfn ""
 
 let dev (options: Options) =
@@ -609,16 +653,21 @@ let dev (options: Options) =
 
     ensureNodeModules false
 
-    if options.NoServer && options.NoClient then
-        failwith "Both --no-server and --no-client were specified; nothing to launch."
+    if options.NoServer && options.NoClient && options.NoElsa then
+        failwith "Both --no-server/--no-elsa and --no-client were specified; nothing to launch."
 
     if not options.NoServer then
         buildServer ()
+
+    if not options.NoElsa then
+        buildElsaServer ()
 
     let processes =
         [
             if not options.NoServer then
                 startServer connection
+            if not options.NoElsa then
+                startElsaServer connection
             if not options.NoClient then
                 startClient connection
         ]
@@ -633,16 +682,21 @@ let runOnly (options: Options) =
     waitForPostgres connection
     ensureNodeModules false
 
-    if options.NoServer && options.NoClient then
-        failwith "Both --no-server and --no-client were specified; nothing to launch."
+    if options.NoServer && options.NoClient && options.NoElsa then
+        failwith "Both --no-server/--no-elsa and --no-client were specified; nothing to launch."
 
     if not options.NoServer then
         buildServer ()
+
+    if not options.NoElsa then
+        buildElsaServer ()
 
     let processes =
         [
             if not options.NoServer then
                 startServer connection
+            if not options.NoElsa then
+                startElsaServer connection
             if not options.NoClient then
                 startClient connection
         ]
@@ -686,10 +740,23 @@ let runTarget (options: Options) =
             let proc = startServer (currentConnection ())
             printReady { options with NoClient = true }
             waitForProcesses [ proc ]
+        | "elsa" ->
+            dotnetToolRestore ()
+            buildElsaServer ()
+            let proc = startElsaServer (currentConnection ())
+
+            printReady
+                { options with
+                    NoServer = true
+                    NoClient = true
+                }
+
+            waitForProcesses [ proc ]
         | "stop" ->
             stopTrackedProcess "server"
             stopTrackedProcess "client"
-            printfn "Stopped tracked server/client processes."
+            stopTrackedProcess "elsa"
+            printfn "Stopped tracked server/client/Elsa processes."
             0
         | "help" ->
             printfn "%s" (usage ())

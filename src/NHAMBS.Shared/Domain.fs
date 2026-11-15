@@ -16,6 +16,8 @@ module Domain =
             DateTo: string
             MaturityFrom: string
             MaturityTo: string
+            /// "", "active" or "inactive".
+            Status: string
             SortBy: string
             SortDir: string
         }
@@ -32,23 +34,12 @@ module Domain =
             DateTo = ""
             MaturityFrom = ""
             MaturityTo = ""
+            Status = ""
             SortBy = "issue_date"
             SortDir = "desc"
         }
 
-    type MbsPoolQuery =
-        {
-            Filter: MbsPoolFilter
-            Offset: int
-            Limit: int
-        }
-
-    let defaultPoolQuery =
-        {
-            Filter = emptyMbsFilter
-            Offset = 0
-            Limit = 20000
-        }
+    type MbsPoolQuery = { Filter: MbsPoolFilter }
 
     type MbsPoolRow =
         {
@@ -73,14 +64,7 @@ module Domain =
             SourceUrl: string
         }
 
-    type MbsPoolPage =
-        {
-            Rows: MbsPoolRow[]
-            Total: int
-            Offset: int
-            Limit: int
-            Capped: bool
-        }
+    type MbsPoolPage = { Rows: MbsPoolRow[]; Total: int }
 
     type CategoryPoint =
         {
@@ -431,4 +415,29 @@ module Domain =
             Cht: ChtAnalytics
             CoveredBonds: CoveredBondAnalytics
             Freshness: DatasetFreshness[]
+        }
+
+    /// One observed or projected point on a forward curve. Values use the
+    /// source's native units; `percent` series are decimal fractions.
+    type ForwardCurvePoint = { Date: string; Value: decimal }
+
+    type ForwardCurve =
+        {
+            Id: string
+            Name: string
+            ShortName: string
+            DataType: string
+            Stale: bool
+            DecimalPrecision: int
+            AsOfDate: string
+            UpdatedOn: string
+            Points: ForwardCurvePoint[]
+        }
+
+    type ForwardCurveSet =
+        {
+            Name: string
+            AsOfDate: string
+            Curves: ForwardCurve[]
+            SourceFile: string
         }

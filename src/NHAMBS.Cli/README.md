@@ -276,3 +276,7 @@ producing and validating the JSON datasets.
 
 Set `NHAMBS_DUMP_TEXT=/path/to/file.txt` to dump the combined NHA MBS text that
 the parser sees; this is useful when diagnosing OCR output.
+
+Set `NHAMBS_OCR_RETRY=1` to re-OCR the first four cover pages when a
+text-based circular is missing a graphic coupon, principal amount or payment
+date. This is intentionally opt-in because OCR is slow on the affected forms.

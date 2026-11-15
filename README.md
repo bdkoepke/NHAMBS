@@ -18,8 +18,6 @@ breakdowns, and filterable, sortable pool and security tables with CSV export.
 | Market overview | NHA MBS pool explorer with AG Grid |
 | ![Pool detail](docs/dashboard-pool-detail.png) | ![Canada Mortgage Bonds](docs/dashboard-cht.png) |
 | Pool detail drawer | Canada Mortgage Bonds |
-| ![Covered bonds](docs/dashboard-covered-bonds.png) | ![Data & ETL](docs/dashboard-data-etl.png) |
-| Covered bond registry | Data & ETL operations |
 
 ## Architecture
 
@@ -30,13 +28,13 @@ CMHC source PDFs / pages
 out/pools/*.json  out/debt-issues.json  out/cht_circulars/  out/cht_history/  out/covered_bonds/
         │
         ▼
-NHAMBS.Etl (Elsa host + CLI)
-        │
-        ▼
+NHAMBS.Etl (Elsa CLI)      NHAMBS.ElsaServer (Elsa Server + Studio)
+        │                         │
+        ▼                         ▼
 NHAMBS.Workflows (Elsa workflows + activities)
         │
         ▼
-NHAMBS.Etl.Core ── bulk COPY ──▶ PostgreSQL (schema: nhambs)
+NHAMBS.Etl.Core ── bulk COPY ──▶ PostgreSQL (schemas: nhambs, elsa)
         │                         │
         │                         ├── FluentMigrator migrations
         │                         ├── typed reads via SQLProvider
@@ -48,10 +46,13 @@ NHAMBS.Server (Saturn + Fable.Remoting)
 NHAMBS.Client (Fable + Elmish + Feliz + AG Grid)
 ```
 
-The ETL is orchestrated by **Elsa Workflows**. `NHAMBS.Etl` is a thin host
+The ETL is orchestrated by **Elsa Workflows**. `NHAMBS.Etl` is a thin CLI host
 that resolves `IWorkflowRunner` and runs one of the workflows defined in
 `NHAMBS.Workflows`; the resumable database loaders and bulk COPY code live in
-`NHAMBS.Etl.Core`.
+`NHAMBS.Etl.Core`. `NHAMBS.ElsaServer` exposes the same workflows through Elsa's
+REST API and hosts **Elsa Studio** (Blazor WebAssembly) for visual workflow
+management and run inspection. Elsa persists its definitions, runtime instances
+and identity data in the `elsa` PostgreSQL schema.
 
 Infrastructure is managed with **Pulumi** (`src/NHAMBS.Pulumi/`). The local
 stack uses the Pulumi Docker provider to run PostgreSQL 17 with a named volume
@@ -77,8 +78,9 @@ and health check. There is no hand-rolled `docker-compose.yml`.
   history of bond purchases for cancellation.
 - **Covered bonds** — registered programme and bond analytics, currency and
   maturity charts, programme/bond/registry tabs and a CMHC registry view.
-- **Data & ETL** — Elsa workflow runs, loader audit trail, row/file counts,
-  durations, database schema guide and reproducible local commands.
+- **Forward curves** — forward rate curves loaded from `forward_curves.json`,
+  with snapshot/horizon KPIs, an SVG curve chart, tenor observations and series
+  metadata.
 - **CSV export** — export the currently loaded pool result set from the grid.
 
 ## Project layout
@@ -86,11 +88,13 @@ and health check. There is no hand-rolled `docker-compose.yml`.
 | Project | Purpose |
 | --- | --- |
 | `src/NHAMBS.Shared` | Transport-safe DTOs and the Fable.Remoting `DashboardApi` contract. |
-| `src/NHAMBS.Data` | SQLProvider context, typed repository reads and reporting queries. |
+| `src/NHAMBS.Data` | SQLProvider context, typed repository reads, reporting queries and the forward-curve JSON loader. |
 | `src/NHAMBS.Migrations` | FluentMigrator schema and dashboard view migrations. |
 | `src/NHAMBS.Etl.Core` | Resumable, bulk-loading loaders for MBS, CHT and covered bond JSON. |
 | `src/NHAMBS.Workflows` | Elsa activities and workflow definitions for each dataset. |
-| `src/NHAMBS.Etl` | Elsa workflow host and command-line entry point. |
+| `src/NHAMBS.Etl` | Elsa workflow CLI host and command-line entry point. |
+| `src/NHAMBS.ElsaServer` | Elsa Server APIs, persistence, identity and hosted Elsa Studio. |
+| `src/NHAMBS.Studio` | Elsa Studio Blazor WebAssembly host for workflow management. |
 | `src/NHAMBS.Server` | Saturn API, Fable.Remoting handler and SPA hosting. |
 | `src/NHAMBS.Client` | Fable/Elmish/Feliz front end, AG Grid integration and charts. |
 | `src/NHAMBS.Pulumi` | Pulumi infrastructure (PostgreSQL container, volume, outputs). |
@@ -104,8 +108,8 @@ untouched and continue to produce the JSON extracts consumed by the ETL.
 ## One-command local runner
 
 `build.fsx` orchestrates the local stack: Pulumi, PostgreSQL readiness,
-FluentMigrator, the ETL, npm dependencies, the Saturn API and the Vite/Fable
-client.
+FluentMigrator, the ETL, npm dependencies, the Saturn API, Elsa Server + Studio
+and the Vite/Fable client.
 
 ```bash
 ./build.fsx
@@ -124,7 +128,7 @@ That is the `dev` target. It:
 3. Applies migrations.
 4. Loads `out/` through the Elsa ETL workflows.
 5. Installs client dependencies if needed.
-6. Starts the API and Vite client together.
+6. Starts the API, Elsa Server + Studio and Vite client together.
 
 Press `Ctrl+C` to stop the child processes. If a process outlives a terminal
 session, run `./build.fsx --target stop`.
@@ -158,8 +162,9 @@ dotnet fsi build.fsx -- --target run
 ```
 
 Available targets are `dev`, `run`, `build`, `ci`, `infra`, `migrate`, `etl`,
-`server`, `client`, `stop` and `help`. The runner records child PIDs under `.build/` so
-`--target stop` can clean up processes that outlive a terminal session.
+`server`, `elsa`, `client`, `stop` and `help`. The runner records child PIDs under
+`.build/` so `--target stop` can clean up processes that outlive a terminal
+session. Pass `--no-elsa` to skip Elsa Server + Studio.
 
 ## Prerequisites
 
@@ -208,6 +213,11 @@ export NHAMBS_CONNECTION='Host=localhost;Port=54322;Database=nhambs;Username=nha
 All .NET projects read `NHAMBS_CONNECTION`. The default already points at the
 local Pulumi stack, so this is only required if you change it.
 
+Forward curves are file-backed. The API looks for `out/forward_curves.json`,
+then `forward_curves.json` in the repository root, then the application
+directory; set `NHAMBS_FORWARD_CURVES` to override the path. The puller project
+can write to `out/forward_curves.json` without a schema migration.
+
 ### 3. Create the schema and load the extracts
 
 ```bash
@@ -241,11 +251,14 @@ The workflow definitions are intentionally isolated from the database loaders:
 
 - `NHAMBS.Workflows` contains `MbsEtlWorkflow`, `ChtEtlWorkflow`,
   `CoveredBondEtlWorkflow` and `NhambsEtlWorkflow`, plus the three
-  `CodeActivity` wrappers and the `Registration.register` helper.
+  `CodeActivity` wrappers and the `Registration.register` helper. The workflows
+  also expose parameterless constructors using `NHAMBS_DATA_ROOT`,
+  `NHAMBS_POOLS_DIR` and `NHAMBS_MANIFEST`, so Elsa Server can host and run them.
 - `NHAMBS.Etl.Core` contains the reusable MBS, CHT and covered bond loaders,
   JSON helpers and the binary `COPY` writer.
 - `NHAMBS.Etl` only parses arguments, builds the Elsa service provider, selects
-  a workflow and surfaces its result.
+  a workflow and surfaces its result. The same four workflows are registered in
+  `NHAMBS.ElsaServer` and published to Elsa Studio.
 
 ### 4. Run the API
 
@@ -255,7 +268,22 @@ dotnet run --project src/NHAMBS.Server
 
 The API listens on `http://localhost:8085`. `GET /health` returns `ok`.
 
-### 5. Run the client in development
+### 5. Run Elsa Server + Studio
+
+```bash
+export ASPNETCORE_ENVIRONMENT=Development
+dotnet run --project src/NHAMBS.ElsaServer
+```
+
+Elsa Studio is served at `http://localhost:8090`; the API lives under
+`http://localhost:8090/elsa/api`. The server applies Elsa's EF Core migrations to
+the `elsa` schema on startup. In Development it bootstraps an administrator from
+`NHAMBS_ELSA_ADMIN_USER` (default `admin`) and
+`NHAMBS_ELSA_ADMIN_PASSWORD` (default `nhambs-elsa-admin`). Set both, plus
+`NHAMBS_ELSA_SIGNING_KEY`, outside Development. Elsa Studio is available
+directly at `http://localhost:8090`; the dashboard does not link to or embed it.
+
+### 6. Run the client in development
 
 ```bash
 cd src/NHAMBS.Client
@@ -266,7 +294,7 @@ npm run dev
 Vite serves the UI at `http://localhost:5173` and proxies `/api` to the Saturn
 server. The Fable watcher compiles `.fs` files to `.fable/src/*.js`.
 
-### 6. Build the production client into the server
+### 7. Build the production client into the server
 
 ```bash
 cd src/NHAMBS.Client
@@ -296,6 +324,8 @@ Schema `nhambs`:
 - `covered_bond_programs` / `covered_bond_parties` / `covered_bonds` /
   `covered_bond_isins` / `covered_bond_registry` — covered bond registry.
 - `etl_runs` — loader audit trail.
+- `elsa.*` — Elsa workflow definitions, runtime instances, triggers, users and
+  operational history maintained by `NHAMBS.ElsaServer` in the `elsa` schema.
 
 Dashboard views include `v_mbs_pool_grid`, `v_mbs_monthly`,
 `v_mbs_issuer_summary`, `v_mbs_province_summary`, `v_mbs_rate_type_summary`,
@@ -361,8 +391,9 @@ All direct NuGet packages are on the latest stable versions available for
 - **Microsoft.AspNetCore.WebUtilities 10.0.15** — version 11.0.0 only targets
   `net11.0`, while this solution targets `net10.0`.
 
-The ETL workflows use **Elsa 3.10.1**, which targets `net10.0` directly and is
-hosted in-process by `NHAMBS.Etl`; no separate workflow server is required.
+The ETL workflows use **Elsa 3.10.1**, which targets `net10.0` directly. The CLI
+hosts them in-process for batch runs, and `NHAMBS.ElsaServer` hosts the same
+definitions behind Elsa's REST API with the Elsa Studio dashboard.
 
 Transitive security advisories were cleared by adding explicit newer versions
 of `System.Security.Cryptography.Pkcs`, `Microsoft.IdentityModel.*`,
@@ -374,9 +405,8 @@ vulnerable packages.
 
 - `out/` is intentionally ignored by git; it contains the parsed source
   extracts. The ETL expects the existing directory layout.
-- The pool grid requests up to 20,000 matching rows for client-side AG Grid
-  sorting/filtering and flags when results are capped. Filters and CSV exports
-  are complete when the cap note is absent.
+- The pool grid loads all matching rows for client-side AG Grid
+  sorting/filtering; filters and CSV exports always cover the full result set.
 - Nominal covered bond amounts are grouped by issuance currency and are not
   converted across currencies.
 - CHT amounts are stored as published (CAD millions) and formatted as dollars
@@ -384,6 +414,14 @@ vulnerable packages.
 - SQLProvider is compiled against the committed offline schema; if the schema
   is out of date relative to the database, regenerate the schema file and
   rebuild.
+- Elsa Studio requires authentication. Local development bootstraps the admin
+  from `NHAMBS_ELSA_ADMIN_USER` / `NHAMBS_ELSA_ADMIN_PASSWORD`; set those and
+  `NHAMBS_ELSA_SIGNING_KEY` explicitly outside Development. The Studio default
+  backend URL is `http://localhost:8090/elsa/api`; change
+  `src/NHAMBS.Studio/wwwroot/appsettings.json` if you move the server.
+- Forward curve values with `dataType: percent` are read as decimal fractions
+  (for example `0.02525` is shown as `2.525%`). The API rereads the JSON on each
+  request, so updates appear after a Refresh without a database reload.
 
 ## Verification
 

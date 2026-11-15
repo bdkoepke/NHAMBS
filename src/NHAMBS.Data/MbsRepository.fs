@@ -125,6 +125,11 @@ let private whereClause (filter: MbsPoolFilter) =
         parameters.Add("maturity_to", box date)
     | None -> ()
 
+    match filter.Status.ToLowerInvariant() with
+    | "active" -> clauses.Add("g.maturity_date >= CURRENT_DATE")
+    | "inactive" -> clauses.Add("g.maturity_date < CURRENT_DATE")
+    | _ -> ()
+
     let sql =
         if clauses.Count = 0 then
             ""
@@ -178,9 +183,6 @@ let search (query: MbsPoolQuery) =
         else
             "DESC"
 
-    let limit = max 1 (min query.Limit 50000)
-    let offset = max 0 query.Offset
-
     Database.withConnection (fun connection ->
         use countCommand =
             new NpgsqlCommand($"SELECT count(*) FROM nhambs.v_mbs_pool_grid g{whereSql}", connection)
@@ -197,14 +199,11 @@ let search (query: MbsPoolQuery) =
                 FROM nhambs.v_mbs_pool_grid g
                 {whereSql}
                 ORDER BY {order} {direction} NULLS LAST, g.pool_id
-                LIMIT @limit OFFSET @offset
                 """,
                 connection
             )
 
         addParameters command parameters
-        command.Parameters.AddWithValue("limit", limit) |> ignore
-        command.Parameters.AddWithValue("offset", offset) |> ignore
 
         use reader = command.ExecuteReader()
         let rows = ResizeArray<MbsPoolRow>()
@@ -212,13 +211,7 @@ let search (query: MbsPoolQuery) =
         while reader.Read() do
             rows.Add(mapRow reader)
 
-        {
-            Rows = rows.ToArray()
-            Total = total
-            Offset = offset
-            Limit = limit
-            Capped = total > offset + rows.Count
-        })
+        { Rows = rows.ToArray(); Total = total })
 
 let analytics (filter: MbsPoolFilter) =
     let whereSql, parameters = whereClause filter
