@@ -1,0 +1,1025 @@
+Offering Circular                                                                       Dated February 15, 2017
+
+               C$2,500,000,000 Aggregate Principal Amount
+      2.350% Canada Mortgage Bonds™, Series 77, to mature June 15, 2027
+                                  Fully Guaranteed as to Principal and Interest by
+
+               Canada Mortgage and Housing Corporation
+                                     (An agent of Her Majesty in right of Canada)
+
+
+
+
+                                                      Issued by
+
+                    CANADA HOUSING TRUST™ NO. 1
+                                       ISSUE PRICE: 99.702%
+The bonds offered hereby (the “Bonds”) are 2.350% Canada Mortgage Bonds™, Series 77, to mature June 15,
+2027, of Canada Housing Trust™ No. 1 (the “Issuer”), a trust established under the laws of the province of
+Ontario, Canada pursuant to a declaration of trust dated April 9, 2001, as amended, made by its trustee CIBC
+Mellon Trust Company, and are fully guaranteed as to timely payment of principal and interest by Canada
+Mortgage and Housing Corporation (“CMHC” or the “Guarantor”), as agent of Her Majesty in right of Canada
+(see “Description of the Bond Indenture and the Bonds – CMHC Guarantee”). The Issuer is authorized to issue
+Bonds in one or more series and on one or more issue dates pursuant to the Bond Indenture (as defined below).
+The Bonds are not redeemable prior to maturity (see “Description of the Bond Indenture and the Bonds –
+Maturity”). The Bonds bear interest at the rate of 2.350% per annum and, at the issue price of 99.702% of their
+principal amount, will yield at date of issue approximately 2.383%, mature on June 15, 2027 and will be issued in
+the form of a fully registered global certificate or in fully registered uncertificated form (in either of the
+foregoing forms, the “Global Bond”) in the name of CDS & CO. as nominee of CDS Clearing and Depository
+Services Inc. (“CDS”) and held by CDS. The Bonds will be ready for delivery in book-entry only form through
+CDS, Clearstream Banking, société anonyme (“Clearstream, Luxembourg”) and Euroclear Bank S.A./N.V.
+(“Euroclear”), as the case may be, on or about February 23, 2017. Beneficial interests in the Global Bond will be
+represented through book-entry accounts of financial institutions acting on behalf of beneficial owners as direct
+and indirect participants of CDS, Clearstream, Luxembourg and Euroclear. Owners of beneficial interests in the
+Global Bond will not be entitled to have Bonds registered in their names, will not receive or be entitled to receive
+Bonds in definitive form and will not be considered holders thereof except in limited circumstances as described
+in the Bond Indenture (as defined below) and the Global Bond.
+Half-yearly interest (June 15 and December 15) on the Global Bond will be payable in lawful money of Canada
+following the first interest payment which shall be payable on June 15, 2017 for the period from February 23,
+2017 to June 15, 2017, without deduction for or on account of Canadian withholding taxes, to the extent set forth
+herein. The final payment of interest and repayment of principal will be due June 15, 2027. Owners of beneficial
+interests in the Global Bond will receive payment in accordance with the customary procedures of CDS,
+Clearstream, Luxembourg and Euroclear. Bonds will only be sold in minimum denominations of C$5,000 and
+integral multiples thereof.
+Application has been made for the Bonds to be admitted on the Official List of the Luxembourg Stock Exchange
+and for such Bonds to be admitted to trading on the Euro MTF Market. The Euro MTF Market is not a regulated
+market for purposes of the Markets in Financial Instruments Directive (Directive 2004/39/EC). This Offering
+Circular constitutes a prospectus for the purpose of Part IV of the Luxembourg Law dated July 10, 2005 on
+Prospectuses for Securities, as amended, but does not constitute a prospectus for purposes of Directive
+2003/71/EC, as amended (the “Prospectus Directive”). See “Notice Regarding Offers in the EEA”.
+The Bonds will be assigned a rating of “AAA” by Standard & Poor’s, “Aaa” by Moody’s Investors Service
+and “AAA” by DBRS Limited. A security rating is not a recommendation to buy, sell or hold securities
+and may be subject to suspension, reduction or withdrawal at any time by the assigning rating agency.
+RBC Capital                 BMO Capital                  National Bank Financial              TD Securities
+ Markets                     Markets
+ CIBC Capital            Scotiabank Global                        Bank of America          Desjardins Securities
+   Markets              Banking and Markets                        Merrill Lynch
+HSBC Securities            Laurentian Bank                   Casgrain & Company
+                              Securities
+     The Issuer, in relation only to the information contained herein that relates to the Issuer or the Bonds, and
+the Guarantor, in relation only to the information contained herein that relates to the Guarantor or the CMHC
+Guarantee (as defined below), confirms that this Offering Circular contains all information with respect to the
+Issuer and the Bonds, and the Guarantor and the CMHC Guarantee, respectively, which is material in the context
+of the issue of the Bonds; that such information is true and accurate in all material respects and is not misleading;
+the Issuer confirms that there is no other fact the omission of which makes this document as a whole or any of
+such information misleading and the Guarantor confirms that there is no other fact relating to the Guarantor or
+the CMHC Guarantee the omission of which makes this document as a whole or any of such information
+misleading; that the Issuer has made all reasonable enquiries to ascertain all facts material for the purposes
+aforesaid; and that the Guarantor has made all reasonable inquiries to ascertain all facts relating to the Guarantor
+and the CMHC Guarantee material for the purposes aforesaid. The Issuer accepts responsibility for the
+information contained in this Offering Circular and the Guarantor accepts responsibility for the information
+contained in this Offering Circular that relates to the Guarantor and the CMHC Guarantee.
+
+      No person is authorised to give any information or to make any representation not contained in this Offering
+Circular and, if given or made, any information or representation not contained herein may not be relied upon as
+having been authorised by or on behalf of the Issuer, the Guarantor or by any of the Underwriters named in
+“Underwriting and Distribution” (the “Underwriters”). Neither the delivery of this Offering Circular nor any
+sale of the Bonds shall at any time imply that the information contained herein is correct at any time subsequent
+to its date.
+
+    This Offering Circular does not constitute an offer of, or an invitation by or on behalf of the Issuer, the
+Guarantor or the Underwriters to purchase, any of the Bonds.
+
+      The distribution of this Offering Circular and the offering of the Bonds in certain jurisdictions may be
+restricted by law. Persons into whose possession this Offering Circular comes are required by the Issuer, the
+Guarantor and the Underwriters to inform themselves as to, and to observe, any such restrictions. For a
+description of certain restrictions on the offering and sale of Bonds, and on the distribution of this Offering
+Circular, see “Underwriting and Distribution”.
+
+     In this Offering Circular all references to “$” and “C$” are to the legal currency of Canada and all
+references to the “European Economic Area” or “EEA” are to the member states of the European Union
+together with Iceland, Norway and Liechtenstein (each, a “Member State”).
+
+
+                          NOTICE REGARDING OFFERS IN THE EEA
+     A prospectus is not required under the Prospectus Directive for the offering of the Bonds. This Offering
+Circular does not constitute a prospectus under the Prospectus Directive and has been prepared on the basis that
+any offer of the Bonds in any Member State of the European Economic Area which has implemented the
+Prospectus Directive (each a “Relevant Member State”) will be made pursuant to an exemption under the
+Prospectus Directive, as implemented in that Relevant Member State, from the requirement to publish a
+prospectus for offers of Bonds and the Bonds will not be admitted to trading on a regulated market in the EEA.
+Accordingly any person making or intending to make an offer in that Relevant Member State of Bonds which are
+the subject of the offering contemplated in this Offering Circular may only do so in circumstances in which no
+obligation arises for the Issuer or any of the Underwriters to publish a prospectus pursuant to Article 3 of the
+Prospectus Directive in relation to such offer. Neither the Issuer nor the Underwriters have authorised, nor do
+they authorise, the making of any offer of Bonds through any financial intermediary, other than offers by the
+Underwriters which constitute the final placement of the Bonds contemplated in this Offering Circular.
+
+
+
+
+                                                        -2-
+                                                                TABLE OF CONTENTS
+                                                                                                                                                                  Page
+
+DESCRIPTION OF THE BOND INDENTURE AND THE BONDS . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                                                         4
+USE OF PROCEEDS . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .           10
+CANADA HOUSING TRUSTTM NO. 1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                            10
+CANADA MORTGAGE AND HOUSING CORPORATION . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                                                   10
+ELIGIBILITY . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   11
+CANADIAN FEDERAL INCOME TAX CONSIDERATIONS . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                                                  11
+CLEARING AND SETTLEMENT . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                         12
+UNDERWRITING AND DISTRIBUTION . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                               15
+GENERAL INFORMATION . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                   17
+
+    IN CONNECTION WITH THIS ISSUE, RBC DOMINION SECURITIES INC. (THE
+“STABILISING MANAGER”) (OR ANY PERSON(S) ACTING ON BEHALF OF THE STABILISING
+MANAGER) MAY OVER-ALLOT BONDS OR EFFECT TRANSACTIONS WITH A VIEW TO
+SUPPORTING THE MARKET PRICE OF THE BONDS AT A LEVEL HIGHER THAN THAT WHICH
+MIGHT OTHERWISE PREVAIL. HOWEVER, STABILISATION MAY NOT NECESSARILY OCCUR.
+ANY STABILISING ACTION MAY BEGIN ON OR AFTER THE DATE ON WHICH ADEQUATE
+PUBLIC DISCLOSURE OF THE TERMS OF THE OFFER OF THE BONDS IS MADE AND, IF
+BEGUN, MAY BE ENDED AT ANY TIME, BUT IT MUST END NO LATER THAN THE EARLIER OF
+30 DAYS AFTER FEBRUARY 23, 2017 AND 60 DAYS AFTER THE DATE OF ALLOTMENT OF THE
+BONDS. ANY STABILISATION ACTION OR OVER-ALLOTMENT MUST BE CONDUCTED BY THE
+STABILISING MANAGER (OR ANY PERSON(S) ACTING ON BEHALF OF THE STABILISING
+MANAGER) IN ACCORDANCE WITH ALL APPLICABLE LAWS AND RULES.
+
+
+
+
+                                                                                 -3-
+              DESCRIPTION OF THE BOND INDENTURE AND THE BONDS
+
+General
+      The Bonds will be issued by the Issuer as a series of bonds that have the benefit of and are subject to a bond
+trust indenture (the “Base Indenture”) dated as of March 14, 2011 between the Issuer, Computershare Trust
+Company of Canada and Computershare Trust Company, N.A. (the “Bond Trustees”) as supplemented by a
+supplemental indenture between the Issuer and the Bond Trustees to be dated February 23, 2017 (the
+“Supplemental Indenture”; the Base Indenture as so supplemented is referred to herein as the “Bond
+Indenture”). CMHC, as agent of Her Majesty in right of Canada (“Canada”) has guaranteed the timely payment
+of principal and interest payable on the Bonds (the “CMHC Guarantee”). The CMHC Guarantee is given
+pursuant to a commitment to guarantee obligations agreement dated as of April 9, 2001 (as amended,
+supplemented, restated or replaced from time to time) between the Issuer and the Guarantor in respect of bonds
+to be issued pursuant to the Base Indenture as supplemented from time to time. The text of, and statutory
+authority for, the CMHC Guarantee is set out under “CMHC Guarantee” below. The CMHC Guarantee will be
+set out in the Supplemental Indenture; if the Global Bond is issued in certificated form, it will be set out on the
+Global Bond, and if Bonds are issued in definitive form, on the certificate for each such Bond. The Issuer may
+issue further bonds, including further Series 77 Bonds, as described under “Further Issues” below.
+
+     The terms and conditions of the Bond Indenture and the Bonds are summarised below and are subject to the
+detailed provisions of the Bond Indenture and the exhibits thereto, including the form of the Global Bond.
+Investors may review a copy of the Bond Indenture and the Global Bond (if issued in certificated form) during
+normal business hours at the offices of the Bond Trustees at 100 University Avenue, 8th Floor, Toronto, Ontario,
+Canada and 8742 Lucent Boulevard, Suite 225, City of Highlands Ranch, Colorado, United States of America
+and at the offices of the Paying Agent in Luxembourg set out below. Holders of the Bonds are bound by, and
+deemed to have notice of, the provisions contained in the Bond Indenture.
+
+
+Status of the Bonds
+     The Bonds constitute direct and unconditional obligations of the Issuer, shall rank pari passu and without
+any preference among themselves, and have a second-ranking security interest in the Secured Property (as
+defined below).
+
+    References hereinafter to principal and interest in respect of the Bonds shall be deemed also to refer to any
+Additional Amounts which may be payable under the provisions set out under “Taxation” below.
+
+
+Security Interest
+      To secure the due payment of all principal of, and interest (including interest on overdue principal and
+interest) on and premium (if any) and other monies for the time being and from time to time payable on the
+Bonds, the Issuer has unconditionally mortgaged, charged to and in favour of the Bond Trustees and granted the
+Bond Trustees a security interest (the “Security Interest”) in all the right, title and interest of the Issuer in and to
+its real and personal property, realizable against all of such assets excluding (i) the proceeds of any future bonds
+of a Specified Asset Series (see below – “Further Issues”), (ii) the assets purchased with such proceeds and all
+proceeds from the disposition of such assets, (iii) all renewals, substitutions and replacements for any of the
+foregoing, and (iv) amounts receivable by the Issuer under all swap and other hedge documents relating to such
+assets (such excluded assets are hereinafter referred to as the “Series Assets”, and the right, title and interest of
+the Issuer in and to its real and personal property other than the Series Assets is hereinafter referred to as the
+“Secured Property”). The Security Interest is subject to CMHC’s Security Interest described below.
+
+
+CMHC Guarantee
+     The following is the text of the CMHC Guarantee, which will be set out in the Supplemental Indenture, on
+the Global Bond if issued in certificated form and, if issued, on each Bond in definitive form:
+
+     “Canada Mortgage and Housing Corporation as agent for Her Majesty in right of Canada hereby
+     guarantees the timely payment of the principal and interest set forth in this instrument in accordance
+     with the terms and conditions of this instrument, pursuant to the powers given to it in Sections 4 and
+     14 of the National Housing Act, R.S.C. 1985, as amended, which expressly provide that ‘Every right
+
+                                                         -4-
+        or obligation acquired or incurred by the Corporation under this Act, whether in its name or in the
+        name of Her Majesty, is a right or obligation of Her Majesty’ (Section 4), and ‘The Corporation may
+        guarantee payment of any or all principal or interest, or both, in respect of securities issued on the
+        basis of housing loans’ (Section 14). It is certified that no provision of any law or contract adversely
+        affects the rights of the holder to the benefit of this guarantee.”
+
+     In the event of any Payment Default (as defined in the Bond Indenture – see “Payment Default” below) the
+holders of the Bonds through the Bond Trustees will have recourse to the CMHC Guarantee and to the Secured
+Property pursuant to the Security Interest.
+
+
+Status of the CMHC Guarantee
+      The CMHC Guarantee constitutes a direct unconditional obligation of the Guarantor and as such carries the
+full faith and credit of Canada and constitutes a direct unconditional obligation of Canada. Amounts payable
+under the CMHC Guarantee of the principal of and interest on the Bonds constitute a charge on and are payable
+out of the Consolidated Revenue Fund of Canada. The CMHC Guarantee ranks equally with all of the
+Guarantor’s other unsecured and unsubordinated indebtedness and obligations from time to time outstanding. As
+security for the Issuer’s obligations to the Guarantor, including its obligation to indemnify the Guarantor in
+respect of the CMHC Guarantee, the Issuer has granted, in favour of the Guarantor, a first ranking mortgage of,
+charge on and security interest in all of the present and after acquired undertaking and property of the Issuer
+(other than consumer goods and the initial $10,000 of capital of the Issuer) (“CMHC’s Security Interest”).
+
+
+Form, Denomination and Registration
+     The Bonds will be issued in the form of a fully registered Global Bond registered in the name of CDS &
+CO., as nominee of CDS and held by CDS. Beneficial interests in the Global Bond will be represented through
+book-entry accounts of financial institutions acting on behalf of beneficial owners as direct and indirect
+participants in CDS. Investors may elect to hold beneficial interests in the Global Bond directly through any of
+CDS (in Canada) or Clearstream, Luxembourg or Euroclear (in Europe) if they are participants of such systems,
+or indirectly through organisations which are participants in such systems. Clearstream, Luxembourg and
+Euroclear will hold interests on behalf of their participants through customers’ securities accounts in the names
+of Clearstream, Luxembourg and Euroclear, respectively, on the books of their respective Canadian
+subcustodians (the “Canadian Subcustodians”), each of which is a Canadian Schedule I chartered bank, which
+in turn will hold such interests in customers’ securities accounts in the names of the Canadian Subcustodians on
+the books of CDS. Except in the limited circumstances described herein, owners of beneficial interests in the
+Global Bond will not be entitled to have Bonds registered in their names, will not receive or be entitled to receive
+physical delivery of Bonds in definitive form and will not be considered owners or holders thereof under the
+Bond Indenture. See “Description of the Bond Indenture and the Bonds – Title” and “Description of the Bond
+Indenture and the Bonds – Definitive Certificates”.
+
+     Bonds will only be sold in minimum denominations of C$5,000 and integral multiples thereof.
+
+     The Bonds will be recorded in a register maintained by Computershare Trust Company of Canada (in its
+capacity as one of the Bond Trustees) and will be registered in the name of CDS & CO., for the benefit of owners
+of beneficial interests in the Global Bond, including participants of Clearstream, Luxembourg and Euroclear.
+
+    The Bond Trustees will be responsible for (i) maintaining a record of the aggregate holdings of the Bonds
+by CDS & CO.; (ii) ensuring that payments of principal and interest in respect of the Bonds are duly credited to
+CDS & CO.; and (iii) transmitting to the Issuer any notices from the registered holders of Bonds.
+
+     The Bond Trustees will not impose any fees on the registered holders of Bonds in respect of the Bonds,
+other than reasonable fees for the replacement of lost, stolen, mutilated or destroyed Bonds. However, owners of
+beneficial interests in the Global Bond may incur fees payable in respect of the maintenance and operation of the
+book-entry accounts in which such interests are held with the clearing systems.
+
+
+Title
+     Subject to applicable law and the terms of the Bond Indenture, the Issuer, the Guarantor and the Bond
+Trustees will treat the person in whose name the Global Bond is registered, initially CDS & CO., as the owner of
+
+                                                       -5-
+such Global Bond for the purpose of making payments of principal and interest on the Bonds represented thereby
+and for all other purposes whatsoever, except in respect of the payment of Additional Amounts. Therefore, none
+of the Issuer, the Guarantor nor the Bond Trustees has any direct responsibility or liability for the payment of
+principal or interest on the Bonds to owners of beneficial interests in the Global Bond.
+
+Interest
+     The Bonds will bear interest from February 23, 2017 at a rate of 2.350% per annum. Interest from and
+including February 23, 2017 to but excluding June 15, 2017 will be payable in arrears on June 15, 2017.
+Thereafter, interest on the Bonds will be payable in two equal semi-annual instalments in arrears on June 15 and
+December 15 in each year (each an interest payment date) until maturity. Any overdue principal or interest on the
+Bonds shall bear interest at the rate of 2.350% per annum (before as well as after default) until paid, or if earlier,
+when the full amount of the moneys payable has been received by the Bond Trustees and notice to that effect has
+been given in accordance with “Notices” below. With respect to amounts payable on a day that is not a business
+day, see “Description of the Bond Indenture and the Bonds – Payments” below.
+
+      Whenever it is necessary to compute any amount of accrued interest in respect of the Bonds for a period of
+less than one full year, other than with respect to regular semi-annual interest payments, such interest shall be
+calculated on the basis of the actual number of days in the period and a 365-day year.
+
+Payments
+     The principal of and interest on the Bonds (including Bonds in definitive form issued in exchange for the
+Global Bond as described under “Definitive Certificates”) are payable by the Issuer in Canadian dollars to the
+persons in whose names the Bonds are registered as determined on the 15th day preceding any interest payment
+date or at maturity, as the case may be.
+
+     Computershare Trust Company of Canada will act as the principal paying agent and make all payments to
+the registered holders of Bonds in accordance with the Bond Indenture. In addition, the Issuer and the Bond
+Trustees will appoint The Bank of New York Mellon (Luxembourg) S.A. in Luxembourg as a paying agent for
+the Bonds. Under the terms of the Bond Indenture, the Issuer may change or retain additional paying agents with
+the prior consent of the Guarantor and the Bond Trustees. With respect to payments on Bonds in definitive form,
+see “Definitive Certificates”.
+
+     Ownership positions within each clearing system will be determined in accordance with the normal
+conventions observed by such system. None of the Issuer, the Guarantor, the Bond Trustees nor any paying agent
+will have any responsibility or liability for any payments made by CDS, Clearstream, Luxembourg or Euroclear
+on account of beneficial interests in the Global Bond or for maintaining, supervising or reviewing any aspect of
+the records of such clearing systems relating to such beneficial interests.
+
+      If any date for payment in respect of any Bond is not a business day, the holder thereof shall not be entitled
+to payment until the next following business day, and no further interest shall be paid in respect of the delay in
+such payment. In this paragraph “business day” means a day, other than a Saturday or Sunday, on which banking
+institutions in the City of Toronto and in the applicable place of payment are not authorised or obligated by law
+or executive order to be closed.
+
+Taxation
+     All payments of, or in respect of, principal and interest on the Bonds will be made without withholding of or
+deduction for, or on account of, any present or future taxes, duties, assessments or charges of whatsoever nature
+imposed or levied by or on behalf of the Government of Canada, or any province or political subdivision thereof
+or any authority thereof or agency therein having power to tax, unless such taxes, duties, assessments or charges
+are required by law or by the administration or official interpretation thereof to be withheld or deducted. In that
+event, the Issuer will pay such additional amounts (the “Additional Amounts”) as will result (after withholding
+or deduction of the said taxes, duties, assessments or charges) in the payment to the beneficial owners of Bonds
+of the amounts which would otherwise have been payable in respect of the Bonds in the absence of such taxes,
+duties, assessments or charges, except that no such Additional Amounts shall be payable with respect to any
+Bond presented for payment:
+     (a) by or on behalf of a beneficial owner who is subject to such taxes, duties, assessments or charges in
+         respect of such Bond by reason of the beneficial owner being connected with Canada otherwise than
+         merely by the holding or ownership as a non-resident of Canada of such Bond; or
+
+                                                        -6-
+     (b) more than 15 days after the Relevant Date, except to the extent that the holder thereof would have been
+         entitled to such Additional Amounts on presenting the same for payment on the last day of such period
+         of 15 days. For this purpose the “Relevant Date” in relation to any Bond means whichever is the later
+         of:
+           (i)   the date on which the payment in respect of such Bond becomes due and payable; or
+           (ii) if the full amount of the monies payable on such date in respect of such Bond has not been
+                received by the Bond Trustees on or prior to such date, the date on which notice is duly given to
+                the holders of Bonds that such monies have been so received.
+
+Maturity
+     The principal amount of the Bonds shall be due and payable on June 15, 2027.
+
+     The Bonds are not subject to any sinking fund and are not redeemable at the option of the Issuer prior to
+maturity and are not repayable at the option of the holder prior to maturity. However, the Issuer may, at any time
+and from time to time, following the completion of any stabilising action described in this Offering Circular,
+purchase Bonds in the secondary market at prevailing market prices. Such purchased Bonds may be delivered to
+the Bond Trustees for cancellation or may be held on behalf of the Issuer, each in accordance with the terms of
+the Bond Indenture. Any purchase of Bonds for cancellation must be made in compliance with the Issuer’s
+internal parameters regarding same, the terms of which parameters may change at any time without notice in the
+Issuer’s sole and absolute discretion. The parameters are currently (as at the date of this Offering Circular) that
+no Bonds may be purchased for cancellation unless (i) the Bonds have a remaining term to maturity of no more
+than 3.5 years at the time of purchase for cancellation, (ii) such purchase and cancellation occurs after the 59th
+day following February 23, 2017 or the date of any future issuance of bonds of the same series as the Bonds, and
+during a period that is not 15 days immediately prior to any interest payment date, and (iii) the outstanding
+principal amount of the Bonds and any bonds of the same series as the Bonds following the cancellation shall not
+be less than $3,000,000,000, other than during the last six months of their term when no minimum shall apply.
+
+Payment Default
+     The Bond Indenture provides that a “Payment Default” is a default in the payment of the whole or any part
+of the principal or interest on any of the Bonds that are outstanding when the same shall become due and payable,
+whether by reason of maturity, acceleration or otherwise. The Bond Trustees are required to give all holders (the
+“Affected Bondholders”) of bonds of the same series as the bond or bonds in respect of which a Payment
+Default has occurred (the “Affected Series”), the Issuer and the Guarantor prompt notice in writing of any
+Payment Default (unless such default shall have been remedied prior to the giving of such notice) and to demand
+payment by the Guarantor under the CMHC Guarantee of all amounts owing and unpaid on the outstanding
+bonds of all Affected Series, together with interest on unpaid interest to the date of such payment. If so directed
+by the holders of bonds of the Affected Series, or if the Bond Trustees so elect where the Payment Default has
+continued for at least 1 day, the Bond Trustees shall, in addition, forthwith make written demand for the unpaid
+balance of the principal of all outstanding bonds of the Affected Series. All such demanded amounts shall
+become due and payable immediately upon delivery of any such demand by the Bond Trustees.
+
+Bondholders’ Right to Direct Bond Trustees After Payment Default
+     The Bond Indenture provides that during the continuance of a Payment Default, the holders of a majority in
+principal amount of the outstanding bonds of the Affected Series shall have the right by a direction approved by
+ordinary resolution of such holders (i) to direct the Bond Trustees to exercise or to refrain from exercising any
+right or to enforce any remedy granted to them by the Bond Indenture; and (ii) to direct the time, method and
+place of the exercise of any such right or the enforcement of any such remedy; provided that, notwithstanding the
+foregoing and any other provision of the Bond Indenture, the Bond Trustees are obligated to demand payment of
+the CMHC Guarantee by the Guarantor unless all of the holders of the bonds of the Affected Series shall have
+directed the Bond Trustees not to make such demand.
+
+Regarding the Bond Trustees
+     Except as otherwise provided in the Bond Indenture, the rights, powers, duties and obligations conferred or
+imposed on the Bond Trustees shall be conferred or imposed upon and exercised or performed by the Bond
+Trustees jointly, provided that if the Bond Trustees cannot mutually agree upon a course of conduct in the
+
+                                                       -7-
+exercise or performance of the rights, powers, duties and obligations conferred or imposed upon the Bond
+Trustees, Computershare Trust Company, N.A. shall be entitled to determine such course of conduct in the
+exercise or performance of the rights, powers, duties and obligations conferred upon the Bond Trustees.
+
+
+Definitive Certificates
+    No beneficial owner of Bonds will be entitled to receive physical delivery of Bonds in definitive form
+except in the limited circumstances described below.
+
+     If, as more particularly described in the Bond Indenture and subject to the requirements of the Bond
+Indenture, (a) the Issuer advises the Bond Trustees that CDS (or any successor clearing agency) is unwilling or
+unable to discharge its responsibilities as a clearing agency and such clearing agency is unable to locate a
+qualified successor, or (b) the Issuer, at its option, advises the Bond Trustees that it elects to terminate the book
+entry system with respect to the Bonds, the Bond Trustees will advise the registered holders of the Bonds of such
+event and of the availability of certificated Bonds to beneficial owners of the Bonds. Notice of such event will
+also be published in a leading newspaper having general circulation in Luxembourg. Upon transfer by the
+relevant clearing agency of the Global Bond to the Issuer, including surrender of the certificate if the Global
+Bond is issued in certificated form, the Bond Trustees will authenticate and deliver certificated Bonds.
+
+     For so long as the Bonds are listed on the Luxembourg Stock Exchange and if the rules of such stock
+exchange on which the Bonds are listed so require, the Issuer has agreed to appoint and maintain a transfer agent
+and paying agent in Luxembourg to act on its behalf. In addition, if Bonds in definitive form are issued, the
+Issuer will appoint and maintain a paying agent and transfer agent in London. Fully registered Bonds in definitive
+form may be presented at the office of the Luxembourg transfer agent or London transfer agent, for registration
+of transfer or exchange by the Bond Trustees in accordance with the Bond Indenture. Payments of interest on
+fully registered Bonds in definitive form will be made by the Bond Trustees in accordance with the Bond
+Indenture. Fully registered Bonds in definitive form may be surrendered at the office of the Luxembourg paying
+agent or London paying agent for payment of principal at maturity.
+
+
+Notices
+      All notices to the registered holders of Bonds will be mailed or delivered to such holders at their addresses
+indicated in records maintained by the Bond Trustees and, as long as the Bonds are listed on the Luxembourg
+Stock Exchange and the rules of the Luxembourg Stock Exchange so require, published in a leading newspaper
+having general circulation in Luxembourg (which is expected to be the Luxemburger Wort) and/or on the website
+of the Luxembourg Stock Exchange at www.bourse.lu. Any such notice shall be deemed to have been given on
+the date of such delivery or publication, as the case may be, or in the case of mailing, on the third business day
+after such mailing.
+
+
+Prescription
+    The Bonds may become void unless presented for payment within a period of six years from their respective
+Relevant Dates (as defined under “Taxation” herein) for payment thereof.
+
+
+Modification
+     The Bond Indenture may be amended or supplemented by the Issuer, the Bond Trustees and, where
+applicable, the Guarantor, without notice to or the consent of the holder of any Bond, for certain purposes set out
+in the Bond Indenture, including providing for the issue of other series of bonds, or additional Bonds as described
+under “Further Issues” below, curing any ambiguity, or correcting or supplementing any defective provisions
+contained therein as the Issuer or the Guarantor may deem necessary or desirable, provided such provisions are
+not inconsistent with the Bond Indenture and shall not, as confirmed by a written legal opinion from legal
+counsel who is reasonably acceptable to the Bond Trustees, adversely affect the interests of the owners of
+beneficial interests in the Bonds.
+
+     With the consent of Affected Bondholders passed by extraordinary series resolution of the holders of bonds
+of each series affected thereby, (1) compliance by the Issuer with any of the terms of the Bond Indenture may be
+waived, or (2) the Issuer and the Bond Trustees may enter into any supplemental indenture for the purpose of
+adding any provisions to or changing in any manner or eliminating any of the provisions of the Bond Indenture or
+
+                                                        -8-
+of modifying in any manner the rights of the holders of bonds issued under the Bond Indenture; notwithstanding
+the foregoing, no such waiver or supplemental indenture shall:
+    (a) without the consent of all holders of Bonds, (i) change the stated maturity or reduce the principal of the
+        Bonds, (ii) extend the time of payment of, or reduce the rate of interest thereon, or (iii) change the
+        currency in which the Bonds or the interest thereon is payable; or
+    (b) without the consent of all holders of Bonds (i) terminate or modify the CMHC Guarantee or the
+        obligations of the Guarantor thereunder, (ii) reduce the amount of the CMHC Guarantee, (iii) eliminate,
+        modify or condition the duties of the Bond Trustees to demand payment of the CMHC Guarantee or
+        otherwise to comply with the provisions of the Bond Indenture relating to such demand or the
+        termination and payment of the CMHC Guarantee, or (iv) reduce the percentage in principal amount of
+        the outstanding bonds of any series, the consent of whose holders is required for any such supplemental
+        indenture or for any waiver provided in the Bond Indenture or to modify any of the provisions of the
+        Bond Indenture relating to such consent or waiver.
+
+     The Bond Indenture provides that no waiver referred to above will be effective, and neither the Issuer nor
+the Bond Trustees may enter into any supplemental indenture, without the prior written consent of the Guarantor,
+and any purported action or attempt to take such action so forbidden to be taken will be null and void ab initio
+and of no legal effect.
+
+Extraordinary Resolution
+     The Bond Indenture provides that the expression “extraordinary resolution” means a resolution proposed
+to be passed as an extraordinary resolution at a meeting of holders of bonds duly convened for the purpose and
+held in accordance with the provisions of the Bond Indenture (see “Description of the Bond Indenture and the
+Bonds – Meetings of Bondholders”) at which the holders of at least 50.1% in principal amount of outstanding
+bonds are present in person or by proxy and passed by the favourable votes of the holders of at least 66 2/3% of
+the principal amount of outstanding bonds represented at the meeting and voted on a poll upon such resolution.
+Such meeting will be adjourned to a date between 21 and 60 days after the date thereof if a quorum of holders of
+bonds is not met at the original meeting. At the adjourned meeting the holders present in person or by proxy will
+form a quorum and may transact the business for which the meeting was originally convened and a resolution
+proposed at such adjourned meeting and passed by the requisite vote as provided above will be an extraordinary
+resolution within the meaning of this Indenture, notwithstanding that the holders of 50.1% in principal amount of
+the outstanding bonds are not present in person or by proxy at such adjourned meeting. Votes on an extraordinary
+resolution will always be given on a poll and no demand for a poll on an extraordinary resolution will be
+necessary.
+
+Meetings of Bondholders
+     The Bond Indenture contains provisions for convening meetings of holders of bonds issued thereunder or
+the holders of a series of such bonds. The Bond Trustees may at any time and from time to time and will on
+receipt of a written request of the Issuer or a written request signed by the holders of not less than 25% in
+principal amount of the outstanding bonds convene a meeting of the holders of such bonds. Notice of such
+meetings shall be given to all holders of bonds at least 21 days before the date of the meeting. The Bond
+Indenture contains procedures for the giving of such notices and the conduct of such meetings. Except in the case
+of a meeting at which an extraordinary resolution is to be proposed, at any meeting of the bondholders a quorum
+will consist of holders of bonds present in person or by proxy and representing at least 25% in principal amount
+of the outstanding bonds. If a quorum is not present within 30 minutes from the time fixed for holding any
+meeting, the meeting, if summoned by the holders of bonds or pursuant to a request of the holders of bonds, will
+be dissolved, but in any other case the meeting will be adjourned to the same day in the next week (unless such
+day is not a business day, in which case it will be adjourned to the next business day) at the same time and place
+and no notice will be required to be given in respect of such adjourned meeting. At the adjourned meeting, the
+holders of bonds present in person or by proxy will form a quorum and may transact the business for which the
+meeting was originally convened notwithstanding that they may not represent 25% of the principal amount of the
+outstanding bonds. On a show of hands every person who is present and entitled to vote, whether as a holder or
+as proxy for one or more Bondholders, or both, will have one vote. On a poll each holder of a bond present in
+person or represented by a proxy duly appointed by an instrument in writing will be entitled to one vote in
+respect of each $1,000 in principal amount of outstanding bonds of which that person is then the holder. A proxy
+need not be a holder of a bond. In the case of joint holders of an outstanding bond, any one of them present in
+person or by proxy at the meeting may vote in absence of the other or others; but in case more than one of them
+
+                                                      -9-
+is present in person or by proxy, they must vote together in respect of the outstanding bonds of which they are
+joint holders. Copies of the minutes of meetings, including resolutions adopted at such meetings, are available at
+the offices of the Bond Trustees.
+
+     The procedures applicable for meetings of holders of a series of bonds shall be those set out above with
+respect to meetings of holders of bonds, except that all references to holders of bonds, bonds and outstanding
+bonds shall be read as “holders of the series of bonds”, “bonds of the series” and “outstanding bonds of the
+series”, respectively, and the relevant provisions relating to meetings of Bondholders shall be read with such
+other changes as may be required in the context to adapt such provisions to procedures applicable to meetings
+and resolutions of holders of a given series of bonds.
+
+Further Issues
+     In addition to issuing other series of bonds under the Base Indenture as supplemented from time to time that
+will have the benefit of the Security Interest, the Issuer may from time to time, without notice to or the consent of
+the holders of the Bonds then outstanding, (a) create and issue further bonds of the same series, which in all
+respects (or in all respects except for the payment of interest accruing prior to the issue date of such further bonds
+or except for the first payment of interest following the issue date of such further bonds) will be the same as the
+Bonds, shall be consolidated and form a single series with the Bonds and shall have the same terms as to status,
+security interest or otherwise as the Bonds; (b) issue bonds of a “Specified Asset Series”, in which case the
+proceeds of such issuance will not be subject to the Security Interest, and the bonds of such series will not have
+the benefit of the Security Interest; and (c) create and issue bonds of one or more series under a bond trust
+indenture other than the Base Indenture, which will have the benefit of a security interest ranking pari passu with
+the Security Interest. Any bonds of a new series under the Base Indenture shall be issued subject to an indenture
+supplemental to the Base Indenture.
+
+Governing Law
+     The Bonds, the CMHC Guarantee and the Bond Indenture shall be governed by, and construed in
+accordance with, the laws of the Province of Ontario, Canada and the laws of Canada applicable therein. The
+Ontario Superior Court of Justice has non-exclusive jurisdiction in any proceedings arising out of or relating to
+obligations under the Bonds.
+
+
+                                            USE OF PROCEEDS
+     The net proceeds of the Bonds, approximately C$2,486,200,000 after payment of the underwriters’
+commissions and reimbursement of certain expenses, will be used to provide funds for the acquisition by the
+Issuer of mortgage-backed securities guaranteed under the National Housing Act (Canada), as amended (the
+“NHA”).
+
+
+                                 CANADA HOUSING TRUSTTM NO. 1
+     The Issuer is a trust settled by CIBC Mellon Trust Company under the laws of the Province of Ontario,
+Canada. The Issuer’s main purpose is to raise funds by way of the issuance of bonds and to use the proceeds of
+such issues to acquire ownership interests in housing loans (as defined in the NHA) including mortgage-backed
+securities evidencing undivided ownership interests in such housing loans. As the Issuer is a trust and not a share
+capital corporation it has no share capital.
+
+
+                  CANADA MORTGAGE AND HOUSING CORPORATION
+Status as Crown Agent
+    CMHC is an agent of Her Majesty in right of Canada by virtue of the Canada Mortgage and Housing
+Corporation Act (the “CMHC Act”) and is a Crown corporation wholly owned by Canada established in 1946.
+Crown corporations are established by the Parliament of Canada for many purposes, including the administering
+and managing of public services in which business enterprise and public accountability must be combined.
+CMHC is accountable for its affairs to Parliament through the Minister Responsible for CMHC.
+
+                                                        - 10 -
+     All assets and liabilities of CMHC are assets and liabilities of Canada. Accordingly, amounts payable by
+CMHC (as an agent of Her Majesty) under the CMHC Guarantee carry the full faith and credit of Canada,
+constitute direct and unconditional obligations of Canada and constitute a charge on and are payable out of the
+Consolidated Revenue Fund of Canada (the “CRF”). The CRF is the aggregate of all public monies, such as tax
+revenues, which are on deposit at the credit of the Receiver General for Canada, the public officer who receives
+and collects public monies for and on behalf of Canada.
+
+
+Business
+     CMHC is Canada’s leading provider of residential mortgage insurance. CMHC also administers a mortgage-
+backed securities guarantee program, funds assisted housing programs for lower income Canadians and offers
+housing-related loans and investments. CMHC conducts research in housing design, technology and
+sustainability to help improve housing and living conditions for Canadians. In addition, CMHC promotes
+Canadian housing in foreign markets, increasing export opportunities for housing products, services and
+expertise.
+
+     CMHC’s head office is located at 700 Montreal Road, Ottawa, K1A 0P7 (telephone – (613) 748-2000).
+
+
+                                               ELIGIBILITY
+
+      The Bonds are eligible investments under the usual insurance companies, loan companies, trust companies,
+trustee and pension statutes of Canada, and are qualified investments for registered retirement savings plans,
+registered retirement income funds, registered education savings plans, registered disability savings plans,
+deferred profit sharing plans, tax-free savings accounts and revoked plans under the Income Tax Act (Canada)
+(the “Tax Act”).
+
+
+                 CANADIAN FEDERAL INCOME TAX CONSIDERATIONS
+
+     In the opinion of Borden Ladner Gervais LLP, counsel to the Guarantor and special counsel to the Issuer,
+the following constitutes a summary of the principal Canadian federal income tax consequences for an investor
+who acquires Bonds pursuant to this offering, and who deals at arm’s length with the Issuer and any subsequent
+purchaser of the Bonds.
+
+     This summary is based upon the provisions of the Tax Act, the regulations thereunder and Borden Ladner
+Gervais LLP’s understanding of the Canada Revenue Agency’s published administrative and assessing policies
+as of February 15, 2017. It also takes into account specific proposals to amend the Tax Act and the regulations
+publicly announced by the Canadian federal Minister of Finance prior to February 15, 2017, but there is no
+certainty that such proposals will be enacted in the form proposed, if at all. This summary does not otherwise
+take into account or anticipate any changes in law, whether by way of legislative, judicial or governmental action
+or interpretation, nor does it address any provincial or foreign income tax considerations.
+
+   THIS SUMMARY IS OF A GENERAL NATURE ONLY AND IS NOT INTENDED TO BE, NOR
+SHOULD IT BE CONSTRUED TO BE, LEGAL OR TAX ADVICE TO ANY PARTICULAR INVESTOR
+CONCERNING THE CONSEQUENCES OF ACQUIRING, HOLDING OR DISPOSING OF BONDS.
+INVESTORS SHOULD CONSULT THEIR OWN TAX ADVISORS HAVING REGARD TO THEIR
+PARTICULAR CIRCUMSTANCES.
+
+
+Investors Resident in Canada
+     The following section of this summary is applicable to an investor who, at all relevant times, for purposes of
+the Tax Act, is a resident of Canada and holds the Bonds as capital property (a “Canadian investor”). Generally
+the Bonds will be considered to be capital property to a Canadian investor provided that the Canadian investor
+does not hold the Bonds in the course of carrying on a business of buying and selling securities and has not
+acquired them as an adventure in the nature of trade. The following section of this summary does not apply to an
+investor that is a “financial institution” (as defined in Section 142.2 of the Tax Act), or to whom the functional
+currency reporting rules contained in the Tax Act would apply.
+
+                                                      - 11 -
+Interest
+     A Canadian investor (other than a corporation, partnership, unit trust or any trust of which a corporation or a
+partnership is a beneficiary) will be required to include in computing its income for a taxation year any interest
+on the Bonds that becomes receivable or is received by it before the end of the year (depending upon the method
+regularly followed by the Canadian investor in computing income), except to the extent that such interest was
+included in computing the Canadian investor’s income for a preceding taxation year.
+
+     A Canadian investor that is a corporation, partnership, unit trust or any trust of which a corporation or a
+partnership is a beneficiary will be required to include in computing its income for a taxation year any interest on
+the Bonds that accrues to it to the end of that year, or that becomes receivable or is received by it before the end
+of the year, except to the extent that such interest was included in computing the Canadian investor’s income for
+a preceding taxation year.
+
+     As the Bonds will be issued at a discount from their face value, a Canadian investor may be required to
+include an additional amount in computing income, either in accordance with the interest accrual rules contained
+in the Tax Act and Regulations or in the taxation year in which the discount is received or receivable by the
+Canadian investor. Canadian investors should consult with their own tax advisors as to the treatment of the
+discount in their circumstances.
+
+Dispositions
+     A Canadian investor will generally be required to include in computing its income for the taxation year in
+which a disposition or deemed disposition of a Bond occurs the amount of interest that accrues to it to the date of
+the disposition, except to the extent that such amount has otherwise been included in income.
+
+     In general, a disposition or deemed disposition of a Bond will give rise to a capital gain (or capital loss)
+equal to the amount by which the proceeds of disposition, net of unpaid accrued interest and any reasonable costs
+of disposition, exceed (or are less than) the Canadian investor’s adjusted cost base of such Bond immediately
+before the disposition. One-half of any such capital gain (a “taxable capital gain”) realized by a Canadian
+investor in a taxation year will be included in computing the Canadian investor’s income for the year. One-half
+of the amount of any capital loss (an “allowable capital loss”) realized by a Canadian investor in a taxation year
+must be deducted from taxable capital gains realized by the Canadian investor in the year, and the balance of any
+allowable capital losses for the year may be deducted against net taxable capital gains realized in any of the three
+preceding taxation years or in any subsequent taxation year, to the extent and under the circumstances described
+in the Tax Act.
+
+Additional Refundable Tax
+      A Canadian investor that is a “Canadian-controlled private corporation” (as defined in the Tax Act) may be
+liable to pay an additional refundable tax on certain investment income, including interest and taxable capital
+gains.
+
+Investors Not Resident in Canada
+      The following section of this summary is applicable to an investor holding Bonds who, at all relevant times,
+for the purposes of the Tax Act, is, or is deemed to be, a non-resident of Canada and who does not use or hold or
+is not deemed to use or hold the Bonds in carrying on business in Canada. Special rules, which are not discussed
+in this summary, may apply to a non-resident that is an insurer carrying on business in Canada and elsewhere.
+
+     Investors that are not resident in Canada for the purposes of the Tax Act will not be subject to Canadian
+non-resident withholding tax on any interest paid or credited on the Bonds. There are no other Canadian taxes on
+income, including taxable capital gains on the disposition of a Bond, payable in respect of a Bond by such an
+investor.
+
+
+                                   CLEARING AND SETTLEMENT
+     Links have been established among CDS, Clearstream, Luxembourg and Euroclear to facilitate the initial
+issuance of the Bonds and cross-market transfers of the Bonds associated with secondary market trading. CDS
+will be directly linked to Clearstream, Luxembourg and Euroclear through the CDS accounts of the respective
+Canadian Subcustodians.
+
+                                                       - 12 -
+The Clearing Systems
+The clearing systems have advised the Issuer and the Guarantor as follows:
+     CDS. CDS was formed in November 2006 pursuant to the restructuring of The Canadian Depository for
+Securities Limited (“CDS Ltd.”). After the restructuring, CDS Ltd., founded in 1970, remains the holding
+company for CDS and two other operating subsidiaries. CDS is Canada’s national securities clearing and
+depositary services organisation. Functioning as a service utility for the Canadian financial community, CDS
+provides a variety of computer automated services for financial institutions and investment dealers active in
+domestic and international capital markets. CDS participants (“CDS Participants”) include banks (including the
+Canadian Subcustodians), investment dealers and trust companies and may include certain of the Underwriters.
+Indirect access to CDS is available to other organisations that clear through or maintain a custodial relationship
+with a CDS Participant. Transfers of ownership and other interests, including cash distributions in Bonds in CDS
+may only be processed through CDS Participants and will be completed in accordance with existing CDS rules
+and procedures. CDS operates in Montreal, Toronto, Calgary and Vancouver to centralise securities clearing
+functions through a central securities depositary.
+
+     CDS is wholly-owned by CDS Ltd., a private corporation. CDS is the exclusive clearing house for equity
+trading on the Toronto and Montreal stock exchanges and also clears a substantial volume of “over the counter”
+trading in equities and bonds.
+
+      Clearstream, Luxembourg. Clearstream Banking, société anonyme, 42 avenue John F. Kennedy,
+Luxembourg (“Clearstream, Luxembourg”), was incorporated in 1970 as “Cedel S.A.”, a company with limited
+liability under Luxembourg law (a société anonyme). Cedel S.A. subsequently changed its name to Cedelbank.
+On 10 January 2000, Cedelbank’s parent company, Cedel International, société anonyme (“CI”) merged its
+clearing, settlement and custody business with that of Deutsche Börse Clearing AG (“DBC”). The merger
+involved the transfer by CI of substantially all of its assets and liabilities (including its shares in Cedelbank) to a
+new Luxembourg company, New Cedel International, société anonyme (“New CI”), which was 50% owned by
+CI and 50% owned by DBC’s parent company, Deutsche Börse AG (“DBG”).
+
+     Further to the merger, the Board of Directors of New CI decided to re-name the companies in the group in
+order to give them a cohesive brand name. The new brand name that was chosen is “Clearstream”. With effect
+from 14 January 2000 New CI was renamed “Clearstream International, société anonyme” (“Clearstream
+International”). On 17 January 2000 DBC was renamed “Clearstream Banking AG” and, on 18 January 2000
+Cedelbank was renamed “Clearstream Banking, société anonyme” and Cedel Global Services was renamed
+“Clearstream Services, société anonyme”. This means that there are now two entities in the corporate group
+headed by Clearstream International which share the name “Clearstream Banking”, the entity previously named
+“Cedelbank” and the entity previously named “Deutsche Börse Clearing AG”.
+
+     Effective 1 July, 2002, DBG acquired CI and Clearstream International became an indirect wholly-owned
+subsidiary of DBG.
+
+     Clearstream, Luxembourg holds securities for its customers (“Clearstream, Luxembourg Customers”)
+and facilitates the clearance and settlement of securities transactions between Clearstream, Luxembourg
+Customers through electronic book-entry changes in accounts of Clearstream, Luxembourg Customers, thereby
+eliminating the need for physical movement of certificates. Transactions may be settled by Clearstream,
+Luxembourg in any of 32 currencies, including Canadian Dollars. Clearstream, Luxembourg provides to its
+customers, among other things, services for safekeeping, administration, clearance and settlement of
+internationally traded securities and securities lending and borrowing. Clearstream, Luxembourg also deals with
+domestic securities markets in over 39 countries through established depository and custodial relationships.
+Clearstream, Luxembourg is registered as a bank in Luxembourg, and as such is subject to regulation by the
+Commission de Surveillance du Secteur Financier, ‘CSSF’, which supervises Luxembourg banks. Clearstream,
+Luxembourg’s Customers are world-wide financial institutions including underwriters, securities brokers and
+dealers, banks, trust companies and clearing corporations. Currently, Clearstream, Luxembourg has
+approximately 2,000 customers located in over 80 countries, including all major European countries, Canada, and
+the United States. Indirect access to Clearstream, Luxembourg is available to other institutions that clear through
+or maintain a custodial relationship with an account holder of Clearstream, Luxembourg. Clearstream,
+Luxembourg has established an electronic bridge with Euroclear Bank in Brussels to facilitate settlement of
+trades between Clearstream, Luxembourg and Euroclear Bank.
+
+                                                        - 13 -
+     Distributions with respect to the Bonds held beneficially through Clearstream, Luxembourg will be credited
+to cash accounts of Clearstream, Luxembourg Customers in accordance with its rules and procedures, to the
+extent received by the Canadian Subcustodian for Clearstream, Luxembourg.
+
+      Euroclear. Euroclear was created in 1968 to hold securities for participants of Euroclear (“Euroclear
+Participants”) and to clear and settle transactions between Euroclear Participants through simultaneous
+electronic book-entry delivery against payment, thereby eliminating the need for physical movement of
+certificates and any risk from lack of simultaneous transfers of securities and cash. Euroclear includes various
+other services, including securities lending and borrowing and interfaces with domestic markets in several
+countries. Euroclear is operated by Euroclear Bank S.A./N.V. (the “Euroclear Operator”), under contract with
+Euro-clear Clearance Systems S.C., a Belgian cooperative corporation (the “Cooperative”). All operations are
+conducted by the Euroclear Operator, and all Euroclear securities clearance accounts and Euroclear cash accounts
+are accounts with the Euroclear Operator, not the Cooperative. The Cooperative establishes policy for Euroclear
+on behalf of Euroclear Participants. Euroclear Participants include banks (including central banks), securities
+brokers and dealers and other professional financial intermediaries and may include the Underwriters. Indirect
+access to Euroclear is also available to other firms that clear through or maintain a custodial relationship with a
+Euroclear Participant, either directly or indirectly.
+
+    The Euroclear Operator was granted a banking license by the Belgian Banking and Finance Commission in
+2000, authorising it to carry out banking activities on a global basis. It took over operation of Euroclear from the
+Brussels, Belgium office of Morgan Guaranty Trust Company of New York on December 31, 2000.
+
+      Securities clearance accounts and cash accounts with the Euroclear Operator are governed by the Terms and
+Conditions Governing Use of Euroclear and the related Operating Procedures of the Euroclear System, and
+applicable Belgian law (collectively, the “Terms and Conditions”). The Terms and Conditions govern transfers
+of securities and cash within Euroclear, withdrawals of securities and cash from Euroclear, and receipts of
+payments with respect to securities in Euroclear. All securities in Euroclear are held on a fungible basis without
+attribution of specific certificates to specific securities clearance accounts. The Euroclear Operator acts under the
+Terms and Conditions only on behalf of Euroclear Participants, and has no record of or relationship with persons
+holding through Euroclear Participants.
+
+    Distributions with respect to the Bonds held beneficially through Euroclear will be credited to the cash
+accounts of Euroclear Participants in accordance with the Terms and Conditions, to the extent received by the
+Canadian Subcustodian for Euroclear.
+
+Global Clearance and Settlement Procedures
+     Settlement for the Bonds will be in immediately available Canadian dollar funds.
+
+     Secondary market trading between CDS Participants will be in accordance with market conventions
+applicable to transactions in book-based Canadian domestic bonds. Secondary market trading between
+Clearstream, Luxembourg Customers and/or Euroclear Participants will occur in the ordinary way in accordance
+with the applicable rules and operating procedures of Clearstream, Luxembourg and Euroclear and will be settled
+using the procedures applicable to conventional eurobonds in immediately available funds.
+
+Transfers Between CDS and Clearstream, Luxembourg or Euroclear.
+     Cross-market transfers between persons holding directly or indirectly through CDS Participants, on the one
+hand, and directly or indirectly through Clearstream, Luxembourg Customers or Euroclear Participants, on the
+other, will be effected in CDS in accordance with CDS rules; however, such cross-market transactions will
+require delivery of instructions to the relevant clearing system by the counterparty in such system in accordance
+with its rules and procedures and within its established deadlines. The relevant clearing system will, if the
+transaction meets its settlement requirements, deliver instructions to CDS directly or through its Canadian
+Subcustodian to take action to effect final settlement on its behalf by delivering or receiving bonds in CDS, and
+making or receiving payment in accordance with normal procedures for settlement in CDS. Clearstream,
+Luxembourg Customers and Euroclear Participants may not deliver instructions directly to CDS or the Canadian
+Subcustodians.
+
+     Because of time-zone differences, credits of Bonds received in Clearstream, Luxembourg or Euroclear as a
+result of a transaction with a CDS Participant will be made during subsequent securities settlement processing
+
+                                                       - 14 -
+and dated the business day following the CDS settlement date. Such credits or any transactions in such Bonds
+settled during such processing will be reported to the relevant Clearstream, Luxembourg or Euroclear
+Participants on such business day. Cash received in Clearstream, Luxembourg or Euroclear as a result of sales of
+Bonds by or through a Clearstream, Luxembourg Customer or a Euroclear Participant to a CDS Participant will
+be received with value on the CDS settlement date but will be available in the relevant Clearstream, Luxembourg
+or Euroclear cash account only as of the business day following settlement in CDS.
+
+     Although CDS, Clearstream, Luxembourg and Euroclear have agreed to the foregoing procedures in order
+to facilitate transfers of bonds among CDS Participants, Clearstream, Luxembourg Customers and Euroclear
+Participants, they are under no obligation to perform or continue to perform such procedures and such procedures
+may be changed or discontinued at any time.
+
+
+                                              UNDERWRITING AND DISTRIBUTION
+     Subject to the terms and conditions set forth in the Underwriting Agreement dated as of February 15, 2017
+(the “Underwriting Agreement”), each of the Underwriters listed below (the “Underwriters”) has severally
+agreed to purchase, and the Issuer has agreed to sell to each of them severally, the respective principal amounts
+of Bonds set forth opposite its name below at the issue price of 99.702% of their principal amount plus accrued
+interest, if any, to yield at date of issue approximately 2.383%, but less a selling commission of 0.150% of the
+principal amount of the Bonds. The Issuer will pay a combined management and underwriting commission of
+0.100% of the principal amount of the Bonds. Under the terms and conditions of the Underwriting Agreement,
+the Underwriters are committed to take and pay for all of the Bonds, if any are taken.
+                                                                                                                                                      Principal Amount
+Underwriter                                                                                                                                               of Bonds
+
+RBC Dominion Securities Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                      C$   466,250,000
+BMO Nesbitt Burns Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                  C$   325,000,000
+National Bank Financial Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                  C$   325,000,000
+The Toronto-Dominion Bank . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                       C$   325,000,000
+CIBC World Markets Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                   C$   225,000,000
+Scotia Capital Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .           C$   225,000,000
+Merrill Lynch Canada Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                 C$   175,000,000
+Desjardins Securities Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                C$   175,000,000
+HSBC Securities (Canada) Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                     C$   120,000,000
+Laurentian Bank Securities Inc. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                   C$    82,500,000
+Casgrain & Company Limited . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .                      C$    56,250,000
+Total . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   C$2,500,000,000
+
+     The Bonds are offered for sale in Canada, in the United States (as described below) and in Europe and
+elsewhere where it is legal to make such offers. In the United States, the Bonds are offered only to persons who
+are “qualified institutional buyers” (as defined in Rule 144A under the Securities Act of 1933, as amended (the
+“1933 Act”)) in reliance on Rule 144A under the 1933 Act. In the case of offers in the United States, offers and
+sales may be made only if this Offering Circular is accompanied by the United States Offering Memorandum.
+
+      Each of the Underwriters has acknowledged that the offering of the Bonds in certain jurisdictions may be
+restricted by law. In particular, in the European Economic Area, the Bonds may not be offered or sold, directly or
+indirectly, in any jurisdiction which has implemented the Prospectus Directive, except under circumstances that
+will result in compliance with the Prospectus Directive and any implementing legislation in the Relevant
+Member States (including the European Economic Area) and the Underwriters have represented that all offers
+and sales by them will be made on the same terms. Each of the Underwriters has agreed that it has not offered,
+sold or delivered and it will not offer, sell or deliver, directly or indirectly, any of the Bonds or distribute this
+Offering Circular, the United States Offering Memorandum or any other offering material relating to the Bonds,
+in or from any jurisdiction except under circumstances that will, to the best of its knowledge and belief having
+made due enquiry, result in compliance with the applicable laws and regulations thereof and will not impose any
+obligations on the Issuer or CMHC except as contained in the Underwriting Agreement.
+
+     Purchasers may be required to pay stamp duties or taxes and other charges in accordance with the laws and
+practices of the country of purchase in addition to the issue price set forth above.
+
+                                                                                    - 15 -
+     The Issuer has agreed to indemnify the several Underwriters against certain liabilities.
+
+United States
+     The Bonds have not been and will not be registered under the 1933 Act and may not be offered or sold
+within the United States except to persons who are “qualified institutional buyers” in reliance on Rule 144A
+under the 1933 Act, as provided in the United States Offering Memorandum.
+
+     Each Underwriter has represented and agreed that it will not offer, sell or deliver the Bonds either (i) as part
+of their distribution at any time or (ii) otherwise until 40 days after the later of the commencement of the offering
+and the Closing Date (as defined in the Underwriting Agreement), within the United States except in accordance
+with Rule 144A under the 1933 Act.
+
+     In addition, until 40 days after the commencement of the offering of the Bonds, an offer or sale of Bonds
+within the United States by a dealer, whether or not participating in the offering, may violate the registration
+requirements of the 1933 Act if such offer or sale is made otherwise than in accordance with Rule 144A under
+the 1933 Act.
+
+European Economic Area
+     In relation to each Relevant Member State, each Underwriter has represented and agreed that with effect
+from and including the date on which the Prospectus Directive is implemented in that Relevant Member State it
+has not made and will not make an offer of Bonds which are the subject of the offering contemplated by this
+Offering Circular to the public in that Relevant Member State other than:
+     (i)   to any legal entity which is a qualified investor as defined in the Prospectus Directive;
+     (ii) to fewer than 150 natural or legal persons (other than qualified investors as defined in the Prospectus
+          Directive), subject to obtaining the prior consent of RBC Dominion Securities Inc.; or
+     (iii) in any other circumstances falling within Article 3(2) of the Prospectus Directive;
+     provided that no such offer of Bonds shall require the Issuer or any Underwriter to publish a prospectus
+pursuant to Article 3 of the Prospectus Directive.
+
+     For the purposes of this provision, the expression an “offer of Bonds to the public” in relation to any
+Bonds in any Relevant Member State means the communication in any form and by any means of sufficient
+information on the terms of the offer and the Bonds to be offered so as to enable an investor to decide to purchase
+or subscribe the Bonds, as the same may be varied in that Member State by any measure implementing the
+Prospectus Directive in that Member State and the expression “Prospectus Directive” means Directive
+2003/71/EC (as amended, including by Directive 2010/73/EU) and includes any relevant implementing measure
+in each Relevant Member State.
+
+     For greater certainty, the Issuer’s intention is that the Issuer’s offer ends with the offer by the Underwriters
+to their customers.
+
+The Netherlands
+     Each Underwriter has represented and agreed that the Bonds will only be offered in the Netherlands to
+Qualified Investors (as defined in the Prospective Directive as defined under “European Economic Area” above),
+unless such offer is made in accordance with the Dutch Financial Supervision Act (Wet op het financieel
+toezicht).
+
+United Kingdom
+     Each Underwriter has represented, warranted and agreed that:
+     (i)   it has only communicated or caused to be communicated and will only communicate or cause to be
+           communicated any invitation or inducement to engage in investment activity (within the meaning of
+           Section 21 of the Financial Services and Markets Act 2000 (the “FSMA”)) received by it in connection
+           with the issue or sale of any Bonds in circumstances in which Section 21(1) of the FSMA does not
+           apply to the Issuer or Guarantor; and
+     (ii) it has complied and will comply with all applicable provisions of the FSMA with respect to anything
+          done by it in relation to the Bonds in, from or otherwise involving the United Kingdom.
+
+                                                        - 16 -
+                                       GENERAL INFORMATION
+1.   As at the closing date, being February 23, 2017, each of the Issuer and the Guarantor will have obtained all
+     necessary consents, approvals and authorisations to be obtained by it in connection with the issue and
+     performance of the Bonds and the CMHC Guarantee. The issue of the Bonds is within the authority
+     conferred on CIBC Mellon Trust Company by the declaration of trust that created the Issuer.
+2.   The Issuer is not involved in any litigation or arbitration proceedings relating to claims or amounts which
+     are material in the context of the issue of the Bonds nor, so far as the Issuer is aware, is any such litigation
+     or arbitration pending or threatened.
+3.   Save as disclosed herein, there has been no material adverse change in the financial position or prospects of
+     the Issuer or the Guarantor since December 31, 2015.
+4.   On February 14, 2013, the European Commission published a proposal (the “Commission’s Proposal”) for
+     a Directive for a common financial transactions tax (“FTT”) in Belgium, Germany, Estonia, Greece, Spain,
+     France, Italy, Austria, Portugal, Slovenia and Slovakia (the “participating Member States”). Estonia has
+     since abandoned the Commission’s Proposal. The Commission’s Proposal has very broad scope and could,
+     if introduced, apply to certain dealings in the Bonds (including secondary market transactions) in certain
+     circumstances. Under the Commission’s Proposal the FTT could apply in certain circumstances to persons
+     both within and outside of the participating Member States. Generally, it would apply to certain dealings in
+     Notes where at least one party is a financial institution, and at least one party is established in a participating
+     Member State. A financial institution may be, or be deemed to be, “established” in a participating Member
+     State in a broad range of circumstances, including (a) by transacting with a person established in a
+     participating Member State or (b) where the financial instrument which is subject to the dealings is issued in
+     a participating Member State. However, the FTT proposal remains subject to negotiation between the
+     participating Member States. It may therefore be altered prior to any implementation, the timing of which
+     remains unclear. Additional Member States of the European Union may decide to participate. Prospective
+     holders of the Bonds are advised to seek their own professional advice in relation to the FTT.
+5.   The Transparency Obligations Directive 2004/109/EC of the European Union and of the Council of
+     December 15, 2004, as amended (the “Transparency Directive”), which relates to minimum transparency
+     requirements for the provision of information by issuers whose securities are admitted to trading on a
+     regulated market in the European Union was published in the Official Journal of the European Union on
+     December 31, 2004. The Transparency Directive was implemented in Luxembourg on January 11, 2008.
+     The Bonds are to be admitted to trading on the Euro MTF Market, which is not a regulated market for
+     purposes of the Markets in Financial Instruments Directive (Directive 2004/39/EC). The Transparency
+     Directive does not apply to the Euro MTF Market. If the Issuer decides to no longer have the Bonds traded
+     on the Euro MTF Market or the Bonds are de-listed by the Issuer, the Issuer will use reasonable endeavours
+     to list the Bonds elsewhere. The Issuer will provide notice of de-listing to the Luxembourg Stock Exchange
+     and publish a notice of de-listing in a leading newspaper having general circulation in Luxembourg and/or
+     on the website of the Luxembourg Stock Exchange at www.bourse.lu.
+6.   Copies of the most recent audited annual financial statements of the Guarantor and copies of the
+     constitutional documents of the Issuer may be obtained free of charge from the specified office of the
+     Paying Agent in Luxembourg, and the CMHC Act, the NHA, the Financial Administration Act (Canada), as
+     amended, the Bond Indenture, the Global Bond (if issued in certificated form), the paying agency agreement
+     relating to the Bonds and the declaration of trust creating the Issuer will, so long as any Bonds are
+     outstanding, be available for inspection during usual business hours at such office. The Issuer does not and
+     will not publish financial statements.
+7.   The Bonds have been accepted for clearance through CDS, Clearstream, Luxembourg and Euroclear
+     systems with the Common Code of 156911712, the ISIN of CA13509PFX65 and the CUSIP number of
+     13509PFX6.
+
+
+
+
+                                                         - 17 -
+                                                    ISSUER
+
+                                 CANADA HOUSING TRUSTTM NO. 1
+                                           by its Trustee,
+                                    CIBC Mellon Trust Company
+                                     320 Bay Street. P.O. Box 1,
+                                          Toronto, Ontario
+                                         Canada M5H 4A6
+
+
+                                              GUARANTOR
+
+                      CANADA MORTGAGE AND HOUSING CORPORATION
+                           (An agent of Her Majesty in right of Canada)
+
+                                            Registered Office
+                                            700 Montreal Road
+                                             Ottawa, Ontario
+                                             Canada K1A 0P7
+
+
+                                            BOND TRUSTEES
+
+   Computershare Trust Company of Canada                       Computershare Trust Company, N.A.
+           100 University Avenue                                      8742 Lucent Boulevard
+                  8th Floor                                                 Suite 225
+              Toronto, Ontario                                   Highlands Ranch, Colorado 80129
+              Canada M5J 2Y1                                                 U.S.A.
+
+
+               LISTING AGENT                                           PAYING AGENTS
+
+The Bank of New York Mellon (Luxembourg) S.A.                Computershare Trust Company of Canada
+            Vertigo Building – Polaris                              (Principal Paying Agent)
+             2-4 rue Eugène Ruppert
+              L-2453 Luxembourg                        The Bank of New York Mellon (Luxembourg) S.A.
+                                                                   Vertigo Building – Polaris
+                                                                    2-4 rue Eugène Ruppert
+                                                                     L-2453 Luxembourg
+
+                                                                  The Bank of New York Mellon
+                                                                      One Canada Square
+                                                                    London, England E14 5AL
+
+
+                                            LEGAL ADVISORS
+
+          to the Issuer and the Guarantor                                to the Underwriters
+
+          Borden Ladner Gervais LLP                                Osler, Hoskin & Harcourt LLP
+         Bay Adelaide Centre, East Tower                                1 First Canadian Place
+             22 Adelaide Street West                                    100 King Street West
+                Toronto, Ontario                                       Suite 6200, P.O. Box 50
+                Canada M5H 4E3                                             Toronto, Ontario
+                                                                          Canada M5X 1B8
+
+   to the Issuer and the Guarantor as to U.S. law                 to the Underwriters as to U.S. law
+
+              White & Case LLP                                     Osler, Hoskin & Harcourt LLP
+          1155 Avenue of the Americas                                620 8th Avenue, 36th Floor
+        New York, New York 10036-2787                               New York, New York 10018
+                   U.S.A.                                                      U.S.A.
+

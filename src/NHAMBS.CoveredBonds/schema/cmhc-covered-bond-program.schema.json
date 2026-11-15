@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cmhc:covered-bond-program:schema",
+  "$comment": "Source: CMHC Canadian registered covered bond program pages under https://www.cmhc-schl.gc.ca/professionals/project-funding-and-mortgage-financing/securitization/canadian-registered-covered-bonds/canadian-covered-bonds-registry. Field semantics were confirmed against all ten currently published program pages (Bank of Nova Scotia, BMO, CIBC, Equitable Bank, Fairstone, FCDQ, Laurentian, National Bank, RBC and TD).",
+  "title": "CMHC Canadian Registered Covered Bond Program",
+  "description": "JSON Schema for one CMHC Canadian registered covered bond program page. A page has an issuer/program profile table followed by one bond-issuance-parameters table per outstanding covered bond. Dates are ISO 8601 calendar dates, amounts are numbers, and percentages/rates are numbers rather than formatted strings. Optional fields are omitted when the printed cell is 'NA' or 'N/A'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "language",
+    "issuerName",
+    "programName",
+    "parties",
+    "minimumAssetPercentage",
+    "maximumAssetPercentage",
+    "bonds"
+  ],
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "fr"
+      ],
+      "default": "en",
+      "description": "Language of the program page."
+    },
+    "sourceUrl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URL or path the program page was parsed from, when known."
+    },
+    "issuerName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Issuer Name from the program profile table."
+    },
+    "programName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Program Name from the program profile table, e.g. 'Global Registered Covered Bond Program'."
+    },
+    "parties": {
+      "$ref": "#/$defs/parties"
+    },
+    "minimumAssetPercentage": {
+      "$ref": "#/$defs/percent",
+      "description": "Minimum Asset Percentage printed in the program profile table, e.g. 80.0."
+    },
+    "maximumAssetPercentage": {
+      "$ref": "#/$defs/percent",
+      "description": "Maximum Asset Percentage printed in the program profile table, e.g. 95.0."
+    },
+    "bonds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/bond"
+      },
+      "description": "Bond issuance parameter tables, in printed order."
+    }
+  },
+  "$defs": {
+    "parties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "guarantorEntity",
+        "counterpartiesToCoveredBondCollateralHedge",
+        "eligibleLoanServicers",
+        "cashManager",
+        "coverPoolMonitor",
+        "portfolioManager",
+        "accountBank",
+        "standbyAccountBank"
+      ],
+      "description": "Named parties and roles in the program profile table. The printed label for the custodian/trustee role varies: most pages print separate 'Custodian' and 'Bond Trustee' rows, while the Fairstone page prints a single 'Bond Trustee, Custodian and Titleholder' row. Exactly one of those forms is present.",
+      "properties": {
+        "guarantorEntity": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of the row labelled 'Guarantor Entity's Name [and the name of its general partner(s) or trustees(s)]'. The printed value contains the guarantor entity, managing general partner and liquidation general partner."
+        },
+        "counterpartiesToCoveredBondCollateralHedge": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Counterparty(s) to the Covered Bond Collateral Hedge'. May name multiple counterparties."
+        },
+        "eligibleLoanServicers": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Eligible Loan Servicer(s)'. May name multiple servicers."
+        },
+        "cashManager": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Cash Manager'."
+        },
+        "originators": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Originators'. Present on the Fairstone page only; omitted when the row is absent."
+        },
+        "coverPoolMonitor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Cover Pool Monitor'."
+        },
+        "custodian": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Custodian'. Omitted when the page uses the combined 'Bond Trustee, Custodian and Titleholder' row instead."
+        },
+        "bondTrustee": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Bond Trustee'. Omitted when the page uses the combined 'Bond Trustee, Custodian and Titleholder' row instead."
+        },
+        "bondTrusteeCustodianAndTitleholder": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of the combined 'Bond Trustee, Custodian and Titleholder' row used on the Fairstone page. Omitted when separate custodian and bond-trustee rows are present."
+        },
+        "payingAgent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Paying Agent'. May name multiple agents. The Laurentian Bank page omits this row, so the property is optional."
+        },
+        "portfolioManager": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Portfolio Manager'. The printed value may be 'None' or 'N/A'."
+        },
+        "accountBank": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Account Bank/Guaranteed Deposit Account Provider' or the equivalent 'Account Bank/Guaranteed Investment Contract Provider' label. Whitespace around the slash varies on the printed pages."
+        },
+        "standbyAccountBank": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Value of 'Standby Account Bank/Standby Guaranteed Deposit Account Provider' or the equivalent 'Standby Account Bank/Standby Guaranteed Investment Contract Provider' label."
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "custodian",
+            "bondTrustee"
+          ]
+        },
+        {
+          "required": [
+            "bondTrusteeCustodianAndTitleholder"
+          ]
+        }
+      ]
+    },
+    "bond": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registrationDate",
+        "issueDate",
+        "seriesDesignation",
+        "issueCurrency",
+        "nominalAmount",
+        "isin",
+        "bulletType",
+        "maturityDate",
+        "coupon",
+        "interestPaymentFrequency"
+      ],
+      "description": "One 'Bond issuance parameters' table. Soft-bullet bonds must also have an extended maturity date.",
+      "properties": {
+        "registrationDate": {
+          "$ref": "#/$defs/date",
+          "description": "Registration Date."
+        },
+        "issueDate": {
+          "$ref": "#/$defs/date",
+          "description": "Date of Issue."
+        },
+        "seriesDesignation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Series Designation, e.g. 'CBL10'."
+        },
+        "issueCurrency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "Issue Currency as a three-letter ISO 4217 code, e.g. 'EUR', 'USD', 'CHF', 'GBP', 'CAD', 'NOK', 'AUD', 'SGD'."
+        },
+        "nominalAmount": {
+          "$ref": "#/$defs/amount",
+          "description": "Nominal Amount in the issue currency. The printed value uses thousands separators, e.g. '188,000,000'."
+        },
+        "isin": {
+          "$ref": "#/$defs/isin"
+        },
+        "bulletType": {
+          "type": "string",
+          "enum": [
+            "soft",
+            "hard",
+            "other"
+          ],
+          "description": "Hard Bullet/Soft Bullet column normalized to lower case. The pages print both 'Soft' and 'Soft Bullet'."
+        },
+        "maturityDate": {
+          "$ref": "#/$defs/date",
+          "description": "Maturity Date."
+        },
+        "extendedMaturityDate": {
+          "$ref": "#/$defs/date",
+          "description": "Extended Maturity Date (if Soft Bullet)."
+        },
+        "coupon": {
+          "$ref": "#/$defs/coupon"
+        },
+        "interestPaymentFrequency": {
+          "type": "string",
+          "enum": [
+            "annually",
+            "semi-annually",
+            "quarterly",
+            "monthly",
+            "other"
+          ],
+          "description": "Interest Payment Date(s)/Frequency normalized to a lower-case frequency. The pages contain the typos 'Anually' and 'Semi-anually'; both are normalized."
+        },
+        "listingAuthority": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Listing Authority (if applicable). Omitted when the printed value is 'NA'."
+        },
+        "otherMaterialCharacteristics": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Other Material Characteristics as Applicable. Omitted when the printed value is 'NA'. Some older FCDQ tables print the whole row as 'NA' rather than using the full label."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "bulletType": {
+                "const": "soft"
+              }
+            },
+            "required": [
+              "bulletType"
+            ]
+          },
+          "then": {
+            "required": [
+              "extendedMaturityDate"
+            ]
+          }
+        }
+      ]
+    },
+    "isin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayText",
+        "entries"
+      ],
+      "description": "The printed ISIN cell. Most bonds have one ISIN; US-dollar Regulation S / Rule 144A issues print two, with the designations 'Reg S' and 'Rule 144A' or '144A'.",
+      "properties": {
+        "displayText": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Printed cell text with whitespace normalized, e.g. 'Reg S: USC0574BAB48 Rule 144A: US06418BAB45'."
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/isinEntry"
+          }
+        }
+      }
+    },
+    "isinEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "designation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Printed designation before the colon, e.g. 'Reg S', 'Rule 144A' or '144A'. Omitted when the cell contains a plain ISIN with no designation."
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{9}[0-9]$",
+          "description": "Twelve-character International Securities Identification Number."
+        }
+      }
+    },
+    "coupon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayText",
+        "kind"
+      ],
+      "description": "The 'Coupon Rate (%)' cell. It is either a fixed annual rate or a floating rate expressed as an index plus a spread.",
+      "properties": {
+        "displayText": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Printed coupon text with whitespace normalized, e.g. '3.250', 'SOFR + 0.65', 'Compounded Daily SONIA + 75 bps' or '3 month BBSW + 105 bps'."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "floating"
+          ],
+          "description": "Normalized form of the coupon: a fixed percentage or an index plus spread."
+        },
+        "fixedRatePercent": {
+          "$ref": "#/$defs/rate",
+          "description": "Fixed annual coupon rate in percent. Required when kind is 'fixed'."
+        },
+        "index": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Floating-rate index name, e.g. 'SOFR', 'Compounded Daily SONIA', '3 month BBSW', 'BBSW' or 'EURIBOR'. Required when kind is 'floating'."
+        },
+        "spreadPercent": {
+          "$ref": "#/$defs/spread",
+          "description": "Spread over the index in percentage points. Basis-point values are divided by 100 (105 bps becomes 1.05). Required when kind is 'floating'."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fixed"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "fixedRatePercent"
+            ],
+            "properties": {
+              "index": false,
+              "spreadPercent": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "floating"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "index",
+              "spreadPercent"
+            ],
+            "properties": {
+              "fixedRatePercent": false
+            }
+          }
+        }
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0,
+      "description": "A non-negative monetary amount. Use a JSON number, not a formatted string."
+    },
+    "percent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "A percentage expressed as a number in the range 0-100 (for example 80.0, not 0.80)."
+    },
+    "rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "An annual interest rate expressed as a percentage in the range 0-100."
+    },
+    "spread": {
+      "type": "number",
+      "minimum": -100,
+      "maximum": 100,
+      "description": "A spread over an index, expressed in percentage points."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "An ISO 8601 calendar date (YYYY-MM-DD). The printed pages use long English dates such as 'September 28, 2015' or '22 July 2013'; normalize before validation."
+    }
+  }
+}

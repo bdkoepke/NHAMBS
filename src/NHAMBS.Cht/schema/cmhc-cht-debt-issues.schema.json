@@ -1,0 +1,253 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cmhc:cht-debt-issues:schema",
+  "$comment": "Source: CMHC List of outstanding CHT debt issues (https://www.cmhc-schl.gc.ca/professionals/project-funding-and-mortgage-financing/securitization/canada-mortgage-bonds/list-of-outstanding-cht-debt-issues). Field semantics were confirmed against the live table.",
+  "title": "CMHC Canada Housing Trust – Outstanding CHT Debt Issues",
+  "description": "JSON Schema for the CMHC list of outstanding Canada Housing Trust (CHT) debt issues. The page is a single table of outstanding debt securities; dates are ISO 8601 calendar dates, amounts are numbers in millions of the issue currency, percentages/rates are numbers rather than formatted strings, and each issue keeps the links to its offering circulars.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "language",
+    "asOfDate",
+    "issues"
+  ],
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "fr"
+      ],
+      "default": "en",
+      "description": "Language of the CHT debt issues page."
+    },
+    "sourceUrl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URL or path the page was parsed from, when known."
+    },
+    "asOfDate": {
+      "$ref": "#/$defs/date",
+      "description": "The 'as of' date printed in the page heading, e.g. 'October 15, 2026' normalized to '2026-10-15'."
+    },
+    "issues": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/issue"
+      },
+      "description": "One entry per outstanding debt issue row, in printed order."
+    }
+  },
+  "$defs": {
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "series",
+        "settlementDate",
+        "coupon",
+        "maturityDate",
+        "currency",
+        "interestPaymentFrequency",
+        "issuedToInvestors",
+        "issuedToGovernmentOfCanada",
+        "totalIssuance",
+        "outstanding",
+        "identifier",
+        "offeringCirculars"
+      ],
+      "properties": {
+        "series": {
+          "type": "string",
+          "pattern": "^Series \\d+$",
+          "description": "Issue name from the first column, e.g. 'Series 77'."
+        },
+        "settlementDate": {
+          "$ref": "#/$defs/date",
+          "description": "Settlement Date of Original Issue, e.g. 'Feb. 23, 2017' normalized to '2017-02-23'."
+        },
+        "coupon": {
+          "$ref": "#/$defs/coupon"
+        },
+        "maturityDate": {
+          "$ref": "#/$defs/date",
+          "description": "Maturity Date."
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$",
+          "description": "Issue currency as a three-letter ISO 4217 code. All issues currently listed are CAD."
+        },
+        "interestPaymentFrequency": {
+          "type": "string",
+          "enum": [
+            "annually",
+            "semi-annually",
+            "quarterly",
+            "monthly",
+            "other"
+          ],
+          "description": "Interest Payment Frequency normalized to lower case."
+        },
+        "issuedToInvestors": {
+          "$ref": "#/$defs/amount",
+          "description": "Amount issued to investors, in millions of the issue currency."
+        },
+        "issuedToGovernmentOfCanada": {
+          "$ref": "#/$defs/amount",
+          "description": "Amount issued to the Government of Canada, in millions of the issue currency. A blank printed cell is represented as 0."
+        },
+        "totalIssuance": {
+          "$ref": "#/$defs/amount",
+          "description": "Total Issuance, in millions of the issue currency."
+        },
+        "outstanding": {
+          "$ref": "#/$defs/amount",
+          "description": "Outstanding amount as of asOfDate, in millions of the issue currency."
+        },
+        "outstandingHistoryUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Href of the link on the outstanding amount. The live page links every row to the same XLSX history of bond purchases and cancellations. Omitted when the outstanding amount is not linked."
+        },
+        "identifier": {
+          "type": "string",
+          "pattern": "^(?:[A-Z0-9]{9}|[A-Z]{2}[A-Z0-9]{9}[0-9])$",
+          "description": "CUSIP or ISIN from the 'CUSIP/ ISIN' column. Current rows are nine-character CUSIPs."
+        },
+        "offeringCirculars": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/offeringCircular"
+          },
+          "description": "PDF offering circulars linked from the row, in printed order."
+        }
+      }
+    },
+    "offeringCircular": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "designation",
+        "url"
+      ],
+      "properties": {
+        "designation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Link text, e.g. 'Initial Issue', 'Re-opening b' or 'Re-opening c'."
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute or site-relative PDF URL as printed in the href."
+        }
+      }
+    },
+    "coupon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayText",
+        "kind"
+      ],
+      "description": "The coupon printed for the issue, either a fixed annual rate or a floating index plus spread.",
+      "properties": {
+        "displayText": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Printed coupon text with whitespace normalized, e.g. '2.35%', '3m CDOR -0.18%' or 'CORRA + 0.375%'."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "floating"
+          ],
+          "description": "Normalized form of the coupon: a fixed percentage or an index plus spread."
+        },
+        "fixedRatePercent": {
+          "$ref": "#/$defs/rate",
+          "description": "Fixed annual coupon rate in percent. Required when kind is 'fixed'."
+        },
+        "index": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Floating-rate index name, e.g. '3m CDOR' or 'CORRA'. Required when kind is 'floating'."
+        },
+        "spreadPercent": {
+          "$ref": "#/$defs/spread",
+          "description": "Spread over the index in percentage points. Negative values are allowed ('CDOR -0.18%' becomes -0.18). Required when kind is 'floating'."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fixed"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "fixedRatePercent"
+            ],
+            "properties": {
+              "index": false,
+              "spreadPercent": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "floating"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "index",
+              "spreadPercent"
+            ],
+            "properties": {
+              "fixedRatePercent": false
+            }
+          }
+        }
+      ]
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0,
+      "description": "A non-negative monetary amount, in millions of the issue currency."
+    },
+    "rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "An annual interest rate expressed as a percentage in the range 0-100."
+    },
+    "spread": {
+      "type": "number",
+      "minimum": -100,
+      "maximum": 100,
+      "description": "A spread over an index, expressed in percentage points."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "An ISO 8601 calendar date (YYYY-MM-DD)."
+    }
+  }
+}

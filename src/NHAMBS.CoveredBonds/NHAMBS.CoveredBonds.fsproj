@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>NHAMBS.CoveredBonds</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Schema.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Data" Version="8.1.0" />
+    <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="schema/cmhc-covered-bonds-registry.provider.schema.json" />
+    <EmbeddedResource Include="schema/cmhc-covered-bonds-registry.provider.schema.json"
+                      LogicalName="NHAMBS.CoveredBonds.schema.cmhc-covered-bonds-registry.provider.schema.json" />
+    <EmbeddedResource Include="schema/cmhc-covered-bonds-registry.schema.json"
+                      LogicalName="NHAMBS.CoveredBonds.cmhc-covered-bonds-registry.schema.json" />
+    <None Include="schema/cmhc-covered-bond-program.provider.schema.json" />
+    <EmbeddedResource Include="schema/cmhc-covered-bond-program.provider.schema.json"
+                      LogicalName="NHAMBS.CoveredBonds.schema.cmhc-covered-bond-program.provider.schema.json" />
+    <EmbeddedResource Include="schema/cmhc-covered-bond-program.schema.json"
+                      LogicalName="NHAMBS.CoveredBonds.cmhc-covered-bond-program.schema.json" />
+  </ItemGroup>
+
+</Project>

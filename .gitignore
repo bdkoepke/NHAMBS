@@ -1,2 +1,6 @@
 bin/
 obj/
+pools/
+pool_urls.txt
+out/
+cht_circulars/

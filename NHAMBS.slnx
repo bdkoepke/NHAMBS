@@ -1,0 +1,55 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/NHAMBS.Cht/NHAMBS.Cht.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="src/NHAMBS.Cli/NHAMBS.Cli.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="src/NHAMBS.CoveredBonds/NHAMBS.CoveredBonds.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="src/NHAMBS.Sources/NHAMBS.Sources.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NHAMBS.Cht.Tests/NHAMBS.Cht.Tests.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="tests/NHAMBS.Circular.Tests/NHAMBS.Circular.Tests.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="tests/NHAMBS.Cli.Tests/NHAMBS.Cli.Tests.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="tests/NHAMBS.CoveredBonds.Tests/NHAMBS.CoveredBonds.Tests.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+    <Project Path="tests/NHAMBS.Tests/NHAMBS.Tests.fsproj">
+      <Platform Solution="*|x64" Project="Any CPU" />
+      <Platform Solution="*|x86" Project="Any CPU" />
+    </Project>
+  </Folder>
+  <Project Path="src/NHAMBS.Circular/NHAMBS.Circular.fsproj">
+    <Platform Solution="*|x64" Project="Any CPU" />
+    <Platform Solution="*|x86" Project="Any CPU" />
+  </Project>
+  <Project Path="src/NHAMBS.Mbs/NHAMBS.Mbs.fsproj">
+    <Platform Solution="*|x64" Project="Any CPU" />
+    <Platform Solution="*|x86" Project="Any CPU" />
+  </Project>
+</Solution>

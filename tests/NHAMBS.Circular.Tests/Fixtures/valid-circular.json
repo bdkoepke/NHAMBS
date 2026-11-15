@@ -1,0 +1,198 @@
+{
+  "language": "en",
+  "formVersion": "CMHC 2834 1/09/2022",
+  "rateType": "fixed",
+  "poolType": "975",
+  "parties": {
+    "issuerName": "Example Trust",
+    "custodian": "Example Custodian",
+    "mortgageInsurer": "CMHC"
+  },
+  "mbs": {
+    "coupon": {
+      "displayText": "2.50000%",
+      "kind": "fixed",
+      "fixedRatePercent": 2.5
+    },
+    "aggregatePrincipalAmount": 1000000,
+    "poolNumber": "97500001",
+    "issueDate": "2026-01-01",
+    "settlementDate": "2026-01-15",
+    "firstPaymentDue": "2026-02-15",
+    "maturityDate": "2031-01-01",
+    "finalPaymentDue": "2031-01-15"
+  },
+  "addendum": {
+    "issuerName": "Example Trust",
+    "couponDisplayText": "2.50000%",
+    "totalNumberOfMortgageLoans": 10,
+    "weightedAverageInterestAdjustmentDate": "2025-07-01",
+    "weightedAverageMaturityDate": "2030-07-01",
+    "scheduledMaturity": {
+      "fiveMonths": {
+        "remainingFaceValue": 0
+      },
+      "fourMonths": {
+        "remainingFaceValue": 0
+      },
+      "threeMonths": {
+        "remainingFaceValue": 100000
+      },
+      "twoMonths": {
+        "remainingFaceValue": 200000
+      },
+      "oneMonth": {
+        "remainingFaceValue": 300000
+      },
+      "maturity": {
+        "remainingFaceValue": 400000
+      },
+      "total": {
+        "remainingFaceValue": 1000000
+      }
+    },
+    "insurerProfile": {
+      "insurers": [
+        {
+          "name": "CMHC",
+          "dollarValue": 1000000,
+          "percentOfLoans": 100
+        }
+      ]
+    },
+    "loanTypeProfile": {
+      "homeownerPercent": 100,
+      "multipleFamilyPercent": 0,
+      "socialHousingPercent": 0
+    },
+    "ramDistribution": {
+      "byRemainingAmortizationMonths": [
+        1000000,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "byRemainingTermMonths": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "locationOfMortgageLoans": {
+      "newfoundland": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "novaScotia": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "newBrunswick": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "princeEdwardIsland": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "quebec": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "ontario": {
+        "loansPercent": 100,
+        "principalAmountPercent": 100
+      },
+      "manitoba": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "saskatchewan": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "alberta": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "britishColumbia": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "northwestTerritories": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "yukon": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "nunavut": {
+        "loansPercent": 0,
+        "principalAmountPercent": 0
+      },
+      "total": {
+        "loansPercent": 100,
+        "principalAmountPercent": 100
+      }
+    },
+    "interestAdjustmentProfile": {
+      "interestAdjustmentDates": [
+        "2026-01-01",
+        "2026-02-01",
+        "2026-03-01",
+        "2026-04-01",
+        "2026-05-01",
+        "2026-06-01"
+      ],
+      "rateBands": [],
+      "totals": {
+        "byDate": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0,
+        "percentOfTotal": 0
+      },
+      "percentOfTotal": {
+        "byDate": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 100,
+        "percentOfTotal": 0
+      },
+      "wac": {
+        "byDate": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 0,
+        "percentOfTotal": 0
+      }
+    }
+  },
+  "prepaymentProvisions": {
+    "bonaFideSaleIndemnityExempt": false,
+    "sectionA": "",
+    "sectionB": "",
+    "otherDisclosures": ""
+  }
+}

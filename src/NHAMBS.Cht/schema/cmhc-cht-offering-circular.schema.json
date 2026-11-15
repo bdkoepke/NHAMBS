@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cmhc:cht-offering-circular:schema",
+  "$comment": "Source: the offering circular PDFs linked from the CMHC List of outstanding CHT debt issues (https://www.cmhc-schl.gc.ca/professionals/project-funding-and-mortgage-financing/securitization/canada-mortgage-bonds/list-of-outstanding-cht-debt-issues). Field semantics were confirmed against all 77 PDFs linked from the October 15, 2026 snapshot.",
+  "title": "CMHC Canada Housing Trust – Offering Circular Terms",
+  "description": "JSON Schema for the key terms printed on a Canada Housing Trust offering circular. This is a terms/intake schema rather than a full transcription of the prospectus: it captures the cover-page economics, the recurring interest dates, the issuer/guarantor, and the security identifiers when the PDF prints them. Dates are ISO 8601 calendar dates and amounts/rates are numbers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "language",
+    "series",
+    "documentDate",
+    "currency",
+    "aggregatePrincipalAmount",
+    "coupon",
+    "maturityDate",
+    "issuePricePercent",
+    "settlementDate",
+    "firstInterestPaymentDate",
+    "interestPaymentFrequency",
+    "interestPaymentDates",
+    "minimumDenomination",
+    "issuerName",
+    "guarantorName"
+  ],
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "fr"
+      ],
+      "default": "en",
+      "description": "Language of the offering circular."
+    },
+    "sourceUrl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URL or path the PDF was downloaded from, when known."
+    },
+    "series": {
+      "type": "string",
+      "pattern": "^Series \\d+$",
+      "description": "Bond series, e.g. 'Series 77'."
+    },
+    "documentDate": {
+      "$ref": "#/$defs/date",
+      "description": "Date printed at the top of the offering circular, e.g. 'Dated February 15, 2017' normalized to '2017-02-15'."
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "Issue currency. All current circulars are Canadian dollars ('CAD')."
+    },
+    "aggregatePrincipalAmount": {
+      "$ref": "#/$defs/amount",
+      "description": "Aggregate principal amount of this issuance, e.g. C$2,500,000,000 becomes 2500000000."
+    },
+    "coupon": {
+      "$ref": "#/$defs/coupon"
+    },
+    "maturityDate": {
+      "$ref": "#/$defs/date",
+      "description": "Maturity date printed in the cover heading, e.g. 'to mature June 15, 2027'."
+    },
+    "issuePricePercent": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 200,
+      "description": "Issue price as a percentage of principal, e.g. 99.702."
+    },
+    "yieldPercent": {
+      "$ref": "#/$defs/rate",
+      "description": "Yield at date of issue in percent, when the cover states one. Floating-rate circulars and some re-openings omit it."
+    },
+    "settlementDate": {
+      "$ref": "#/$defs/date",
+      "description": "Delivery/settlement date printed as 'on or about ...'."
+    },
+    "firstInterestPaymentDate": {
+      "$ref": "#/$defs/date",
+      "description": "First interest payment date."
+    },
+    "interestPaymentFrequency": {
+      "type": "string",
+      "enum": [
+        "annually",
+        "semi-annually",
+        "quarterly",
+        "monthly",
+        "other"
+      ],
+      "description": "Recurring interest payment frequency, normalized from 'Half-yearly' or 'quarterly'."
+    },
+    "interestPaymentDates": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "pattern": "^(January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}$"
+      },
+      "description": "Recurring month/day interest payment dates in printed order, e.g. ['June 15', 'December 15']."
+    },
+    "minimumDenomination": {
+      "$ref": "#/$defs/amount",
+      "description": "Minimum denomination of the bonds, in the issue currency."
+    },
+    "issuerName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Issuer name. All current circulars name Canada Housing Trust No. 1."
+    },
+    "guarantorName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Guarantor name. All current circulars name Canada Mortgage and Housing Corporation."
+    },
+    "legalEntityIdentifier": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]{20}$",
+      "description": "Issuer Legal Entity Identifier, printed on newer circulars."
+    },
+    "listingExchange": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Exchange named in the listing application sentence, e.g. 'Luxembourg Stock Exchange'."
+    },
+    "ratings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rating"
+      },
+      "description": "Credit ratings stated on the cover."
+    },
+    "identifiers": {
+      "$ref": "#/$defs/identifiers"
+    }
+  },
+  "$defs": {
+    "coupon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayText",
+        "kind"
+      ],
+      "description": "The coupon described in the cover heading. Fixed-rate circulars print a percentage; floating-rate circulars state 'Floating Rate' and describe the index and spread in the body.",
+      "properties": {
+        "displayText": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Printed coupon descriptor, e.g. '2.350%' or 'Floating Rate'."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "floating"
+          ],
+          "description": "Normalized coupon kind."
+        },
+        "fixedRatePercent": {
+          "$ref": "#/$defs/rate",
+          "description": "Fixed annual coupon rate in percent. Required when kind is 'fixed'."
+        },
+        "index": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Floating-rate index, e.g. '3 Month CDOR', 'CORRA' or 'Daily Compounded CORRA'. Required when kind is 'floating'."
+        },
+        "spreadPercent": {
+          "$ref": "#/$defs/spread",
+          "description": "Spread over the index in percentage points. Basis-point values are divided by 100 (18.0 basis points becomes 0.18). Required when kind is 'floating'."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "fixed"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "fixedRatePercent"
+            ],
+            "properties": {
+              "index": false,
+              "spreadPercent": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "floating"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "index",
+              "spreadPercent"
+            ],
+            "properties": {
+              "fixedRatePercent": false
+            }
+          }
+        }
+      ]
+    },
+    "rating": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agency",
+        "rating"
+      ],
+      "properties": {
+        "agency": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Rating agency, e.g. 'Standard & Poor’s', 'Moody’s Investors Service' or 'DBRS Limited'."
+        },
+        "rating": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Rating assigned by the agency, e.g. 'AAA' or 'Aaa'."
+        }
+      }
+    },
+    "identifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "commonCode": {
+          "type": "string",
+          "pattern": "^[0-9]{6,12}$",
+          "description": "Euroclear/Clearstream common code."
+        },
+        "isin": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}[A-Z0-9]{9}[0-9]$",
+          "description": "International Securities Identification Number."
+        },
+        "cusip": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{9}$",
+          "description": "Committee on Uniform Securities Identification Procedures number."
+        }
+      }
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0,
+      "description": "A non-negative monetary amount."
+    },
+    "rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "An annual interest rate expressed as a percentage in the range 0-100."
+    },
+    "spread": {
+      "type": "number",
+      "minimum": -100,
+      "maximum": 100,
+      "description": "A spread over an index, expressed in percentage points."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "An ISO 8601 calendar date (YYYY-MM-DD)."
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cmhc:covered-bonds-registry:schema",
+  "$comment": "Source: CMHC Canadian Covered Bonds Registry page (https://www.cmhc-schl.gc.ca/professionals/project-funding-and-mortgage-financing/securitization/canadian-registered-covered-bonds/canadian-covered-bonds-registry). Field semantics were confirmed against the live registry table.",
+  "title": "CMHC Canadian Covered Bonds Registry",
+  "description": "JSON Schema for the CMHC registry of Canadian registered covered bond issuers. The registry lists each registered issuer, its business address, registration date, active/suspended status, the issuer's own covered-bond website, and a link to the CMHC page describing the issuer's registered program(s). Dates are ISO 8601 calendar dates and values are normalized rather than copied as formatted HTML.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "language",
+    "issuers"
+  ],
+  "properties": {
+    "language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "fr"
+      ],
+      "default": "en",
+      "description": "Language of the registry page."
+    },
+    "sourceUrl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "URL or path the registry was parsed from, when known."
+    },
+    "issuers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/issuer"
+      },
+      "description": "One entry per issuer row in the registry table, in printed order."
+    }
+  },
+  "$defs": {
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "businessAddress",
+        "registrationDate",
+        "status",
+        "websiteUrl",
+        "programPage"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Registered Issuer Name, e.g. 'Bank of Nova Scotia'."
+        },
+        "businessAddress": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Business Address exactly as printed, with whitespace normalized. The printed value contains line breaks and non-breaking spaces."
+        },
+        "registrationDate": {
+          "$ref": "#/$defs/date",
+          "description": "Date of Registration, e.g. '22 July 2013' on the page, normalized to '2013-07-22'."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "suspended"
+          ],
+          "description": "Active (A) / Suspended (S) column. 'A' is normalized to 'active' and 'S' to 'suspended'."
+        },
+        "websiteUrl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Href of the 'Link to Issuer's Registered Covered Bonds Website' cell. This is an external website, not a CMHC page."
+        },
+        "programPage": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Href of the 'Registered Programs' link. On the live CMHC site this is a site-relative path such as '/professionals/.../canadian-covered-bond-program-bank-of-nova-scotia'."
+        }
+      }
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "An ISO 8601 calendar date (YYYY-MM-DD)."
+    }
+  }
+}
