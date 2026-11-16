@@ -1,5 +1,5 @@
 config:
-  nhambs:image: postgres:17-alpine
+  nhambs:image: postgres:18-alpine
   nhambs:port: "54322"
   nhambs:database: nhambs
   nhambs:username: nhambs

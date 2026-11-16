@@ -14,7 +14,7 @@ let private configValue (key: string) (fallback: string) =
     | value -> value
 
 let infra () =
-    let image = configValue "image" "postgres:17-alpine"
+    let image = configValue "image" "postgres:18-alpine"
     let port = configValue "port" "54322"
     let database = configValue "database" "nhambs"
     let username = configValue "username" "nhambs"

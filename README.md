@@ -324,6 +324,7 @@ Schema `nhambs`:
 - `covered_bond_programs` / `covered_bond_parties` / `covered_bonds` /
   `covered_bond_isins` / `covered_bond_registry` — covered bond registry.
 - `etl_runs` — loader audit trail.
+- `etl_anomalies` — detected data-quality issues, including corrected values.
 - `elsa.*` — Elsa workflow definitions, runtime instances, triggers, users and
   operational history maintained by `NHAMBS.ElsaServer` in the `elsa` schema.
 

@@ -14,6 +14,7 @@
     <Compile Include="Migrations/M001_InitialSchema.fs" />
     <Compile Include="Migrations/M002_DashboardViews.fs" />
     <Compile Include="Migrations/M003_ChtOutstandingHistory.fs" />
+    <Compile Include="Migrations/M004_DataAnomalies.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

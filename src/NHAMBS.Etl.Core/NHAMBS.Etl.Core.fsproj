@@ -8,6 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common.fs" />
+    <Compile Include="Anomalies.fs" />
     <Compile Include="MbsEtl.fs" />
     <Compile Include="ChtEtl.fs" />
     <Compile Include="CoveredBondEtl.fs" />

@@ -13,6 +13,14 @@ type GridOptions =
         Columns: obj[]
         Rows: obj[]
         Height: string
+        Pagination: bool
+        InitialSortModel: obj
+        InitialFilterModel: obj
+        ApplyQuickFilterInternally: bool
+        HeaderGroupFields: string[]
+        OnSortModelChanged: obj -> unit
+        OnFilterModelChanged: obj -> unit
+        OnQuickFilterChanged: string -> unit
         OnRowClicked: obj -> unit
     }
 
@@ -211,17 +219,135 @@ let linkColumnWithLabel field header minWidth linkText =
 let linkColumn field header minWidth =
     linkColumnWithLabel field header minWidth "Open PDF"
 
+/// First column used while rows are grouped. Group-row objects provide
+/// groupLabel, groupLevel, groupCount and groupExpanded fields.
+let groupColumn =
+    createObj
+        [
+            "field" ==> "groupLabel"
+            "headerName" ==> "Group"
+            "minWidth" ==> 250
+            "flex" ==> 2
+            "sortable" ==> false
+            "filter" ==> false
+            "resizable" ==> true
+            "cellRenderer"
+            ==> box (fun (parameters: obj) ->
+                let data = parameters?data
+
+                if isNull data || isNull data?isGroup then
+                    null
+                else
+                    let wrapper = Browser.Dom.document.createElement "div"
+                    wrapper.setAttribute ("class", "cell-group")
+                    wrapper.setAttribute ("style", sprintf "padding-left:%dpx" (unbox<int> data?groupLevel * 18))
+
+                    let chevron = Browser.Dom.document.createElement "span"
+                    chevron.setAttribute ("class", "cell-group-chevron")
+
+                    let expandable =
+                        let value = data?groupExpandable
+                        if isNull value then true else unbox<bool> value
+
+                    chevron.textContent <-
+                        if not expandable then ""
+                        elif unbox<bool> data?groupExpanded then "▾"
+                        else "▸"
+
+                    let label = Browser.Dom.document.createElement "span"
+                    label.setAttribute ("class", "cell-group-label")
+                    label.textContent <- string data?groupLabel
+
+                    let count = Browser.Dom.document.createElement "span"
+                    count.setAttribute ("class", "cell-group-count")
+                    count.textContent <- sprintf "(%d)" (unbox<int> data?groupCount)
+
+                    wrapper.appendChild chevron |> ignore
+                    wrapper.appendChild label |> ignore
+                    wrapper.appendChild count |> ignore
+                    wrapper :> obj)
+        ]
+
+/// Removes sorting and filtering from a column definition while grouping,
+/// so the group hierarchy cannot be reordered by column interactions.
+let plainColumn (column: obj) : obj = Interop.withoutColumnInteraction column
+
+/// Keeps the sort/filter UI enabled while preventing the grid from reordering
+/// custom group rows; filtering uses the group's representative child values.
+let groupedColumn (column: obj) : obj = Interop.groupedColumn column
+
 [<ReactComponent>]
 let AgGrid (options: GridOptions) =
     let containerRef = React.useRef<Element option>(None)
     let apiRef = React.useRef<obj option>(None)
     let (pageSizeChoice, setPageSizeChoice) = React.useState ("25")
+    let (showColumnsPanel, setShowColumnsPanel) = React.useState false
+
+    let (hiddenColumns, setHiddenColumns) =
+        React.useStateWithUpdater<Set<string>> Set.empty
+
+    let (quickFilterText, setQuickFilterText) = React.useState ""
 
     let pageSize =
         if pageSizeChoice = "all" then
             max 1 options.Rows.Length
         else
             int pageSizeChoice
+
+    let columnChoices =
+        options.Columns
+        |> Array.choose (fun column ->
+            let field = column?field
+            let header = column?headerName
+
+            if isNull field then
+                None
+            else
+                Some(string field, if isNull header then string field else string header))
+
+    let columnVisible (field: string) = not (hiddenColumns.Contains field)
+
+    let setColumnVisible (field: string) (visible: bool) =
+        setHiddenColumns (fun hidden ->
+            if visible then
+                Set.remove field hidden
+            else
+                Set.add field hidden)
+
+        match apiRef.current with
+        | Some api -> Interop.setColumnsVisible api [| field |] visible
+        | None -> ()
+
+    let showAllColumns () =
+        setHiddenColumns (fun _ -> Set.empty)
+
+        match apiRef.current with
+        | Some api ->
+            let fields = columnChoices |> Array.map fst
+            Interop.setColumnsVisible api fields true
+        | None -> ()
+
+    let updateQuickFilter (value: string) =
+        setQuickFilterText value
+        options.OnQuickFilterChanged value
+
+        if options.ApplyQuickFilterInternally then
+            match apiRef.current with
+            | Some api -> Interop.setQuickFilter api value
+            | None -> ()
+
+    let clearGridFilters () =
+        setQuickFilterText ""
+        options.OnQuickFilterChanged ""
+        options.OnFilterModelChanged(box (createObj []))
+
+        match apiRef.current with
+        | Some api ->
+            Interop.clearFilters api
+
+            if options.ApplyQuickFilterInternally then
+                Interop.setQuickFilter api ""
+        | None -> ()
 
     React.useEffect (
         (fun () ->
@@ -240,7 +366,7 @@ let AgGrid (options: GridOptions) =
                                         "filter" ==> true
                                         "minWidth" ==> 96
                                     ]
-                            "pagination" ==> true
+                            "pagination" ==> options.Pagination
                             "paginationPageSize" ==> pageSize
                             "paginationPageSizeSelector" ==> false
                             "animateRows" ==> false
@@ -248,7 +374,23 @@ let AgGrid (options: GridOptions) =
                             "headerHeight" ==> 42
                             "suppressCellFocus" ==> true
                             "tooltipShowDelay" ==> 200
+                            "getRowClass"
+                            ==> (fun (parameters: obj) ->
+                                let value = parameters?data?rowClass
+                                if isNull value then "" else string value)
                             "onRowClicked" ==> (fun (event: obj) -> options.OnRowClicked event?data)
+                            "onSortChanged"
+                            ==> (fun (_: obj) ->
+                                Interop.defer (fun () ->
+                                    match apiRef.current with
+                                    | Some api -> options.OnSortModelChanged(Interop.getSortModel api)
+                                    | None -> ()))
+                            "onFilterChanged"
+                            ==> (fun (_: obj) ->
+                                Interop.defer (fun () ->
+                                    match apiRef.current with
+                                    | Some api -> options.OnFilterModelChanged(Interop.getFilterModel api)
+                                    | None -> ()))
                             "localeText"
                             ==> createObj
                                     [
@@ -263,11 +405,41 @@ let AgGrid (options: GridOptions) =
                 let api = Interop.createGrid element gridOptions
                 apiRef.current <- Some api
 
+                let detachHeaderGrips =
+                    if options.HeaderGroupFields.Length > 0 then
+                        Interop.attachHeaderGrips api element options.HeaderGroupFields
+                    else
+                        fun () -> ()
+
+                if not (isNull options.InitialSortModel) then
+                    Interop.setSortModel api options.InitialSortModel
+
+                if not (isNull options.InitialFilterModel) then
+                    Interop.setFilterModel api options.InitialFilterModel
+
+                for field in hiddenColumns do
+                    Interop.setColumnsVisible api [| field |] false
+
+                if
+                    options.ApplyQuickFilterInternally
+                    && not (String.IsNullOrWhiteSpace quickFilterText)
+                then
+                    Interop.setQuickFilter api quickFilterText
+
                 fun () ->
                     apiRef.current <- None
+                    detachHeaderGrips ()
                     Interop.destroyGrid api
             | None -> fun () -> ()),
-        [| box options.Rows; box options.Columns |]
+        [| box options.Columns; box options.Pagination |]
+    )
+
+    React.useEffect (
+        (fun () ->
+            match apiRef.current with
+            | Some api -> Interop.setGridRowData api (box options.Rows)
+            | None -> ()),
+        [| box options.Rows |]
     )
 
     let changePageSize (value: string) =
@@ -292,33 +464,212 @@ let AgGrid (options: GridOptions) =
                 [
                     Html.div
                         [
-                            prop.className "grid-page-size"
+                            prop.className "grid-tools"
                             prop.children
                                 [
-                                    Html.label
+                                    Html.div
                                         [
+                                            prop.className "grid-tools-left"
                                             prop.children
                                                 [
-                                                    Html.span [ prop.text "Rows per page" ]
-                                                    Html.select
+                                                    Html.div
                                                         [
-                                                            prop.className "grid-page-size-select"
-                                                            prop.value pageSizeChoice
-                                                            prop.onChange (fun (event: Event) ->
-                                                                changePageSize (string event.target?value))
+                                                            prop.className "grid-columns"
                                                             prop.children
                                                                 [
-                                                                    Html.option [ prop.value "25"; prop.text "25" ]
-                                                                    Html.option [ prop.value "50"; prop.text "50" ]
-                                                                    Html.option [ prop.value "100"; prop.text "100" ]
-                                                                    Html.option [ prop.value "250"; prop.text "250" ]
-                                                                    Html.option [ prop.value "500"; prop.text "500" ]
-                                                                    Html.option [ prop.value "1000"; prop.text "1000" ]
-                                                                    Html.option [ prop.value "all"; prop.text "All" ]
+                                                                    Html.button
+                                                                        [
+                                                                            prop.className (
+                                                                                if showColumnsPanel then
+                                                                                    "btn btn-small btn-secondary"
+                                                                                else
+                                                                                    "btn btn-small btn-ghost"
+                                                                            )
+                                                                            prop.onClick (fun _ ->
+                                                                                setShowColumnsPanel (
+                                                                                    not showColumnsPanel
+                                                                                ))
+                                                                            prop.text "▦ Columns"
+                                                                        ]
+                                                                    if showColumnsPanel then
+                                                                        Html.div
+                                                                            [
+                                                                                prop.className "grid-columns-panel"
+                                                                                prop.children
+                                                                                    [
+                                                                                        Html.div
+                                                                                            [
+                                                                                                prop.className
+                                                                                                    "grid-columns-head"
+                                                                                                prop.children
+                                                                                                    [
+                                                                                                        Html.strong
+                                                                                                            [
+                                                                                                                prop
+                                                                                                                    .text
+                                                                                                                    "Columns"
+                                                                                                            ]
+                                                                                                        Html.div
+                                                                                                            [
+                                                                                                                prop
+                                                                                                                    .className
+                                                                                                                    "grid-columns-actions"
+                                                                                                                prop
+                                                                                                                    .children
+                                                                                                                    [
+                                                                                                                        Html
+                                                                                                                            .button
+                                                                                                                            [
+                                                                                                                                prop
+                                                                                                                                    .className
+                                                                                                                                    "grid-columns-link"
+                                                                                                                                prop.onClick
+                                                                                                                                    (fun
+                                                                                                                                        _ ->
+                                                                                                                                        showAllColumns ())
+                                                                                                                                prop
+                                                                                                                                    .text
+                                                                                                                                    "Show all"
+                                                                                                                            ]
+                                                                                                                        Html
+                                                                                                                            .button
+                                                                                                                            [
+                                                                                                                                prop
+                                                                                                                                    .className
+                                                                                                                                    "grid-columns-link"
+                                                                                                                                prop.onClick
+                                                                                                                                    (fun
+                                                                                                                                        _ ->
+                                                                                                                                        setShowColumnsPanel
+                                                                                                                                            false)
+                                                                                                                                prop
+                                                                                                                                    .text
+                                                                                                                                    "Close"
+                                                                                                                            ]
+                                                                                                                    ]
+                                                                                                            ]
+                                                                                                    ]
+                                                                                            ]
+                                                                                        for field, label in
+                                                                                            columnChoices do
+                                                                                            Html.label
+                                                                                                [
+                                                                                                    prop.className
+                                                                                                        "grid-column-option"
+                                                                                                    prop.children
+                                                                                                        [
+                                                                                                            Html.input
+                                                                                                                [
+                                                                                                                    prop.custom (
+                                                                                                                        "type",
+                                                                                                                        "checkbox"
+                                                                                                                    )
+                                                                                                                    prop.isChecked (
+                                                                                                                        columnVisible
+                                                                                                                            field
+                                                                                                                    )
+                                                                                                                    prop.onChange
+                                                                                                                        (fun
+                                                                                                                            (event:
+                                                                                                                                Event) ->
+                                                                                                                            setColumnVisible
+                                                                                                                                field
+                                                                                                                                (unbox<
+                                                                                                                                    bool
+                                                                                                                                  >
+                                                                                                                                    event
+                                                                                                                                        .target?``checked``))
+                                                                                                                ]
+                                                                                                            Html.span
+                                                                                                                [
+                                                                                                                    prop
+                                                                                                                        .text
+                                                                                                                        label
+                                                                                                                ]
+                                                                                                        ]
+                                                                                                ]
+                                                                                    ]
+                                                                            ]
                                                                 ]
+                                                        ]
+                                                    Html.input
+                                                        [
+                                                            prop.className "grid-quick-filter"
+                                                            prop.placeholder "Quick filter…"
+                                                            prop.value quickFilterText
+                                                            prop.onInput (fun (event: Event) ->
+                                                                updateQuickFilter (string event.target?value))
+                                                        ]
+                                                    Html.button
+                                                        [
+                                                            prop.className "btn btn-small btn-ghost"
+                                                            prop.onClick (fun _ -> clearGridFilters ())
+                                                            prop.text "Clear grid filters"
                                                         ]
                                                 ]
                                         ]
+                                    if options.Pagination then
+                                        Html.div
+                                            [
+                                                prop.className "grid-page-size"
+                                                prop.children
+                                                    [
+                                                        Html.label
+                                                            [
+                                                                prop.children
+                                                                    [
+                                                                        Html.span [ prop.text "Rows per page" ]
+                                                                        Html.select
+                                                                            [
+                                                                                prop.className "grid-page-size-select"
+                                                                                prop.value pageSizeChoice
+                                                                                prop.onChange (fun (event: Event) ->
+                                                                                    changePageSize (
+                                                                                        string event.target?value
+                                                                                    ))
+                                                                                prop.children
+                                                                                    [
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "25"
+                                                                                                prop.text "25"
+                                                                                            ]
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "50"
+                                                                                                prop.text "50"
+                                                                                            ]
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "100"
+                                                                                                prop.text "100"
+                                                                                            ]
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "250"
+                                                                                                prop.text "250"
+                                                                                            ]
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "500"
+                                                                                                prop.text "500"
+                                                                                            ]
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "1000"
+                                                                                                prop.text "1000"
+                                                                                            ]
+                                                                                        Html.option
+                                                                                            [
+                                                                                                prop.value "all"
+                                                                                                prop.text "All"
+                                                                                            ]
+                                                                                    ]
+                                                                            ]
+                                                                    ]
+                                                            ]
+                                                    ]
+                                            ]
                                 ]
                         ]
                     Html.div

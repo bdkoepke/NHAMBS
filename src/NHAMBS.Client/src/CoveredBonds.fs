@@ -274,6 +274,14 @@ let CoveredBondsPage (props: CoveredBondsProps) =
                                                             Columns = programColumns
                                                             Rows = programRows data.Programs
                                                             Height = "500px"
+                                                            Pagination = true
+                                                            InitialSortModel = null
+                                                            InitialFilterModel = null
+                                                            ApplyQuickFilterInternally = true
+                                                            HeaderGroupFields = [||]
+                                                            OnSortModelChanged = ignore
+                                                            OnFilterModelChanged = ignore
+                                                            OnQuickFilterChanged = ignore
                                                             OnRowClicked = ignore
                                                         }
                                                 elif tab = "bonds" then
@@ -282,6 +290,14 @@ let CoveredBondsPage (props: CoveredBondsProps) =
                                                             Columns = bondColumns
                                                             Rows = bondRows data.Bonds
                                                             Height = "640px"
+                                                            Pagination = true
+                                                            InitialSortModel = null
+                                                            InitialFilterModel = null
+                                                            ApplyQuickFilterInternally = true
+                                                            HeaderGroupFields = [||]
+                                                            OnSortModelChanged = ignore
+                                                            OnFilterModelChanged = ignore
+                                                            OnQuickFilterChanged = ignore
                                                             OnRowClicked = ignore
                                                         }
                                                 else
@@ -290,6 +306,14 @@ let CoveredBondsPage (props: CoveredBondsProps) =
                                                             Columns = registryColumns
                                                             Rows = registryRows data.Registry
                                                             Height = "460px"
+                                                            Pagination = true
+                                                            InitialSortModel = null
+                                                            InitialFilterModel = null
+                                                            ApplyQuickFilterInternally = true
+                                                            HeaderGroupFields = [||]
+                                                            OnSortModelChanged = ignore
+                                                            OnFilterModelChanged = ignore
+                                                            OnQuickFilterChanged = ignore
                                                             OnRowClicked = ignore
                                                         }
                                             ]

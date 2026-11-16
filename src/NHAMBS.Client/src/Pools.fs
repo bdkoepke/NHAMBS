@@ -1,6 +1,7 @@
 module NHAMBS.Client.Pools
 
 open System
+open System.Globalization
 open Feliz
 open Fable.Core.JsInterop
 open Browser.Types
@@ -175,29 +176,29 @@ let private filterPanel (props: PoolsProps) (options: MbsFilterOptions) =
                 ]
         ]
 
-let private poolRows (rows: MbsPoolRow[]) =
-    rows
-    |> Array.map (fun row ->
-        createObj
-            [
-                "poolId" ==> row.PoolId
-                "poolNumber" ==> row.PoolNumber
-                "cusip" ==> row.Cusip
-                "issuer" ==> row.IssuerName
-                "rateType" ==> titleCase row.RateType
-                "poolType" ==> poolTypeLabel row.PoolType row.PoolTypeDescription
-                "poolTypeTooltip" ==> PoolTypes.tooltipFor row.PoolType
-                "coupon" ==> row.CouponDisplay
-                "principal" ==> row.Principal
-                "issueDate" ==> row.IssueDate
-                "maturityDate" ==> row.MaturityDate
-                "loans" ==> row.Loans
-                "wac" ==> row.Wac
-                "wam" ==> row.Wam
-                "provinces" ==> row.Provinces
-                "insurers" ==> row.Insurers
-                "sourceUrl" ==> row.SourceUrl
-            ])
+let private poolRow (row: MbsPoolRow) =
+    createObj
+        [
+            "poolId" ==> row.PoolId
+            "poolNumber" ==> row.PoolNumber
+            "cusip" ==> row.Cusip
+            "issuer" ==> row.IssuerName
+            "rateType" ==> titleCase row.RateType
+            "poolType" ==> poolTypeLabel row.PoolType row.PoolTypeDescription
+            "poolTypeTooltip" ==> PoolTypes.tooltipFor row.PoolType
+            "coupon" ==> row.CouponDisplay
+            "principal" ==> row.Principal
+            "issueDate" ==> row.IssueDate
+            "maturityDate" ==> row.MaturityDate
+            "loans" ==> row.Loans
+            "wac" ==> row.Wac
+            "wam" ==> row.Wam
+            "provinces" ==> row.Provinces
+            "insurers" ==> row.Insurers
+            "sourceUrl" ==> row.SourceUrl
+        ]
+
+let private poolRows (rows: MbsPoolRow[]) = rows |> Array.map poolRow
 
 let private poolColumns =
     [|
@@ -222,6 +223,511 @@ let private poolColumns =
         AgGrid.textColumn "insurers" "Insurers" 230
         AgGrid.linkColumn "sourceUrl" "Circular" 100
     |]
+
+type private PoolSortValue =
+    | PoolText of string
+    | PoolNumber of decimal
+
+let private poolSortValue (field: string) (row: MbsPoolRow) =
+    match field with
+    | "poolNumber" -> PoolText row.PoolNumber
+    | "cusip" -> PoolText row.Cusip
+    | "issuer" -> PoolText row.IssuerName
+    | "rateType" -> PoolText(titleCase row.RateType)
+    | "poolType" -> PoolText(poolTypeLabel row.PoolType row.PoolTypeDescription)
+    | "coupon" -> PoolText row.CouponDisplay
+    | "principal" -> PoolNumber row.Principal
+    | "issueDate" -> PoolText row.IssueDate
+    | "maturityDate" -> PoolText row.MaturityDate
+    | "loans" -> PoolNumber(decimal row.Loans)
+    | "wac" -> PoolNumber row.Wac
+    | "wam" -> PoolNumber row.Wam
+    | "provinces" -> PoolText row.Provinces
+    | "insurers" -> PoolText row.Insurers
+    | _ -> PoolText ""
+
+let private comparePoolSortValues left right =
+    match left, right with
+    | PoolNumber x, PoolNumber y -> compare x y
+    | PoolText x, PoolText y -> String.Compare(x, y, StringComparison.OrdinalIgnoreCase)
+    | PoolText x, PoolNumber y -> String.Compare(x, string y, StringComparison.OrdinalIgnoreCase)
+    | PoolNumber x, PoolText y -> String.Compare(string x, y, StringComparison.OrdinalIgnoreCase)
+
+let private sortModelEntries (sortModel: obj) =
+    if isNull sortModel then [||] else unbox<obj[]> sortModel
+
+let private comparePoolRows (sortModel: obj) (left: MbsPoolRow) (right: MbsPoolRow) =
+    let entries = sortModelEntries sortModel
+
+    let rec loop index =
+        if index >= entries.Length then
+            0
+        else
+            let entry = entries.[index]
+            let field = string entry?colId
+            let direction = string entry?sort
+
+            let comparison =
+                comparePoolSortValues (poolSortValue field left) (poolSortValue field right)
+
+            if comparison = 0 then loop (index + 1)
+            elif direction = "desc" then -comparison
+            else comparison
+
+    loop 0
+
+let private sortPoolRows (sortModel: obj) (rows: MbsPoolRow[]) =
+    if (sortModelEntries sortModel).Length = 0 then
+        rows
+    else
+        rows |> Array.sortWith (comparePoolRows sortModel)
+
+let private groupSortDirection (sortModel: obj) (field: string) =
+    sortModelEntries sortModel
+    |> Array.tryFind (fun entry -> string entry?colId = field)
+    |> Option.map (fun entry -> string entry?sort)
+
+let private tryDecimalValue (value: obj) =
+    if isNull value then
+        None
+    elif value :? string then
+        match Decimal.TryParse(unbox<string> value, NumberStyles.Any, CultureInfo.InvariantCulture) with
+        | true, parsed -> Some parsed
+        | _ -> None
+    else
+        Some(unbox<decimal> value)
+
+let private tryDateValue (value: obj) =
+    if isNull value then
+        None
+    else
+        match DateTime.TryParse(string value, CultureInfo.InvariantCulture, DateTimeStyles.None) with
+        | true, parsed -> Some parsed.Date
+        | _ -> None
+
+let private blankText (value: obj) =
+    isNull value || String.IsNullOrWhiteSpace(string value)
+
+let private matchesTextFilter (cellValue: obj) (filter: obj) =
+    let cell = if isNull cellValue then "" else string cellValue
+    let cellLower = cell.ToLowerInvariant()
+    let filterValue = filter?filter
+
+    let filterLower =
+        if isNull filterValue then
+            ""
+        else
+            (string filterValue).ToLowerInvariant()
+
+    let operator = string (filter?``type``)
+
+    match operator with
+    | "equals" -> cellLower = filterLower
+    | "notEqual" -> cellLower <> filterLower
+    | "contains" -> cellLower.Contains filterLower
+    | "notContains" -> not (cellLower.Contains filterLower)
+    | "startsWith" -> cellLower.StartsWith filterLower
+    | "endsWith" -> cellLower.EndsWith filterLower
+    | "blank" -> blankText cellValue
+    | "notBlank" -> not (blankText cellValue)
+    | _ -> true
+
+let private matchesNumberFilter (cellValue: obj) (filter: obj) =
+    let cell = tryDecimalValue cellValue
+    let first = tryDecimalValue (filter?filter)
+    let second = tryDecimalValue (filter?filterTo)
+    let operator = string (filter?``type``)
+
+    match operator with
+    | "blank" -> cell.IsNone
+    | "notBlank" -> cell.IsSome
+    | _ ->
+        match cell, first with
+        | Some value, Some target ->
+            match operator with
+            | "equals" -> value = target
+            | "notEqual" -> value <> target
+            | "lessThan" -> value < target
+            | "lessThanOrEqual" -> value <= target
+            | "greaterThan" -> value > target
+            | "greaterThanOrEqual" -> value >= target
+
+            | "inRange" -> second |> Option.exists (fun upper -> value >= target && value <= upper)
+            | _ -> true
+        | _ -> false
+
+let private matchesDateFilter (cellValue: obj) (filter: obj) =
+    let cell = tryDateValue cellValue
+    let first = tryDateValue (filter?dateFrom)
+    let second = tryDateValue (filter?dateTo)
+    let operator = string (filter?``type``)
+
+    match operator with
+    | "blank" -> cell.IsNone
+    | "notBlank" -> cell.IsSome
+    | _ ->
+        match cell, first with
+        | Some value, Some from ->
+            match operator with
+            | "equals" -> value = from
+            | "notEqual" -> value <> from
+            | "lessThan" -> value < from
+            | "lessThanOrEqual" -> value <= from
+            | "greaterThan" -> value > from
+            | "greaterThanOrEqual" -> value >= from
+            | "inRange" -> second |> Option.exists (fun upper -> value >= from && value <= upper)
+            | _ -> true
+        | _ -> false
+
+let rec private matchesFilterCell (filterType: string) (cellValue: obj) (filter: obj) =
+    let conditions = filter?conditions
+
+    if isNull conditions then
+        match filterType with
+        | "number" -> matchesNumberFilter cellValue filter
+        | "date" -> matchesDateFilter cellValue filter
+        | _ -> matchesTextFilter cellValue filter
+    else
+        let results =
+            unbox<obj[]> conditions
+            |> Array.map (fun condition ->
+                let conditionType = string condition?filterType
+
+                let actualType =
+                    if String.IsNullOrWhiteSpace conditionType then
+                        filterType
+                    else
+                        conditionType
+
+                matchesFilterCell actualType cellValue condition)
+
+        if string filter?operator = "OR" then
+            Array.exists id results
+        else
+            Array.forall id results
+
+let private filterCellValue (field: string) (row: MbsPoolRow) =
+    match field with
+    | "poolNumber" -> Some(box row.PoolNumber)
+    | "cusip" -> Some(box row.Cusip)
+    | "issuer" -> Some(box row.IssuerName)
+    | "rateType" -> Some(box (titleCase row.RateType))
+    | "poolType" -> Some(box (poolTypeLabel row.PoolType row.PoolTypeDescription))
+    | "coupon" -> Some(box row.CouponDisplay)
+    | "principal" -> Some(box row.Principal)
+    | "issueDate" -> Some(box row.IssueDate)
+    | "maturityDate" -> Some(box row.MaturityDate)
+    | "loans" -> Some(box (decimal row.Loans))
+    | "wac" -> Some(box row.Wac)
+    | "wam" -> Some(box row.Wam)
+    | "provinces" -> Some(box row.Provinces)
+    | "insurers" -> Some(box row.Insurers)
+    | "sourceUrl" -> Some(box row.SourceUrl)
+    | _ -> None
+
+let private matchesFilterModel (filterModel: obj) (row: MbsPoolRow) =
+    if isNull filterModel then
+        true
+    else
+        Interop.filterEntries filterModel
+        |> Array.forall (fun entry ->
+            let field = string entry?colId
+
+            match filterCellValue field row with
+            | None -> true
+            | Some cell ->
+                let filter = entry?filter
+                let filterType = string filter?filterType
+                matchesFilterCell filterType cell filter)
+
+let private matchesQuickFilter (text: string) (row: MbsPoolRow) =
+    let needle = text.Trim().ToLowerInvariant()
+
+    if needle = "" then
+        true
+    else
+        [|
+            row.PoolNumber
+            row.Cusip
+            row.IssuerName
+            titleCase row.RateType
+            row.PoolTypeDescription
+            row.CouponDisplay
+            row.IssueDate
+            row.MaturityDate
+            row.Provinces
+            row.Insurers
+            string row.Principal
+            string row.Loans
+            string row.Wac
+            string row.Wam
+        |]
+        |> Array.exists (fun value -> value.ToLowerInvariant().Contains needle)
+
+let private poolGroupFields =
+    [|
+        "issuer", "Issuer"
+        "rateType", "Rate type"
+        "poolType", "Pool type"
+        "maturityYear", "Maturity year"
+        "provinces", "Province"
+        "insurers", "Insurer"
+    |]
+
+let private poolPivotFields =
+    [|
+        "rateType", "Rate type"
+        "poolType", "Pool type"
+        "maturityYear", "Maturity year"
+    |]
+
+let private poolPivotFieldLabel (field: string) =
+    poolPivotFields
+    |> Array.tryFind (fun (key, _) -> key = field)
+    |> Option.map snd
+    |> Option.defaultValue field
+
+let private poolGroupFieldLabel (field: string) =
+    poolGroupFields
+    |> Array.tryFind (fun (key, _) -> key = field)
+    |> Option.map snd
+    |> Option.defaultValue field
+
+let private poolGroupValue (field: string) (row: MbsPoolRow) =
+    match field with
+    | "issuer" -> row.IssuerName
+    | "rateType" -> titleCase row.RateType
+    | "poolType" -> poolTypeLabel row.PoolType row.PoolTypeDescription
+    | "maturityYear" ->
+        if row.MaturityDate.Length >= 4 then
+            row.MaturityDate.Substring(0, 4)
+        else
+            "Unknown"
+    | "provinces" -> row.Provinces
+    | "insurers" -> row.Insurers
+    | _ -> ""
+
+let private collectGroupKeys (prefix: string) (fields: string list) (rows: MbsPoolRow[]) =
+    let rec collect level prefix remaining rows =
+        match remaining with
+        | [] -> Set.empty
+        | field :: rest ->
+            let groups =
+                System.Collections.Generic.Dictionary<string, ResizeArray<MbsPoolRow>>()
+
+            for row in rows do
+                let value = poolGroupValue field row
+
+                match groups.TryGetValue value with
+                | true, items -> items.Add row
+                | _ ->
+                    let items = ResizeArray<MbsPoolRow>()
+                    items.Add row
+                    groups.[value] <- items
+
+            let keys = ResizeArray<string>()
+
+            for pair in groups do
+                let key = sprintf "%s|%d|%s=%s" prefix level field pair.Key
+                keys.Add key
+
+                for child in collect (level + 1) key rest (pair.Value.ToArray()) do
+                    keys.Add child
+
+            Set.ofSeq keys
+
+    collect 0 prefix fields rows
+
+let private groupPoolRow (level: int) (key: string) (label: string) (expanded: bool) (rows: MbsPoolRow[]) =
+    let totalPrincipal = rows |> Array.sumBy (fun row -> row.Principal)
+
+    let weighted (value: MbsPoolRow -> decimal) =
+        if totalPrincipal = 0m then
+            0m
+        else
+            (rows |> Array.sumBy (fun row -> value row * row.Principal)) / totalPrincipal
+
+    let averageCoupon = weighted (fun row -> row.CouponValue)
+
+    createObj
+        [
+            "poolId" ==> ""
+            "poolNumber" ==> ""
+            "cusip" ==> ""
+            "issuer" ==> ""
+            "rateType" ==> ""
+            "poolType" ==> ""
+            "poolTypeTooltip" ==> ""
+            "coupon"
+            ==> (if averageCoupon = 0m then
+                     ""
+                 else
+                     sprintf "%.3f%% avg" averageCoupon)
+            "principal" ==> totalPrincipal
+            "issueDate" ==> ""
+            "maturityDate" ==> ""
+            "loans" ==> (rows |> Array.sumBy (fun row -> row.Loans))
+            "wac" ==> weighted (fun row -> row.Wac)
+            "wam" ==> weighted (fun row -> row.Wam)
+            "provinces" ==> ""
+            "insurers" ==> ""
+            "sourceUrl" ==> ""
+            "groupLabel" ==> label
+            "groupLevel" ==> level
+            "groupCount" ==> rows.Length
+            "groupExpanded" ==> expanded
+            "groupExpandable" ==> true
+            "groupKey" ==> key
+            "isGroup" ==> true
+            "rowClass" ==> "grid-group-row"
+            "__filterValues" ==> poolRow rows.[0]
+        ]
+
+let private groupedPoolRows (fields: string list) (expanded: Set<string>) (sortModel: obj) (rows: MbsPoolRow[]) =
+    let rec emit (level: int) (prefix: string) (remaining: string list) (rows: MbsPoolRow[]) : obj[] =
+        match remaining with
+        | [] -> poolRows rows
+        | field :: rest ->
+            let groups =
+                rows
+                |> Array.groupBy (fun row -> poolGroupValue field row)
+                |> fun groups ->
+                    match groupSortDirection sortModel field with
+                    | Some "desc" -> groups |> Array.sortByDescending fst
+                    | _ -> groups |> Array.sortBy fst
+
+            groups
+            |> Array.collect (fun (value, groupRows) ->
+                let label = if String.IsNullOrWhiteSpace value then "(Blank)" else value
+
+                let key = sprintf "%s|%d|%s=%s" prefix level field value
+                let isExpanded = expanded.Contains key
+                let header = groupPoolRow level key label isExpanded groupRows
+
+                if isExpanded then
+                    Array.append [| header |] (emit (level + 1) key rest groupRows)
+                else
+                    [| header |])
+
+    emit 0 "group" fields rows
+
+let private poolPivotValues (pivotField: string) (rows: MbsPoolRow[]) =
+    rows |> Array.map (poolGroupValue pivotField) |> Array.distinct |> Array.sort
+
+let private pivotGroupRow
+    (level: int)
+    (key: string)
+    (label: string)
+    (expanded: bool)
+    (expandable: bool)
+    (pivotField: string)
+    (pivotValues: string[])
+    (rows: MbsPoolRow[])
+    =
+    let totalPrincipal = rows |> Array.sumBy (fun row -> row.Principal)
+
+    let weighted (value: MbsPoolRow -> decimal) =
+        if totalPrincipal = 0m then
+            0m
+        else
+            (rows |> Array.sumBy (fun row -> value row * row.Principal)) / totalPrincipal
+
+    let averageCoupon = weighted (fun row -> row.CouponValue)
+
+    let pivotTotals = Array.zeroCreate<decimal> pivotValues.Length
+
+    let pivotIndex =
+        dict [ for index, value in Array.indexed pivotValues -> value, index ]
+
+    for row in rows do
+        match pivotIndex.TryGetValue(poolGroupValue pivotField row) with
+        | true, index -> pivotTotals.[index] <- pivotTotals.[index] + row.Principal
+        | _ -> ()
+
+    let fields =
+        ResizeArray<string * obj>(
+            [
+                "poolId" ==> ""
+                "poolNumber" ==> ""
+                "cusip" ==> ""
+                "issuer" ==> ""
+                "rateType" ==> ""
+                "poolType" ==> ""
+                "poolTypeTooltip" ==> ""
+                "coupon"
+                ==> (if averageCoupon = 0m then
+                         ""
+                     else
+                         sprintf "%.3f%% avg" averageCoupon)
+                "principal" ==> totalPrincipal
+                "issueDate" ==> ""
+                "maturityDate" ==> ""
+                "loans" ==> (rows |> Array.sumBy (fun row -> row.Loans))
+                "wac" ==> weighted (fun row -> row.Wac)
+                "wam" ==> weighted (fun row -> row.Wam)
+                "provinces" ==> ""
+                "insurers" ==> ""
+                "sourceUrl" ==> ""
+                "groupLabel" ==> label
+                "groupLevel" ==> level
+                "groupCount" ==> rows.Length
+                "groupExpanded" ==> expanded
+                "groupExpandable" ==> expandable
+                "groupKey" ==> key
+                "isGroup" ==> true
+                "rowClass"
+                ==> (if expandable then
+                         "grid-group-row"
+                     else
+                         "grid-group-row grid-group-row-terminal")
+                "pivotTotal" ==> totalPrincipal
+                "__filterValues" ==> poolRow rows.[0]
+            ]
+        )
+
+    for index, total in Array.indexed pivotTotals do
+        fields.Add(sprintf "pivot_%d" index ==> total)
+
+    createObj fields
+
+let private pivotedPoolRows
+    (fields: string list)
+    (pivotField: string)
+    (expanded: Set<string>)
+    (sortModel: obj)
+    (rows: MbsPoolRow[])
+    =
+    let pivotValues = poolPivotValues pivotField rows
+
+    let rec emit (level: int) (prefix: string) (remaining: string list) (rows: MbsPoolRow[]) : obj[] =
+        match remaining with
+        | [] -> [||]
+        | field :: rest ->
+            let groups =
+                rows
+                |> Array.groupBy (fun row -> poolGroupValue field row)
+                |> fun groups ->
+                    match groupSortDirection sortModel field with
+                    | Some "desc" -> groups |> Array.sortByDescending fst
+                    | _ -> groups |> Array.sortBy fst
+
+            groups
+            |> Array.collect (fun (value, groupRows) ->
+                let label = if String.IsNullOrWhiteSpace value then "(Blank)" else value
+
+                let key = sprintf "%s|%d|%s=%s" prefix level field value
+                let isExpanded = expanded.Contains key
+                let expandable = not rest.IsEmpty
+
+                let header =
+                    pivotGroupRow level key label isExpanded expandable pivotField pivotValues groupRows
+
+                if isExpanded && expandable then
+                    Array.append [| header |] (emit (level + 1) key rest groupRows)
+                else
+                    [| header |])
+
+    emit 0 "pivot" fields rows
 
 let private percentageBars (items: (string * decimal)[]) =
     if items.Length = 0 then
@@ -932,6 +1438,301 @@ let private detailDrawer (props: PoolsProps) =
                 ]
         ]
 
+type private PoolGridProps =
+    {
+        Rows: MbsPoolRow[]
+        GroupFields: string list
+        ExpandedGroups: Set<string>
+        PivotField: string option
+        SortModel: obj
+        FilterModel: obj
+        QuickFilter: string
+        OnGroupFieldsChange: string list -> unit
+        OnToggleGroup: string -> unit
+        OnPivotFieldChange: string option -> unit
+        OnExpandedGroupsChange: Set<string> -> unit
+        OnSortModelChanged: obj -> unit
+        OnFilterModelChanged: obj -> unit
+        OnQuickFilterChanged: string -> unit
+        OnSelectPool: string -> unit
+    }
+
+[<ReactComponent>]
+let private PoolDataGrid (props: PoolGridProps) =
+    let groupFields = props.GroupFields
+    let expandedGroups = props.ExpandedGroups
+    let pivotField = props.PivotField
+    let (dragOver, setDragOver) = React.useState false
+
+    let processedRows =
+        React.useMemo (
+            (fun () ->
+                if groupFields.IsEmpty then
+                    props.Rows
+                else
+                    props.Rows
+                    |> Array.filter (fun row ->
+                        matchesQuickFilter props.QuickFilter row
+                        && matchesFilterModel props.FilterModel row)
+                    |> sortPoolRows props.SortModel),
+            [|
+                box props.Rows
+                box groupFields
+                box props.SortModel
+                box props.FilterModel
+                box props.QuickFilter
+            |]
+        )
+
+    let pivotValues =
+        React.useMemo (
+            (fun () ->
+                match pivotField with
+                | Some field -> poolPivotValues field processedRows
+                | None -> [||]),
+            [| box processedRows; box pivotField |]
+        )
+
+    let gridRows =
+        React.useMemo (
+            (fun () ->
+                if groupFields.IsEmpty then
+                    poolRows processedRows
+                elif pivotField.IsSome then
+                    pivotedPoolRows groupFields pivotField.Value expandedGroups props.SortModel processedRows
+                else
+                    groupedPoolRows groupFields expandedGroups props.SortModel processedRows),
+            [|
+                box processedRows
+                box groupFields
+                box expandedGroups
+                box pivotField
+                box props.SortModel
+            |]
+        )
+
+    let activeColumns =
+        React.useMemo (
+            (fun () ->
+                if groupFields.IsEmpty then
+                    poolColumns
+                elif pivotField.IsSome then
+                    let pivotColumns =
+                        pivotValues
+                        |> Array.mapi (fun index value ->
+                            AgGrid.moneyColumn (sprintf "pivot_%d" index) value 140 |> AgGrid.plainColumn)
+
+                    let totalColumn = AgGrid.moneyColumn "pivotTotal" "Total" 150 |> AgGrid.plainColumn
+
+                    Array.concat [ [| AgGrid.groupColumn |]; pivotColumns; [| totalColumn |] ]
+                else
+                    let groupedColumns = poolColumns |> Array.map AgGrid.groupedColumn
+
+                    Array.append [| AgGrid.groupColumn |] groupedColumns),
+            [| box groupFields; box pivotField; box pivotValues |]
+        )
+
+    let availableFields =
+        if groupFields.Length >= 3 then
+            [||]
+        else
+            poolGroupFields
+            |> Array.filter (fun (field, _) -> not (List.contains field groupFields) && pivotField <> Some field)
+
+    let availablePivotFields =
+        poolPivotFields
+        |> Array.filter (fun (field, _) -> not (List.contains field groupFields))
+
+    let addGroupField (field: string) =
+        if groupFields.Length < 3 && not (List.contains field groupFields) then
+            props.OnGroupFieldsChange(groupFields @ [ field ])
+
+    let removeGroupField (field: string) =
+        props.OnGroupFieldsChange(groupFields |> List.filter (fun item -> item <> field))
+
+    let expandAllGroups () =
+        let prefix = if pivotField.IsSome then "pivot" else "group"
+        props.OnExpandedGroupsChange(collectGroupKeys prefix groupFields processedRows)
+
+    let collapseAllGroups () = props.OnExpandedGroupsChange Set.empty
+
+    let onRowClicked (data: obj) =
+        if isNull data then
+            ()
+        elif not (isNull data?isGroup) && unbox<bool> data?isGroup then
+            let expandable =
+                let value = data?groupExpandable
+                if isNull value then true else unbox<bool> value
+
+            if expandable then
+                props.OnToggleGroup(string data?groupKey)
+        else
+            string data?poolId |> props.OnSelectPool
+
+    let handleDragOver (event: DragEvent) =
+        event.preventDefault ()
+        setDragOver true
+
+    let handleDragLeave (_: DragEvent) = setDragOver false
+
+    let handleDrop (event: DragEvent) =
+        event.preventDefault ()
+        setDragOver false
+        let data = event.dataTransfer
+
+        if not (isNull data) then
+            let field = data.getData ("text/plain")
+
+            if poolGroupFields |> Array.exists (fun (key, _) -> key = field) then
+                addGroupField field
+
+    Html.div
+        [
+            prop.children
+                [
+                    Html.div
+                        [
+                            prop.className (
+                                if dragOver then
+                                    "grid-group-bar drag-over"
+                                else
+                                    "grid-group-bar"
+                            )
+                            prop.onDragOver handleDragOver
+                            prop.onDragLeave handleDragLeave
+                            prop.onDrop handleDrop
+                            prop.children
+                                [
+                                    Html.span [ prop.className "grid-group-bar-label"; prop.text "Group by" ]
+                                    for field in groupFields do
+                                        Html.span
+                                            [
+                                                prop.className "grid-group-chip"
+                                                prop.children
+                                                    [
+                                                        Html.span [ prop.text (poolGroupFieldLabel field) ]
+                                                        Html.button
+                                                            [
+                                                                prop.className "grid-group-chip-remove"
+                                                                prop.title "Remove grouping"
+                                                                prop.onClick (fun _ -> removeGroupField field)
+                                                                prop.text "×"
+                                                            ]
+                                                    ]
+                                            ]
+                                    if availableFields.Length > 0 then
+                                        Html.select
+                                            [
+                                                prop.className "grid-group-select"
+                                                prop.value ""
+                                                prop.onChange (fun (event: Event) ->
+                                                    let field = string event.target?value
+
+                                                    if not (String.IsNullOrWhiteSpace field) then
+                                                        addGroupField field)
+                                                prop.children
+                                                    [
+                                                        Html.option
+                                                            [
+                                                                prop.value ""
+                                                                prop.text (
+                                                                    if groupFields.IsEmpty then
+                                                                        "Add grouping…"
+                                                                    else
+                                                                        "Add level…"
+                                                                )
+                                                            ]
+                                                        for field, label in availableFields do
+                                                            Html.option [ prop.value field; prop.text label ]
+                                                    ]
+                                            ]
+                                    if groupFields.IsEmpty then
+                                        Html.span
+                                            [
+                                                prop.className "grid-group-drop-hint"
+                                                prop.text "or drag a column header here"
+                                            ]
+                                    if not groupFields.IsEmpty && availablePivotFields.Length > 0 then
+                                        Html.span [ prop.className "grid-group-bar-label"; prop.text "Pivot by" ]
+
+                                        Html.select
+                                            [
+                                                prop.className "grid-group-select"
+                                                prop.value (defaultArg pivotField "")
+                                                prop.onChange (fun (event: Event) ->
+                                                    let field = string event.target?value
+
+                                                    props.OnPivotFieldChange(
+                                                        if String.IsNullOrWhiteSpace field then None else Some field
+                                                    ))
+                                                prop.children
+                                                    [
+                                                        Html.option [ prop.value ""; prop.text "No pivot" ]
+                                                        for field, label in availablePivotFields do
+                                                            Html.option [ prop.value field; prop.text label ]
+                                                    ]
+                                            ]
+                                    if not groupFields.IsEmpty then
+                                        Html.div
+                                            [
+                                                prop.className "grid-group-actions"
+                                                prop.children
+                                                    [
+                                                        Html.button
+                                                            [
+                                                                prop.className "btn btn-small btn-ghost"
+                                                                prop.onClick (fun _ -> expandAllGroups ())
+                                                                prop.text "Expand all"
+                                                            ]
+                                                        Html.button
+                                                            [
+                                                                prop.className "btn btn-small btn-ghost"
+                                                                prop.onClick (fun _ -> collapseAllGroups ())
+                                                                prop.text "Collapse all"
+                                                            ]
+                                                    ]
+                                            ]
+                                    if not groupFields.IsEmpty then
+                                        Html.button
+                                            [
+                                                prop.className "btn btn-small btn-ghost"
+                                                prop.onClick (fun _ -> props.OnGroupFieldsChange [])
+                                                prop.text "Clear grouping"
+                                            ]
+                                    if not groupFields.IsEmpty then
+                                        Html.span
+                                            [
+                                                prop.className "grid-group-hint"
+                                                prop.text (
+                                                    match pivotField with
+                                                    | Some field ->
+                                                        sprintf
+                                                            "Pivot mode: principal grouped by %s. Click a group row to expand deeper levels."
+                                                            (poolPivotFieldLabel field)
+                                                    | None ->
+                                                        "Click a group row to expand or collapse it. Drag column headers here to add another level."
+                                                )
+                                            ]
+                                ]
+                        ]
+                    AgGrid.AgGrid
+                        {
+                            Columns = activeColumns
+                            Rows = gridRows
+                            Height = "640px"
+                            Pagination = groupFields.IsEmpty
+                            InitialSortModel = props.SortModel
+                            InitialFilterModel = props.FilterModel
+                            ApplyQuickFilterInternally = groupFields.IsEmpty
+                            HeaderGroupFields = poolGroupFields |> Array.map fst
+                            OnSortModelChanged = props.OnSortModelChanged
+                            OnFilterModelChanged = props.OnFilterModelChanged
+                            OnQuickFilterChanged = props.OnQuickFilterChanged
+                            OnRowClicked = onRowClicked
+                        }
+                ]
+        ]
+
 let private statusToggle (props: PoolsProps) =
     let optionButton (value: string) (label: string) =
         Html.button
@@ -960,6 +1761,33 @@ let private statusToggle (props: PoolsProps) =
 
 [<ReactComponent>]
 let PoolsPage (props: PoolsProps) =
+    let (groupFields, setGroupFields) = React.useStateWithUpdater<string list> []
+
+    let (expandedGroups, setExpandedGroups) =
+        React.useStateWithUpdater<Set<string>> Set.empty
+
+    let (pivotField, setPivotField) = React.useStateWithUpdater<string option> None
+
+    let (sortModel, setSortModel) = React.useStateWithUpdater<obj>(box [||])
+    let (filterModel, setFilterModel) = React.useStateWithUpdater<obj>(null: obj)
+    let (quickFilter, setQuickFilter) = React.useState ""
+
+    let updateGroupFields (fields: string list) =
+        setGroupFields (fun _ -> fields)
+        setExpandedGroups (fun _ -> Set.empty)
+
+        setPivotField (fun pivot ->
+            match pivot with
+            | Some field when fields.IsEmpty || List.contains field fields -> None
+            | other -> other)
+
+    let toggleGroup (key: string) =
+        setExpandedGroups (fun expanded ->
+            if expanded.Contains key then
+                Set.remove key expanded
+            else
+                Set.add key expanded)
+
     let analyticsView =
         LoadableBlock "Loading pool analytics" props.Analytics (fun analytics ->
             Html.div
@@ -1159,19 +1987,30 @@ let PoolsPage (props: PoolsProps) =
                                         ]
                                 ]
 
-                            AgGrid.AgGrid
+                            PoolDataGrid
                                 {
-                                    Columns = poolColumns
-                                    Rows = poolRows page.Rows
-                                    Height = "640px"
-                                    OnRowClicked = (fun data -> data?poolId |> string |> props.OnSelectPool)
+                                    Rows = page.Rows
+                                    GroupFields = groupFields
+                                    ExpandedGroups = expandedGroups
+                                    PivotField = pivotField
+                                    SortModel = sortModel
+                                    FilterModel = filterModel
+                                    QuickFilter = quickFilter
+                                    OnGroupFieldsChange = updateGroupFields
+                                    OnToggleGroup = toggleGroup
+                                    OnPivotFieldChange = fun field -> setPivotField (fun _ -> field)
+                                    OnExpandedGroupsChange = fun expanded -> setExpandedGroups (fun _ -> expanded)
+                                    OnSortModelChanged = fun model -> setSortModel (fun _ -> model)
+                                    OnFilterModelChanged = fun model -> setFilterModel (fun _ -> model)
+                                    OnQuickFilterChanged = fun text -> setQuickFilter text
+                                    OnSelectPool = props.OnSelectPool
                                 }
 
                             Html.p
                                 [
                                     prop.className "grid-hint"
                                     prop.text
-                                        "Click any row to open the pool detail drawer. Use the column headers to sort or filter within the loaded result set."
+                                        "Click any pool row to open the detail drawer. When grouping is active, click a group row to expand or collapse it."
                                 ]
                         ]
                 ])

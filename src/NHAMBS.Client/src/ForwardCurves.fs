@@ -417,6 +417,14 @@ let private forwardCurveView (props: ForwardCurvesProps) (data: ForwardCurveSet)
                                         Columns = observationColumns
                                         Rows = observationRows data
                                         Height = "440px"
+                                        Pagination = true
+                                        InitialSortModel = null
+                                        InitialFilterModel = null
+                                        ApplyQuickFilterInternally = true
+                                        HeaderGroupFields = [||]
+                                        OnSortModelChanged = ignore
+                                        OnFilterModelChanged = ignore
+                                        OnQuickFilterChanged = ignore
                                         OnRowClicked = ignore
                                     }
                             ]

@@ -9,6 +9,7 @@ open System.Text.Json
 open FSharp.Data
 open Npgsql
 open NHAMBS.Etl.Common
+open NHAMBS.Etl.Anomalies
 
 type private PoolFile = { Path: string; Cusip: string }
 
@@ -183,9 +184,15 @@ let private writeMbsPools
     let dateOpt (path: string list) (root: JsonElement) =
         writeOption writer (optString path root |> Option.bind parseDate) (fun value -> writer.WriteDate(value))
 
+    let dateValue (path: string list) (root: JsonElement) =
+        optString path root |> Option.bind parseDate
+
     let jsonOpt (path: string list) (root: JsonElement) =
         writeOption writer (optElement path root |> Option.map (fun value -> value.GetRawText())) (fun value ->
             writer.WriteJson(value))
+
+    let detectedAnomalies = ResizeArray<Anomaly>()
+    let today = DateTime.UtcNow.Date
 
     let written, skipped =
         iterPools files (fun file root ->
@@ -210,6 +217,44 @@ let private writeMbsPools
 
             let modified = File.GetLastWriteTimeUtc file.Path
 
+            let dates =
+                {
+                    IssueDate = dateValue [ "mbs"; "issueDate" ] root
+                    SettlementDate = dateValue [ "mbs"; "settlementDate" ] root
+                    FirstPaymentDue = dateValue [ "mbs"; "firstPaymentDue" ] root
+                    MaturityDate = dateValue [ "mbs"; "maturityDate" ] root
+                    FinalPaymentDue = dateValue [ "mbs"; "finalPaymentDue" ] root
+                }
+
+            let normalized = normalizeMbsDates "mbs" file.Cusip today dates
+            detectedAnomalies.AddRange normalized.Anomalies
+
+            let scheduledWam, scheduledWamAnomaly =
+                optDecimal
+                    [
+                        "addendum"
+                        "scheduledMaturity"
+                        "total"
+                        "weightedAverageRemainingAmortizationMonths"
+                    ]
+                    root
+                |> normalizeMbsAmortization "mbs" file.Cusip "scheduled_wam"
+
+            scheduledWamAnomaly |> Option.iter detectedAnomalies.Add
+
+            let scheduledIntroductoryMonths, scheduledIntroductoryAnomaly =
+                optDecimal
+                    [
+                        "addendum"
+                        "scheduledMaturity"
+                        "total"
+                        "weightedAverageIntroductoryPeriodsRemainingMonths"
+                    ]
+                    root
+                |> normalizeMbsIntroductoryMonths "mbs" file.Cusip "scheduled_introductory_months"
+
+            scheduledIntroductoryAnomaly |> Option.iter detectedAnomalies.Add
+
             writer.Write(file.Cusip)
             writer.Write(stringOr [ "mbs"; "poolNumber" ] "" root)
             writer.Write(canonical)
@@ -227,11 +272,11 @@ let private writeMbsPools
             decimalOpt [ "mbs"; "coupon"; "spreadPercent" ] root
             decimalOpt [ "mbs"; "coupon"; "fixedRatePercent" ] root
             writer.Write(optDecimal [ "mbs"; "aggregatePrincipalAmount" ] root |> Option.defaultValue 0m)
-            dateOpt [ "mbs"; "issueDate" ] root
-            dateOpt [ "mbs"; "settlementDate" ] root
-            dateOpt [ "mbs"; "firstPaymentDue" ] root
-            dateOpt [ "mbs"; "maturityDate" ] root
-            dateOpt [ "mbs"; "finalPaymentDue" ] root
+            writeOption writer normalized.Dates.IssueDate (fun value -> writer.WriteDate(value))
+            writeOption writer normalized.Dates.SettlementDate (fun value -> writer.WriteDate(value))
+            writeOption writer normalized.Dates.FirstPaymentDue (fun value -> writer.WriteDate(value))
+            writeOption writer normalized.Dates.MaturityDate (fun value -> writer.WriteDate(value))
+            writeOption writer normalized.Dates.FinalPaymentDue (fun value -> writer.WriteDate(value))
             intOpt [ "addendum"; "totalNumberOfMortgageLoans" ] root
             dateOpt [ "addendum"; "weightedAverageInterestAdjustmentDate" ] root
             dateOpt [ "addendum"; "weightedAverageMaturityDate" ] root
@@ -246,27 +291,12 @@ let private writeMbsPools
                 ]
                 root
 
-            decimalOpt
-                [
-                    "addendum"
-                    "scheduledMaturity"
-                    "total"
-                    "weightedAverageRemainingAmortizationMonths"
-                ]
-                root
-
+            writeOption writer scheduledWam (fun value -> writer.Write(value))
             decimalOpt [ "addendum"; "scheduledMaturity"; "total"; "indexSpreadTotalPercent" ] root
             decimalOpt [ "addendum"; "scheduledMaturity"; "total"; "indexSpreadFullTermPercent" ] root
             decimalOpt [ "addendum"; "scheduledMaturity"; "total"; "sumOfMonthlyPaymentEquivalents" ] root
 
-            decimalOpt
-                [
-                    "addendum"
-                    "scheduledMaturity"
-                    "total"
-                    "weightedAverageIntroductoryPeriodsRemainingMonths"
-                ]
-                root
+            writeOption writer scheduledIntroductoryMonths (fun value -> writer.Write(value))
 
             decimalOpt [ "addendum"; "loanTypeProfile"; "homeownerPercent" ] root
             decimalOpt [ "addendum"; "loanTypeProfile"; "multipleFamilyPercent" ] root
@@ -291,7 +321,7 @@ let private writeMbsPools
             writer.WriteJson(root.GetRawText()))
 
     writer.Complete() |> ignore
-    written, skipped
+    written, skipped, List.ofSeq detectedAnomalies
 
 let private writeInsurers (connection: NpgsqlConnection) (files: PoolFile[]) =
     use writer =
@@ -391,8 +421,11 @@ let private writeScheduledMaturity (connection: NpgsqlConnection) (files: PoolFi
                 writeOption writer (optDecimal [ "weightedAverageMortgageRatePercent" ] bucket) (fun value ->
                     writer.Write(value))
 
-                writeOption writer (optDecimal [ "weightedAverageRemainingAmortizationMonths" ] bucket) (fun value ->
-                    writer.Write(value))
+                writeOption
+                    writer
+                    (optDecimal [ "weightedAverageRemainingAmortizationMonths" ] bucket
+                     |> Option.filter isPlausibleMbsAmortization)
+                    (fun value -> writer.Write(value))
 
                 writeOption writer (optDecimal [ "indexSpreadTotalPercent" ] bucket) (fun value -> writer.Write(value))
 
@@ -404,7 +437,8 @@ let private writeScheduledMaturity (connection: NpgsqlConnection) (files: PoolFi
 
                 writeOption
                     writer
-                    (optDecimal [ "weightedAverageIntroductoryPeriodsRemainingMonths" ] bucket)
+                    (optDecimal [ "weightedAverageIntroductoryPeriodsRemainingMonths" ] bucket
+                     |> Option.filter isPlausibleMbsIntroductoryMonths)
                     (fun value -> writer.Write(value))
             | None -> ())
     |> ignore
@@ -442,6 +476,40 @@ let private writeRateBands (connection: NpgsqlConnection) (files: PoolFile[]) =
 
     writer.Complete()
 
+let private writeAnomalies
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (runId: int64)
+    (anomalies: Anomaly list)
+    =
+    for anomaly in anomalies do
+        use command =
+            new NpgsqlCommand(
+                """
+                INSERT INTO nhambs.etl_anomalies
+                    (run_id, dataset, record_key, field, raw_value, corrected_value, severity, message)
+                VALUES
+                    (@run_id, @dataset, @record_key, @field, @raw_value, @corrected_value, @severity, @message);
+                """,
+                connection,
+                Transaction = transaction
+            )
+
+        let correctedValue =
+            anomaly.CorrectedValue
+            |> Option.map box
+            |> Option.defaultValue (box DBNull.Value)
+
+        command.Parameters.AddWithValue("run_id", runId) |> ignore
+        command.Parameters.AddWithValue("dataset", anomaly.Dataset) |> ignore
+        command.Parameters.AddWithValue("record_key", anomaly.RecordKey) |> ignore
+        command.Parameters.AddWithValue("field", anomaly.Field) |> ignore
+        command.Parameters.AddWithValue("raw_value", anomaly.RawValue) |> ignore
+        command.Parameters.AddWithValue("corrected_value", correctedValue) |> ignore
+        command.Parameters.AddWithValue("severity", anomaly.Severity) |> ignore
+        command.Parameters.AddWithValue("message", anomaly.Message) |> ignore
+        command.ExecuteNonQuery() |> ignore
+
 let run (poolsDir: string) (manifestPath: string) =
     let connectionStringValue = connectionString ()
     let files = poolFiles poolsDir
@@ -469,7 +537,10 @@ let run (poolsDir: string) (manifestPath: string) =
         log (sprintf "  %d canonical issuers (%d unreadable files)" issuers.Count issuerSkipped)
 
         log "  loading pool headers..."
-        let written, skipped = writeMbsPools connection files urls issuers
+        let written, skipped, anomalies = writeMbsPools connection files urls issuers
+
+        log (sprintf "  recording %d data anomalies..." anomalies.Length)
+        writeAnomalies connection transaction runId anomalies
 
         log "  loading insurer profiles..."
         writeInsurers connection files |> ignore
@@ -485,6 +556,35 @@ let run (poolsDir: string) (manifestPath: string) =
 
         transaction.Commit()
         stopwatch.Stop()
+
+        let corrected =
+            anomalies
+            |> List.filter (fun anomaly -> anomaly.CorrectedValue.IsSome)
+            |> List.length
+
+        if anomalies.IsEmpty then
+            log "  data anomalies: none detected"
+        else
+            log (sprintf "  data anomalies: %d detected (%d corrected)" anomalies.Length corrected)
+
+            for anomaly in anomalies |> List.truncate 25 do
+                let correction =
+                    anomaly.CorrectedValue
+                    |> Option.map (sprintf " -> %s")
+                    |> Option.defaultValue ""
+
+                log (
+                    sprintf
+                        "    [%s] %s %s%s: %s"
+                        anomaly.Severity
+                        anomaly.RecordKey
+                        anomaly.Field
+                        correction
+                        anomaly.Message
+                )
+
+            if anomalies.Length > 25 then
+                log (sprintf "    ... and %d more" (anomalies.Length - 25))
 
         completeRun runConnection runId files.Length skipped (int64 written) None
         log (sprintf "MBS ETL complete: %d pools in %.1fs (%d skipped)" written stopwatch.Elapsed.TotalSeconds skipped)

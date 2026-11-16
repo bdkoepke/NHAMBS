@@ -321,6 +321,14 @@ let ChtPage (props: ChtProps) =
                                                             Columns = issueColumns
                                                             Rows = issueRows data.Issues
                                                             Height = "560px"
+                                                            Pagination = true
+                                                            InitialSortModel = null
+                                                            InitialFilterModel = null
+                                                            ApplyQuickFilterInternally = true
+                                                            HeaderGroupFields = [||]
+                                                            OnSortModelChanged = ignore
+                                                            OnFilterModelChanged = ignore
+                                                            OnQuickFilterChanged = ignore
                                                             OnRowClicked = ignore
                                                         }
                                                 elif tab = "circulars" then
@@ -329,6 +337,14 @@ let ChtPage (props: ChtProps) =
                                                             Columns = circularColumns
                                                             Rows = circularRows data.Circulars
                                                             Height = "640px"
+                                                            Pagination = true
+                                                            InitialSortModel = null
+                                                            InitialFilterModel = null
+                                                            ApplyQuickFilterInternally = true
+                                                            HeaderGroupFields = [||]
+                                                            OnSortModelChanged = ignore
+                                                            OnFilterModelChanged = ignore
+                                                            OnQuickFilterChanged = ignore
                                                             OnRowClicked = ignore
                                                         }
                                                 else
@@ -337,6 +353,14 @@ let ChtPage (props: ChtProps) =
                                                             Columns = historyColumns
                                                             Rows = historyRows data.History
                                                             Height = "640px"
+                                                            Pagination = true
+                                                            InitialSortModel = null
+                                                            InitialFilterModel = null
+                                                            ApplyQuickFilterInternally = true
+                                                            HeaderGroupFields = [||]
+                                                            OnSortModelChanged = ignore
+                                                            OnFilterModelChanged = ignore
+                                                            OnQuickFilterChanged = ignore
                                                             OnRowClicked = ignore
                                                         }
                                             ]

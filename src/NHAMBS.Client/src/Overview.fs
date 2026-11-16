@@ -407,6 +407,14 @@ let OverviewPage (props: OverviewProps) =
                                     Columns = issuerColumns
                                     Rows = issuerRows mbs.TopIssuers mbs.TrendMonths
                                     Height = "390px"
+                                    Pagination = true
+                                    InitialSortModel = null
+                                    InitialFilterModel = null
+                                    ApplyQuickFilterInternally = true
+                                    HeaderGroupFields = [||]
+                                    OnSortModelChanged = ignore
+                                    OnFilterModelChanged = ignore
+                                    OnQuickFilterChanged = ignore
                                     OnRowClicked = ignore
                                 }
                         ]
