@@ -82,8 +82,9 @@ and health check. There is no hand-rolled `docker-compose.yml`.
   with snapshot/horizon KPIs, an SVG curve chart, tenor observations and series
   metadata.
 - **Mortgage arrears** — CBA and CMHC/Equifax 90+ day arrears comparison with a
-  geography selector covering every loaded country, province/territory, region
-  and CMA. Provider coverage gaps are labelled instead of substituting another
+  multi-select geography picker covering every loaded country, province or
+  territory, region and CMA. Several geographies can be compared on one chart;
+  provider coverage gaps are labelled instead of substituting another
   geography's values.
 - **CSV export** — export the currently loaded pool result set from the grid.
 

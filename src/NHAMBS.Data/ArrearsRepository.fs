@@ -96,11 +96,12 @@ let get (context: Provider.Sql.dataContext) =
                 select row
         }
         |> Seq.choose (fun row ->
-            match row.PeriodEnd, row.Value, row.Provider, row.SourceCode, row.GeographyCode with
-            | Some period, Some value, Some provider, Some source, Some geography ->
+            match row.PeriodEnd, row.Value, row.Provider, row.SourceCode, row.GeographyCode, row.GeographyName with
+            | Some period, Some value, Some provider, Some source, Some geographyCode, Some geographyName ->
                 Some(
                     {
-                        GeographyCode = geography
+                        GeographyCode = geographyCode
+                        GeographyName = geographyName
                         Label = period.ToString("MMM yyyy", CultureInfo.InvariantCulture)
                         Date = period.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                         Value = value

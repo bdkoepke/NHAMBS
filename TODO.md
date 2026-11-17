@@ -115,21 +115,23 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
   - added `GeographyCode` to `ArrearsSeriesPoint` and a `Series` collection to `ArrearsData`, so the client can render a selected geography’s history.
 - [x] Replace the national-only `v_arrears_provider_comparison` query in `src/NHAMBS.Data/ArrearsRepository.fs` with a query over `v_arrears_series` filtered to `metric = 'arrears_rate_percent'`. No database migration was needed because the view already carries geography.
 - [x] Return all geography series in one `GetArrears` call and filter in the client, so switching is instant. The API contract and database schema are unchanged.
-- [x] Add a labelled geography selector above the KPIs in `src/NHAMBS.Client/src/Arrears.fs`:
+- [x] Add a labelled, multi-select geography picker above the KPIs in `src/NHAMBS.Client/src/Arrears.fs`:
   - defaults to Canada;
-  - lists every loaded geography in a stable order, using grouped options for country, provinces or territories, regions and CMAs;
-  - uses explicit level labels so a CMA such as Toronto is not mistaken for a province.
-- [x] Add Elmish state for the selected geography (`ArrearsGeography` and `ArrearsGeographyChanged`) so the choice survives refresh and navigation. Hash-route persistence was left optional and is not implemented.
-- [x] Make the whole panel geography-aware: KPI cards, chart title and accessibility label, coverage note, and latest-rate table all reflect the selected geography rather than showing national values under a provincial or CMA heading.
+  - lists every loaded geography in a stable order, grouped into fieldsets for country, provinces or territories, regions and CMAs;
+  - uses explicit level labels so a CMA such as Toronto is not mistaken for a province;
+  - supports Select all, Reset to Canada and Clear controls and shows each geography’s provider coverage inline.
+- [x] Allow several geographies to be compared at once. The chart draws one line per selected geography and available provider; KPI cards show latest-rate ranges across the selection; the latest-rates table adds or removes geographies with Add/Remove actions.
+- [x] Add Elmish state for the selected geography set (`ArrearsGeographies` and `ArrearsGeographiesChanged`) so the choices survive refresh and navigation. Hash-route persistence was left optional and is not implemented.
+- [x] Make the whole panel selection-aware: KPI cards, chart title and accessibility label, coverage note, and latest-rate table all reflect the selected geographies rather than showing national values under a provincial or CMA heading.
 - [x] Handle provider coverage gaps explicitly:
   - CBA has no separate New Brunswick, Nova Scotia, Prince Edward Island or Newfoundland and Labrador series;
   - CBA has no CMA series, while CMHC does;
   - CMHC has no Atlantic or Territories aggregate.
   - Only available provider series are charted, with a short note explaining each gap. Geographies with no observations render an empty state rather than national values.
-- [x] Keep the “latest rates by geography” table as an all-geography comparison, highlighting the selected rows so users can jump between geographies.
+- [x] Keep the “latest rates by geography” table as an all-geography comparison, highlighting all selected rows so users can add or remove geographies from the comparison.
 - [x] Add tests for geography grouping and ordering, the provider-gap notes and coverage labels, plus navigation taxonomy. The repository result was verified against the loaded database; the all-series loading model makes per-geography repository filtering unnecessary.
-- [x] Add a UI check that switching geographies updates the KPIs, chart and table, and that an unavailable-provider case renders cleanly. Chromium checks covered Canada, Ontario, Toronto, New Brunswick, Atlantic and the mobile menu.
-- [x] Update `docs/arrears.md` and `README.md` with the selector coverage and provider-gap behaviour.
+- [x] Add a UI check that changing the selection updates the KPIs, chart lines, legend and table, and that unavailable-provider cases render cleanly. Chromium checks covered single and multi-geography selections, Canada, Ontario, Toronto, New Brunswick, Atlantic and the mobile menu.
+- [x] Update `docs/arrears.md` and `README.md` with the multi-select picker, comparison behaviour and provider-gap coverage.
 
 ## Distress indicators summary
 

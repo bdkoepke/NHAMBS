@@ -17,7 +17,7 @@ type Model =
         Cht: Loadable<ChtData>
         Covered: Loadable<CoveredBondData>
         Arrears: Loadable<ArrearsData>
-        ArrearsGeography: string
+        ArrearsGeographies: string list
         GovernmentBonds: Loadable<GovernmentBondData>
         Freshness: Loadable<DatasetFreshness[]>
         Filters: Loadable<MbsFilterOptions>
@@ -38,7 +38,7 @@ type Msg =
     | ChtLoaded of Result<ChtData, string>
     | CoveredLoaded of Result<CoveredBondData, string>
     | ArrearsLoaded of Result<ArrearsData, string>
-    | ArrearsGeographyChanged of string
+    | ArrearsGeographiesChanged of string list
     | GovernmentBondsLoaded of Result<GovernmentBondData, string>
     | FreshnessLoaded of Result<DatasetFreshness[], string>
     | FiltersLoaded of Result<MbsFilterOptions, string>
@@ -60,7 +60,7 @@ let private emptyModel =
         Cht = NotLoaded
         Covered = NotLoaded
         Arrears = NotLoaded
-        ArrearsGeography = "canada"
+        ArrearsGeographies = [ "canada" ]
         GovernmentBonds = NotLoaded
         Freshness = NotLoaded
         Filters = NotLoaded
@@ -203,28 +203,34 @@ let update (msg: Msg) (model: Model) =
     | CoveredLoaded(Error message) -> { model with Covered = Failed message }, Cmd.none
 
     | ArrearsLoaded(Ok data) ->
-        let selectedGeography =
-            if
-                data.Geographies
-                |> Array.exists (fun geography -> geography.Code = model.ArrearsGeography)
-            then
-                model.ArrearsGeography
+        let available =
+            data.Geographies |> Array.map (fun geography -> geography.Code) |> Set.ofArray
+
+        let selected =
+            model.ArrearsGeographies |> List.filter available.Contains |> List.distinct
+
+        let selected =
+            if List.isEmpty selected then
+                if available.Contains "canada" then
+                    [ "canada" ]
+                else
+                    data.Geographies
+                    |> Array.map (fun geography -> geography.Code)
+                    |> Array.truncate 1
+                    |> Array.toList
             else
-                data.Geographies
-                |> Array.tryFind (fun geography -> geography.Code = "canada")
-                |> Option.map (fun geography -> geography.Code)
-                |> Option.defaultValue "canada"
+                selected
 
         { model with
             Arrears = Loaded data
-            ArrearsGeography = selectedGeography
+            ArrearsGeographies = selected
         },
         Cmd.none
     | ArrearsLoaded(Error message) -> { model with Arrears = Failed message }, Cmd.none
 
-    | ArrearsGeographyChanged geography ->
+    | ArrearsGeographiesChanged geographies ->
         { model with
-            ArrearsGeography = geography
+            ArrearsGeographies = geographies
         },
         Cmd.none
 
@@ -391,8 +397,8 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
             Arrears.ArrearsPage
                 {
                     Data = model.Arrears
-                    SelectedGeography = model.ArrearsGeography
-                    OnGeographyChange = ArrearsGeographyChanged >> dispatch
+                    SelectedGeographies = model.ArrearsGeographies
+                    OnGeographiesChange = ArrearsGeographiesChanged >> dispatch
                     OnRefresh = fun () -> dispatch Refresh
                 }
         | GovernmentBonds ->

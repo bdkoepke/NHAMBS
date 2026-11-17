@@ -29,12 +29,13 @@ let private padBottom = 34.0
 let emptyChart (message: string) =
     Html.div [ prop.className "chart-empty"; prop.text message ]
 
-/// Multi-series date chart used for the CBA/CMHC arrears comparison. The two
+/// Multi-series date chart used for the CBA/CMHC arrears comparison. Each
+/// selected geography contributes one line per available provider. The two
 /// providers publish monthly and quarterly points, so the x-axis is calendar
 /// time rather than a shared array index.
-let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]) =
+let arrearsComparisonChart (points: ArrearsSeriesPoint[]) =
     if points.Length = 0 then
-        emptyChart "No arrears observations"
+        emptyChart "No arrears observations for the selected geographies"
     else
         let parsed =
             points
@@ -65,9 +66,9 @@ let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]
 
             let series =
                 parsed
-                |> Array.groupBy (fun (_, point) -> point.Source)
-                |> Array.sortBy fst
-                |> Array.mapi (fun index (source, values) ->
+                |> Array.groupBy (fun (_, point) -> point.GeographyName, point.Source)
+                |> Array.sortBy (fun ((geography, source), _) -> geography, source)
+                |> Array.mapi (fun index ((geography, source), values) ->
                     let ordered = values |> Array.sortBy fst
 
                     let path =
@@ -76,7 +77,7 @@ let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]
                             sprintf "%s %.2f %.2f" (if pointIndex = 0 then "M" else "L") (x date) (y point.Value))
                         |> String.concat " "
 
-                    source, path, palette.[index % palette.Length])
+                    sprintf "%s · %s" geography source, geography, source, path, palette.[index % palette.Length])
 
             let xLabels =
                 [ 0.0; 0.25; 0.5; 0.75; 1.0 ]
@@ -131,7 +132,7 @@ let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]
                                                         )
                                                     ]
 
-                                            for source, path, colour in series do
+                                            for _, geography, source, path, colour in series do
                                                 Svg.path
                                                     [
                                                         svg.d path
@@ -142,7 +143,7 @@ let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]
                                                         svg.custom ("stroke-linecap", "round")
                                                         svg.custom (
                                                             "aria-label",
-                                                            sprintf "%s %s 90+ day arrears rate" geographyName source
+                                                            sprintf "%s %s 90+ day arrears rate" geography source
                                                         )
                                                     ]
                                         ]
@@ -152,7 +153,7 @@ let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]
                                     prop.className "chart-legend"
                                     prop.children
                                         [
-                                            for source, _, colour in series do
+                                            for label, _, _, _, colour in series do
                                                 Html.span
                                                     [
                                                         prop.className "chart-legend-item"
@@ -163,7 +164,7 @@ let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]
                                                                         prop.className "chart-legend-dot"
                                                                         prop.style [ style.backgroundColor colour ]
                                                                     ]
-                                                                Html.span [ prop.text source ]
+                                                                Html.span [ prop.text label ]
                                                             ]
                                                     ]
                                         ]

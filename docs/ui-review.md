@@ -10,7 +10,7 @@ tablet (768x1024) and mobile (390x844) widths:
 | `#/forward-curves` | Forward curves |
 | `#/cht` | Canada Mortgage Bonds |
 | `#/covered-bonds` | Covered bond registry |
-| `#/arrears` | Mortgage arrears comparison with a geography selector |
+| `#/arrears` | Mortgage arrears comparison with a multi-select geography picker |
 | `#/government-bonds` | Government bond issues and profiles |
 
 ## Findings fixed
@@ -44,9 +44,9 @@ tablet (768x1024) and mobile (390x844) widths:
   to Securities; mortgage arrears moved to Market data alongside forward curves.
   The navigation is now driven by a single page-section mapping.
 - **Arrears were previously national-only outside the latest table.** The
-  mortgage-arrears panel now has a data-driven geography selector covering every
-  loaded country, province or territory, region and CMA, with explicit
-  provider-coverage notes.
+  mortgage-arrears panel now has a data-driven, multi-select geography picker
+  covering every loaded country, province or territory, region and CMA, with
+  explicit provider-coverage notes and multi-geography chart lines.
 
 ## Checks performed
 
@@ -63,10 +63,11 @@ tablet (768x1024) and mobile (390x844) widths:
 - The arrears page was checked against the loaded CBA and CMHC data: the
   national comparison chart, latest geography table, source cards and stale
   flag all render correctly.
-- The arrears geography selector was exercised at desktop and mobile widths for
-  Canada, Ontario, Toronto, New Brunswick and Atlantic. KPIs, chart headings,
-  coverage notes and the selected table rows update together; CMHC-only,
-  CBA-only and no-data cases render without substituting national values.
+- The arrears geography picker was exercised at desktop and mobile widths for
+  Canada, Ontario, Toronto, New Brunswick and Atlantic, both individually and in
+  multi-geography combinations. KPIs, chart lines and legend, coverage notes and
+  the selected table rows update together; CMHC-only, CBA-only and no-data cases
+  render without substituting national values.
 - The sidebar was checked after the taxonomy change: Market data contains
   Overview, Forward curves and Mortgage arrears; Securities contains NHA MBS
   pools, Canada Mortgage Bonds, Covered bonds and Government bonds. The order is

@@ -57,13 +57,14 @@ Views:
 
 `GetArrears` returns the full 90+ day rate history from `v_arrears_series`, the
 latest observations, the source definitions and every row in
-`nhambs.arrears_geographies`. The client groups the selector options into
-country, province or territory, region and CMA, and defaults to Canada.
-Selecting a geography updates the KPI cards, chart and coverage notes; the
-latest-rates table lists every loaded geography and can be used to switch the
-selection.
+`nhambs.arrears_geographies`. The client groups the picker options into country,
+province or territory, region and CMA, and defaults to Canada. Multiple
+geographies can be selected: the chart compares one line per selected geography
+and available provider, the KPI cards show latest-rate ranges across the
+selection, and the latest-rates table highlights every selected row and can be
+used to add or remove geographies.
 
-The selector is data-driven, so a new geography loaded into
+The picker is data-driven, so a new geography loaded into
 `nhambs.arrears_geographies` appears without a client change. Coverage gaps are
 explicit:
 

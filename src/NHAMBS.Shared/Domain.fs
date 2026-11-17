@@ -442,6 +442,7 @@ module Domain =
     type ArrearsSeriesPoint =
         {
             GeographyCode: string
+            GeographyName: string
             Label: string
             Date: string
             Value: decimal

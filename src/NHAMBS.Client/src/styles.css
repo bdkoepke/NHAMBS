@@ -1882,23 +1882,95 @@ a {
   }
 }
 
-.arrears-selector {
+.arrears-geography-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  min-width: 240px;
+  gap: 14px;
 }
 
-.arrears-selector-label {
+.arrears-geography-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.arrears-geography-title {
+  margin: 0;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.arrears-geography-subtitle {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.arrears-geography-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.arrears-geography-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  max-height: 270px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.arrears-geography-group {
+  margin: 0;
+  padding: 9px 12px 10px;
+  border: 1px solid #eae3d7;
+  border-radius: 10px;
+  background: #fdfbf7;
+  min-width: 0;
+}
+
+.arrears-geography-legend {
+  padding: 0 4px;
+  color: var(--muted);
   font-size: 10.5px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--muted);
   font-weight: 700;
 }
 
-.arrears-selector-input {
-  min-width: 240px;
+.arrears-geography-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.arrears-geography-option input {
+  accent-color: var(--primary);
+  margin: 0;
+}
+
+.arrears-geography-name {
+  min-width: 0;
+}
+
+.arrears-geography-coverage {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
 }
 
 .arrears-chart {
@@ -1909,9 +1981,12 @@ a {
 
 .chart-legend {
   display: flex;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 8px 18px;
   align-items: center;
   padding-left: 8px;
+  max-height: 92px;
+  overflow-y: auto;
   color: var(--ink-2);
   font-size: 12px;
 }
