@@ -73,6 +73,12 @@ let private dashboardApi: DashboardApi =
                     let context = Provider.dataContext ()
                     return ArrearsRepository.get context
                 }
+        GetGovernmentBonds =
+            fun () ->
+                async {
+                    let context = Provider.dataContext ()
+                    return GovernmentBondRepository.get context
+                }
         GetFreshness =
             fun () ->
                 async {

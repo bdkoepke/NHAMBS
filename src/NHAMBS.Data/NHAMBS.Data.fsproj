@@ -10,6 +10,7 @@
     <Compile Include="ChtRepository.fs" />
     <Compile Include="CoveredBondRepository.fs" />
     <Compile Include="ArrearsRepository.fs" />
+    <Compile Include="GovernmentBondRepository.fs" />
     <Compile Include="ForwardCurveRepository.fs" />
     <Compile Include="EtlRepository.fs" />
   </ItemGroup>

@@ -13,7 +13,8 @@ Elsa Server + Studio host lives in `NHAMBS.ElsaServer`.
 | `ChtEtlWorkflow` | Canada Mortgage Bond issues, circulars and history. |
 | `CoveredBondEtlWorkflow` | Covered bond programmes, bonds and registry. |
 | `ArrearsEtlWorkflow` | CBA and CMHC mortgage-arrears workbooks. |
-| `NhambsEtlWorkflow` | All four datasets in sequence. |
+| `GovernmentBondEtlWorkflow` | Government of Canada bond and T-bill snapshot. |
+| `NhambsEtlWorkflow` | All five datasets in sequence. |
 
 Each workflow is built from `CodeActivity` wrappers in `Activities.fs`:
 

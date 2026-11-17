@@ -1,0 +1,53 @@
+{
+  "observations": [
+    {
+      "dom_dbt_id": "2026-11-13_BOND_CA135087VS05",
+      "DOM_DBT_AS_OF_DATE": { "v": "2026-11-13" },
+      "DOM_DBT_ISIN": { "v": "CA135087VS05" },
+      "DOM_DBT_SECURITY_TYPE": { "v": "BOND" },
+      "DOM_DBT_INSTRUMENT_TYPE": { "v": "BD-REAL" },
+      "DOM_DBT_COUPON_RATE": { "v": "4.2500" },
+      "DOM_DBT_ISSUE_DATE": { "v": "1995-12-07" },
+      "DOM_DBT_MATURITY_DATE": { "v": "2026-12-01" },
+      "DOM_DBT_OUTSTANDING_AMOUNT": { "v": "5250000000" },
+      "DOM_DBT_INFLATION_ADJUSTMENT": { "v": "4905022500" },
+      "DOM_DBT_OUTSTANDING_AMOUNT_INF_ADJ": { "v": "10155022500" },
+      "DOM_DBT_ISSUANCE_TERM_BUCKET": { "v": "30" },
+      "DOM_DBT_MATURITY_TERM_BUCKET": { "v": "<1" }
+    },
+    {
+      "dom_dbt_id": "2026-11-13_BOND_CA135087S547",
+      "DOM_DBT_AS_OF_DATE": { "v": "2026-11-13" },
+      "DOM_DBT_ISIN": { "v": "CA135087S547" },
+      "DOM_DBT_SECURITY_TYPE": { "v": "BOND" },
+      "DOM_DBT_INSTRUMENT_TYPE": { "v": "BD-FIX" },
+      "DOM_DBT_COUPON_RATE": { "v": "3.0000" },
+      "DOM_DBT_ISSUE_DATE": { "v": "2024-11-01" },
+      "DOM_DBT_MATURITY_DATE": { "v": "2027-02-01" },
+      "DOM_DBT_OUTSTANDING_AMOUNT": { "v": "17529667000" },
+      "DOM_DBT_OUTSTANDING_AMOUNT_INF_ADJ": { "v": "17529667000" },
+      "DOM_DBT_ISSUANCE_TERM_BUCKET": { "v": "2" },
+      "DOM_DBT_MATURITY_TERM_BUCKET": { "v": "<1" }
+    },
+    {
+      "dom_dbt_id": "2026-11-13",
+      "DOM_DBT_AS_OF_DATE": { "v": "2026-11-13" },
+      "DOM_DBT_OUTSTANDING_AMOUNT_TOTAL": { "v": "1612656740000" }
+    },
+    {
+      "dom_dbt_id": "2026-11-12_BOND_CA135087VS05",
+      "DOM_DBT_AS_OF_DATE": { "v": "2026-11-12" },
+      "DOM_DBT_ISIN": { "v": "CA135087VS05" },
+      "DOM_DBT_SECURITY_TYPE": { "v": "BOND" },
+      "DOM_DBT_INSTRUMENT_TYPE": { "v": "BD-REAL" },
+      "DOM_DBT_COUPON_RATE": { "v": "4.2500" },
+      "DOM_DBT_ISSUE_DATE": { "v": "1995-12-07" },
+      "DOM_DBT_MATURITY_DATE": { "v": "2026-12-01" },
+      "DOM_DBT_OUTSTANDING_AMOUNT": { "v": "5250000000" },
+      "DOM_DBT_INFLATION_ADJUSTMENT": { "v": "4905022500" },
+      "DOM_DBT_OUTSTANDING_AMOUNT_INF_ADJ": { "v": "10155022500" },
+      "DOM_DBT_ISSUANCE_TERM_BUCKET": { "v": "30" },
+      "DOM_DBT_MATURITY_TERM_BUCKET": { "v": "<1" }
+    }
+  ]
+}

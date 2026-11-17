@@ -25,6 +25,7 @@
     <Compile Include="Migrations/M012_RawAndNhambs.fs" />
     <Compile Include="Migrations/M013_ReferenceDimensions.fs" />
     <Compile Include="Migrations/M014_Arrears.fs" />
+    <Compile Include="Migrations/M015_GovernmentBonds.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

@@ -232,9 +232,9 @@ dotnet run --project src/NHAMBS.Etl -- --dataset all
 ```
 
 The ETL host runs an Elsa workflow from `NHAMBS.Workflows`. `--dataset all`
-runs `NhambsEtlWorkflow`, which composes the MBS, CHT, covered bond and
-mortgage-arrears activities in order; the per-dataset options select the
-matching workflow instead. The workflows load from `out/` and the pool manifest from
+runs `NhambsEtlWorkflow`, which composes the MBS, CHT, covered bond,
+mortgage-arrears and government-bond activities in order; the per-dataset
+options select the matching workflow instead. The workflows load from `out/` and the pool manifest from
 `src/NHAMBS.Mbs/pool_urls.txt` by default. CHT reads the debt-issues snapshot
 directly from `out/debt-issues.json`, its offering circulars from
 `out/cht_circulars/` and the per-series cancellation history from
@@ -245,6 +245,7 @@ dotnet run --project src/NHAMBS.Etl -- --dataset mbs
 dotnet run --project src/NHAMBS.Etl -- --dataset cht
 dotnet run --project src/NHAMBS.Etl -- --dataset covered
 dotnet run --project src/NHAMBS.Etl -- --dataset arrears
+dotnet run --project src/NHAMBS.Etl -- --dataset government-bonds
 dotnet run --project src/NHAMBS.Etl -- --data-root out --pools-dir out/pools
 ```
 
@@ -362,6 +363,10 @@ retention policy and full lineage diagram.
 - `arrears_observations` — one row per source, period, geography and metric
   (90+ day arrears rate, arrears count or mortgage count). See
   `docs/arrears.md` for the definitional reconciliation.
+- `government_bond_programs` / `government_bond_issues` — issue-level
+  Government of Canada bonds and treasury bills from Bank of Canada Valet,
+  including ISIN, coupon, issue/maturity dates, outstanding amounts and
+  inflation adjustments. See `docs/government-bonds.md`.
 
 **Analytics views (`nhambs`)**
 
@@ -371,7 +376,9 @@ Dashboard views are built from the `nhambs` tables only: `v_mbs_pool_grid`, `v_m
 `v_mbs_unresolved_entities`, `v_covered_bond_program_summary`,
 `v_covered_bond_registry_summary`, `v_cht_summary`,
 `v_cht_history_summary`, `v_arrears_series`, `v_arrears_latest`,
-`v_arrears_provider_comparison` and `v_arrears_freshness`.
+`v_arrears_provider_comparison`, `v_arrears_freshness`,
+`v_government_bond_latest`, `v_government_bond_program_summary` and
+`v_government_bond_freshness`.
 
 **Operations (`nhambs` / `elsa`)**
 
@@ -427,6 +434,7 @@ over those typed results.
 - `GetCht`
 - `GetCoveredBonds`
 - `GetArrears`
+- `GetGovernmentBonds`
 - `GetFreshness`
 
 The server route builder maps these to `/api/DashboardApi/{method}`. Fable

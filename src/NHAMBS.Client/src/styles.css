@@ -1918,21 +1918,21 @@ a {
   border-radius: 10px;
 }
 
-.arrears-table {
+.data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12.5px;
 }
 
-.arrears-table th,
-.arrears-table td {
+.data-table th,
+.data-table td {
   text-align: left;
   padding: 9px 12px;
   border-bottom: 1px solid #eee6da;
   white-space: nowrap;
 }
 
-.arrears-table th {
+.data-table th {
   position: sticky;
   top: 0;
   background: #faf7f1;
@@ -1943,7 +1943,7 @@ a {
   z-index: 1;
 }
 
-.arrears-table tbody tr:hover {
+.data-table tbody tr:hover {
   background: #fcfaf6;
 }
 

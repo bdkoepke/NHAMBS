@@ -53,6 +53,17 @@ nhambs.arrears_observations.source_document_id
         │
         ▼
 nhambs.v_arrears_series / v_arrears_latest / v_arrears_provider_comparison / v_arrears_freshness
+
+Bank of Canada Valet GOC_OUTSTANDING JSON
+        │
+        ▼
+raw.source_documents (dataset = government-bonds-goc)
+        │
+        ▼
+nhambs.government_bond_issues.source_document_id
+        │
+        ▼
+nhambs.v_government_bond_latest / v_government_bond_program_summary / v_government_bond_freshness
 ```
 
 Every conformed top-level fact records the raw file that produced it. Child
@@ -71,6 +82,7 @@ bond key. `nhambs.etl_anomalies` records corrections and warnings with the
 | Covered bond program | `(issuer_name, program_name)` |
 | Covered bond registry | `name` |
 | Arrears observation | `(source_code, period_end, geography_code, lender_type, insured_status, product_type, arrears_stage, metric)` |
+| Government bond issue | `(program_code, isin, as_of_date)` |
 
 ## Maturity year decoding
 

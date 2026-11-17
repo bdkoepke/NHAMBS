@@ -16,6 +16,7 @@
     <Compile Include="src/Cht.fs" />
     <Compile Include="src/CoveredBonds.fs" />
     <Compile Include="src/Arrears.fs" />
+    <Compile Include="src/GovernmentBonds.fs" />
     <Compile Include="src/ForwardCurves.fs" />
     <Compile Include="src/App.fs" />
     <Compile Include="src/Main.fs" />

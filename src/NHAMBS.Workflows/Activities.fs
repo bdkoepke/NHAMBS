@@ -34,6 +34,12 @@ type LoadArrearsActivity() =
 
     override this.Execute(_context: ActivityExecutionContext) = ArrearsEtl.run () |> ignore
 
+/// Loads issue-level Government of Canada bonds and treasury bills.
+type LoadGovernmentBondsActivity() =
+    inherit CodeActivity()
+
+    override this.Execute(_context: ActivityExecutionContext) = GovernmentBondEtl.run () |> ignore
+
 /// Loads covered bond programmes, their bonds and the CMHC registry.
 type LoadCoveredBondsActivity(dataRoot: string) =
     inherit CodeActivity()

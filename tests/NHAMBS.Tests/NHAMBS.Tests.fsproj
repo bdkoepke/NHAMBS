@@ -16,6 +16,11 @@
     <Compile Include="Tests.fs" />
     <Compile Include="AnomalyTests.fs" />
     <Compile Include="NormalizationTests.fs" />
+    <Compile Include="GovernmentBondTests.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="fixtures/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

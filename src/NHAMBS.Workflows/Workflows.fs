@@ -41,6 +41,14 @@ type ArrearsEtlWorkflow() =
         builder.Name <- "Mortgage arrears ETL"
         builder.Root <- LoadArrearsActivity()
 
+/// Loads issue-level Government of Canada bonds and treasury bills.
+type GovernmentBondEtlWorkflow() =
+    inherit WorkflowBase()
+
+    override this.Build(builder: IWorkflowBuilder) =
+        builder.Name <- "Government bond ETL"
+        builder.Root <- LoadGovernmentBondsActivity()
+
 /// Loads every parsed dataset in dependency order.
 type NhambsEtlWorkflow(dataRoot: string, poolsDir: string, manifestPath: string) =
     inherit WorkflowBase()
@@ -56,5 +64,6 @@ type NhambsEtlWorkflow(dataRoot: string, poolsDir: string, manifestPath: string)
         sequence.Activities.Add(LoadChtActivity(dataRoot))
         sequence.Activities.Add(LoadCoveredBondsActivity(dataRoot))
         sequence.Activities.Add(LoadArrearsActivity())
+        sequence.Activities.Add(LoadGovernmentBondsActivity())
 
         builder.Root <- sequence

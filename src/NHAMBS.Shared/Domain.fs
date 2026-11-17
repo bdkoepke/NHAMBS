@@ -441,6 +441,63 @@ module Domain =
             Sources: ArrearsSourceInfo[]
         }
 
+    type GovernmentBondIssueRow =
+        {
+            ProgramCode: string
+            ProgramName: string
+            Isin: string
+            SecurityType: string
+            InstrumentType: string
+            CouponRatePercent: decimal
+            IssueDate: string
+            MaturityDate: string
+            OutstandingAmount: decimal
+            InflationAdjustment: decimal option
+            OutstandingInflationAdjusted: decimal
+            AsOfDate: string
+        }
+
+    type GovernmentBondProgramInfo =
+        {
+            ProgramCode: string
+            Name: string
+            IssuerName: string
+            GovernmentLevel: string
+            SourceName: string
+            SourceUrl: string
+            Cadence: string
+            Notes: string
+            LatestAsOfDate: string option
+            IsStale: bool
+            IssueCount: int
+            BondOutstanding: decimal
+            BillOutstanding: decimal
+            TotalOutstanding: decimal
+            WeightedAverageCoupon: decimal option
+            LastLoadedAt: string option
+        }
+
+    type GovernmentBondAnalytics =
+        {
+            AsOfDate: string option
+            BondOutstanding: decimal
+            BillOutstanding: decimal
+            TotalOutstanding: decimal
+            IssueCount: int
+            BondIssueCount: int
+            WeightedAverageCoupon: decimal
+            ByMaturityYear: SeriesPoint[]
+            ByCouponBucket: CategoryPoint[]
+            BySecurityType: CategoryPoint[]
+        }
+
+    type GovernmentBondData =
+        {
+            Analytics: GovernmentBondAnalytics
+            Issues: GovernmentBondIssueRow[]
+            Programs: GovernmentBondProgramInfo[]
+        }
+
     type DatasetFreshness =
         {
             Dataset: string

@@ -11,6 +11,7 @@ type Page =
     | Cht
     | CoveredBonds
     | Arrears
+    | GovernmentBonds
 
 type Loadable<'T> =
     | NotLoaded
@@ -26,6 +27,7 @@ let pageTitle =
     | Cht -> "Canada Mortgage Bonds"
     | CoveredBonds -> "Covered bonds"
     | Arrears -> "Mortgage arrears"
+    | GovernmentBonds -> "Government bonds"
 
 let pageHash =
     function
@@ -35,6 +37,7 @@ let pageHash =
     | Cht -> "#/cht"
     | CoveredBonds -> "#/covered-bonds"
     | Arrears -> "#/arrears"
+    | GovernmentBonds -> "#/government-bonds"
 
 let pageFromHash (hash: string) =
     match hash with
@@ -43,6 +46,7 @@ let pageFromHash (hash: string) =
     | "#/cht" -> Cht
     | "#/covered-bonds" -> CoveredBonds
     | "#/arrears" -> Arrears
+    | "#/government-bonds" -> GovernmentBonds
     | _ -> Overview
 
 let PageHeader (eyebrow: string) (title: string) (subtitle: string) (actions: ReactElement list) =

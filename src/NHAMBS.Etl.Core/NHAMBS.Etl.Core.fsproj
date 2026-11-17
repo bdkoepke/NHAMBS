@@ -12,6 +12,9 @@
     <Compile Include="ArrearsTypes.fs" />
     <Compile Include="ArrearsParser.fs" />
     <Compile Include="ArrearsEtl.fs" />
+    <Compile Include="GovernmentBondTypes.fs" />
+    <Compile Include="GovernmentBondParser.fs" />
+    <Compile Include="GovernmentBondEtl.fs" />
     <Compile Include="MbsEtl.fs" />
     <Compile Include="ChtEtl.fs" />
     <Compile Include="CoveredBondEtl.fs" />

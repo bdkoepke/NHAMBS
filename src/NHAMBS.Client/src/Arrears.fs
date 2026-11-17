@@ -84,7 +84,7 @@ let private rateTable (rows: ArrearsObservationRow[]) =
                     [
                         Html.table
                             [
-                                prop.className "arrears-table"
+                                prop.className "data-table"
                                 prop.children
                                     [
                                         Html.thead

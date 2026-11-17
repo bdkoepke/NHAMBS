@@ -17,6 +17,7 @@ type Model =
         Cht: Loadable<ChtData>
         Covered: Loadable<CoveredBondData>
         Arrears: Loadable<ArrearsData>
+        GovernmentBonds: Loadable<GovernmentBondData>
         Freshness: Loadable<DatasetFreshness[]>
         Filters: Loadable<MbsFilterOptions>
         Analytics: Loadable<MbsAnalytics>
@@ -36,6 +37,7 @@ type Msg =
     | ChtLoaded of Result<ChtData, string>
     | CoveredLoaded of Result<CoveredBondData, string>
     | ArrearsLoaded of Result<ArrearsData, string>
+    | GovernmentBondsLoaded of Result<GovernmentBondData, string>
     | FreshnessLoaded of Result<DatasetFreshness[], string>
     | FiltersLoaded of Result<MbsFilterOptions, string>
     | AnalyticsLoaded of Result<MbsAnalytics, string>
@@ -56,6 +58,7 @@ let private emptyModel =
         Cht = NotLoaded
         Covered = NotLoaded
         Arrears = NotLoaded
+        GovernmentBonds = NotLoaded
         Freshness = NotLoaded
         Filters = NotLoaded
         Analytics = NotLoaded
@@ -84,6 +87,10 @@ let private loadCovered =
 let private loadArrears =
     Cmd.OfAsync.either (fun () -> Api.api.GetArrears()) () (Ok >> ArrearsLoaded) (fun ex ->
         ArrearsLoaded(Error ex.Message))
+
+let private loadGovernmentBonds =
+    Cmd.OfAsync.either (fun () -> Api.api.GetGovernmentBonds()) () (Ok >> GovernmentBondsLoaded) (fun ex ->
+        GovernmentBondsLoaded(Error ex.Message))
 
 let private loadFreshness =
     Cmd.OfAsync.either (fun () -> Api.api.GetFreshness()) () (Ok >> FreshnessLoaded) (fun ex ->
@@ -121,6 +128,7 @@ let init () =
         | Cht -> loadCht
         | CoveredBonds -> loadCovered
         | Arrears -> loadArrears
+        | GovernmentBonds -> loadGovernmentBonds
 
     { emptyModel with Page = page }, Cmd.batch [ loadFreshness; pageCommand ]
 
@@ -132,6 +140,7 @@ let private refreshPage model =
     | Cht -> Cmd.batch [ loadCht; loadFreshness ]
     | CoveredBonds -> Cmd.batch [ loadCovered; loadFreshness ]
     | Arrears -> Cmd.batch [ loadArrears; loadFreshness ]
+    | GovernmentBonds -> Cmd.batch [ loadGovernmentBonds; loadFreshness ]
 
 let update (msg: Msg) (model: Model) =
     match msg with
@@ -157,6 +166,7 @@ let update (msg: Msg) (model: Model) =
                 | Cht when model.Cht = NotLoaded -> loadCht
                 | CoveredBonds when model.Covered = NotLoaded -> loadCovered
                 | Arrears when model.Arrears = NotLoaded -> loadArrears
+                | GovernmentBonds when model.GovernmentBonds = NotLoaded -> loadGovernmentBonds
                 | _ -> Cmd.none
 
             model, command
@@ -191,6 +201,17 @@ let update (msg: Msg) (model: Model) =
 
     | ArrearsLoaded(Ok data) -> { model with Arrears = Loaded data }, Cmd.none
     | ArrearsLoaded(Error message) -> { model with Arrears = Failed message }, Cmd.none
+
+    | GovernmentBondsLoaded(Ok data) ->
+        { model with
+            GovernmentBonds = Loaded data
+        },
+        Cmd.none
+    | GovernmentBondsLoaded(Error message) ->
+        { model with
+            GovernmentBonds = Failed message
+        },
+        Cmd.none
 
     | FreshnessLoaded(Ok data) -> { model with Freshness = Loaded data }, Cmd.none
     | FreshnessLoaded(Error message) ->
@@ -346,6 +367,12 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                     Data = model.Arrears
                     OnRefresh = fun () -> dispatch Refresh
                 }
+        | GovernmentBonds ->
+            GovernmentBonds.GovernmentBondsPage
+                {
+                    Data = model.GovernmentBonds
+                    OnRefresh = fun () -> dispatch Refresh
+                }
 
     Html.div
         [
@@ -419,6 +446,7 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                                     navItem Cht "◆" dispatch model.Page
                                                     navItem CoveredBonds "◇" dispatch model.Page
                                                     navItem Arrears "▤" dispatch model.Page
+                                                    navItem GovernmentBonds "▥" dispatch model.Page
                                                 ]
                                         ]
 

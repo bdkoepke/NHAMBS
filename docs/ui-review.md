@@ -11,6 +11,7 @@ tablet (768x1024) and mobile (390x844) widths:
 | `#/cht` | Canada Mortgage Bonds |
 | `#/covered-bonds` | Covered bond registry |
 | `#/arrears` | Mortgage arrears comparison |
+| `#/government-bonds` | Government bond issues and profiles |
 
 ## Findings fixed
 
@@ -33,10 +34,13 @@ tablet (768x1024) and mobile (390x844) widths:
 - **The new mortgage-arrears view needed source context.** It shows both
   provider definitions, cadence, latest period and a stale badge next to the
   national comparison chart and latest-rate table.
+- **The government-bond view needed a maturity and coupon profile.** It shows
+  bond/T-bill totals, weighted coupon, maturity-year bars, coupon buckets, the
+  issue table and the source card.
 
 ## Checks performed
 
-- All six routes render without console errors or document-level horizontal
+- All seven routes render without console errors or document-level horizontal
   overflow at the three viewport widths.
 - Pool search, issuer filtering, coupon sorting, pagination, reset, CSV export
   and the detail drawer were exercised against the full 69,746-pool data set.
@@ -49,6 +53,9 @@ tablet (768x1024) and mobile (390x844) widths:
 - The arrears page was checked against the loaded CBA and CMHC data: the
   national comparison chart, latest geography table, source cards and stale
   flag all render correctly.
+- The government-bond page was checked against the latest Bank of Canada
+  snapshot: 65 bonds and 20 treasury bills render with the correct totals,
+  weighted coupon, maturity/coupon profiles and issue table.
 - Chart and table values were spot-checked for currency, percentage, date and
   missing-value formatting.
 

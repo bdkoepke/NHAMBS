@@ -14,6 +14,7 @@ type DashboardApi =
         GetCht: unit -> Async<ChtData>
         GetCoveredBonds: unit -> Async<CoveredBondData>
         GetArrears: unit -> Async<ArrearsData>
+        GetGovernmentBonds: unit -> Async<GovernmentBondData>
         GetFreshness: unit -> Async<DatasetFreshness[]>
         GetForwardCurves: unit -> Async<ForwardCurveSet>
     }
