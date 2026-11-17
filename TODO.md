@@ -95,6 +95,42 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
 - [ ] Add API endpoints and dashboard views for HPI levels, changes, and cross-provider comparisons.
 - [ ] Add fixtures and tests for the new sources, and flag stale or missing reporting periods.
 
+## 10. Correct the market-data and securities taxonomy
+
+- [ ] Document the classification rule: **securities** are instruments with an issuance identity such as a CUSIP/ISIN (NHA MBS pools, Canada Mortgage Bonds, covered bonds, government bonds); **market data** is a rate, price, curve or arrears series used to monitor or value those securities (overview, forward curves, mortgage arrears).
+- [ ] Add a `PageSection` type and a single `pageSection` mapping in `src/NHAMBS.Client/src/Components.fs` (`MarketData` vs `Securities`) so classification is defined once instead of hard-coded in the sidebar.
+- [ ] In `src/NHAMBS.Client/src/App.fs`, drive the sidebar from that mapping:
+  - **Market data:** Overview, Forward curves, Mortgage arrears
+  - **Securities:** NHA MBS pools, Canada Mortgage Bonds, Covered bonds, Government bonds
+- [ ] Move **NHA MBS pools** from Market to Securities and **Mortgage arrears** from Securities to Market data. Keep **Forward curves** under Market data; no move is otherwise required.
+- [ ] Consider renaming the sidebar label from `Market` to `Market data` for clarity.
+- [ ] Update `README.md`, `docs/ui-review.md`, `docs/arrears.md`, and any feature lists or page descriptions that blur market data and securities.
+- [ ] Add a UI regression check asserting the sidebar section contents and order, including the mobile navigation.
+
+## 11. Add geography selection to the mortgage-arrears panel
+
+- [ ] Expose **every loaded geography** from `nhambs.arrears_geographies` in the selector, not a hard-coded province list. Group them by level: Canada, provinces, regions (Atlantic/Territories), and CMAs, so newly ingested geographies appear automatically.
+- [ ] Extend the shared arrears DTOs in `src/NHAMBS.Shared/Domain.fs`:
+  - add `ArrearsGeographyInfo` with code, name, level, province code, sort order and available source codes;
+  - add `GeographyCode` to `ArrearsSeriesPoint`, or add a `Series` collection to `ArrearsData`, so the client can render a selected geography’s history.
+- [ ] Replace the national-only `v_arrears_provider_comparison` query in `src/NHAMBS.Data/ArrearsRepository.fs` with a query over `v_arrears_series` filtered by geography and `metric = 'arrears_rate_percent'`. No database migration should be needed because the view already carries geography.
+- [ ] Decide the loading model: prefer returning all geography series in one `GetArrears` call and filtering in the client, since the data volume is small and switching should be instant. If the payload grows, add a `GetArrears(geographyCode)` parameter with an explicit loading state.
+- [ ] Add a labelled geography selector above the KPIs in `src/NHAMBS.Client/src/Arrears.fs`:
+  - default to Canada;
+  - list every loaded geography in a stable order, using grouped options for country, provinces, regions and CMAs;
+  - keep labels explicit so a CMA such as Toronto is not mistaken for a province.
+- [ ] Add Elmish state for the selected geography (`SelectedArrearsGeography`, `ArrearsGeographyChanged`) so the choice survives refresh and navigation. Optionally encode it in the hash route for shareable links.
+- [ ] Make the whole panel geography-aware: KPI cards, chart title/legend, coverage note, and latest-rate table must all reflect the selected geography rather than showing national values under a provincial or CMA heading.
+- [ ] Handle provider coverage gaps explicitly:
+  - CBA has no separate New Brunswick, Nova Scotia, Prince Edward Island or Newfoundland and Labrador series;
+  - CBA has no CMA series, while CMHC does;
+  - CMHC has no Atlantic or Territories aggregate.
+  - Show only the available provider series and a short note explaining the gap instead of silently substituting national data.
+- [ ] Keep the “latest rates by geography” table as an all-geography comparison, highlighting the selected row, so users can jump between geographies.
+- [ ] Add tests for repository geography filtering, the Canada default, a province with both providers, a province with CBA missing, a CMA with CMHC only, and a CBA-only region.
+- [ ] Add a UI check that switching geographies updates the KPIs, chart and table, and that an unavailable-provider case renders cleanly.
+- [ ] Update `docs/arrears.md` and `README.md` with the selector coverage and provider-gap behaviour.
+
 ## Distress indicators summary
 
 Additional signals worth tracking alongside the factors in the objective:
