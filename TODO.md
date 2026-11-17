@@ -33,6 +33,8 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
 - [x] Add API endpoints, repository queries, and dashboard views. `GetGovernmentBonds` and the `#/government-bonds` page show federal totals, weighted coupon, maturity/coupon profiles, the federal issue table, and PBPP provincial purchase summaries and issues.
 - [x] Add fixtures and tests for the new sources. `tests/NHAMBS.Tests/GovernmentBondTests.fs` covers latest-snapshot selection, field mapping and fixed-rate inflation handling.
 
+Reference: Bank of Canada Valet API documentation — <https://www.bankofcanada.ca/valet/docs>
+
 ## 3. Clean up the database to 5NF
 
 - [x] Audit every table in the `nhambs` schema for repeating groups, transitive dependencies, and redundant columns. The findings were repeated issuer/insurer names, duplicated pool-type/province labels, free-text rate bands, and scheduled-maturity totals copied onto `mbs_pools`.
