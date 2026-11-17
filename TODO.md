@@ -79,12 +79,12 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
 
 ## 8. Add arrears information from CMHC and the CBA
 
-- [ ] Identify the relevant CMHC and Canadian Bankers Association (CBA) arrears datasets, including their definitions, coverage, and publication cadence.
-- [ ] Add source acquisition and parsers for both providers.
-- [ ] Model arrears consistently across providers: reporting period, geography, product/loan type, arrears stage, and rate or count.
-- [ ] Reconcile definitional differences between CMHC and CBA data and document the mapping.
-- [ ] Add API endpoints and dashboard views for arrears trends and comparisons.
-- [ ] Add fixtures and tests for the new sources, and flag stale or missing reporting periods.
+- [x] Identify the relevant CMHC and Canadian Bankers Association (CBA) arrears datasets, including their definitions, coverage, and publication cadence. See `docs/arrears.md`: CBA chartered-bank monthly counts/rates and CMHC/Equifax quarterly all-lender rates.
+- [x] Add source acquisition and parsers for both providers. The arrears ETL resolves the current CBA XLSX link and CMHC report-download API URL, lands the workbooks in `raw.source_documents`, and parses them with ExcelDataReader.
+- [x] Model arrears consistently across providers: reporting period, geography, product/loan type, arrears stage, and rate or count. `nhambs.arrears_observations` stores source, period, geography, lender type, insured status, product, 90+ day stage and metric.
+- [x] Reconcile definitional differences between CMHC and CBA data and document the mapping. See `docs/arrears.md`.
+- [x] Add API endpoints and dashboard views for arrears trends and comparisons. `GetArrears` and the `#/arrears` page show the national comparison, latest geography rates and source definitions.
+- [x] Add fixtures and tests for the new sources, and flag stale or missing reporting periods. `tests/NHAMBS.Arrears.Tests` covers both parsers; `v_arrears_freshness` marks sources stale after 120 monthly or 180 quarterly days.
 
 ## 9. Add HPI data from Teranet, CREA, and RPS
 

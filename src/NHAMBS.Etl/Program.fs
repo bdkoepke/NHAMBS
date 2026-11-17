@@ -25,7 +25,7 @@ Usage:
   dotnet run --project src/NHAMBS.Etl -- [options]
 
 Options:
-  --dataset <all|mbs|cht|covered>   Workflow to run (default: all)
+  --dataset <all|mbs|cht|covered|arrears>   Workflow to run (default: all)
   --data-root <path>                Root containing pools/, debt-issues.json, cht_circulars/, cht_history/, covered_bonds/
                                     (default: out)
   --pools-dir <path>                NHA MBS JSON directory (default: <data-root>/pools)
@@ -96,7 +96,8 @@ let private selectWorkflow (options: Options) : IWorkflow =
     | "circulars" -> ChtEtlWorkflow(options.DataRoot) :> IWorkflow
     | "covered"
     | "covered-bonds" -> CoveredBondEtlWorkflow(options.DataRoot) :> IWorkflow
-    | other -> failwithf "Unknown dataset '%s'. Expected all, mbs, cht or covered." other
+    | "arrears" -> ArrearsEtlWorkflow() :> IWorkflow
+    | other -> failwithf "Unknown dataset '%s'. Expected all, mbs, cht, covered or arrears." other
 
 [<EntryPoint>]
 let main argv =

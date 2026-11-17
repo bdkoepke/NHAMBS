@@ -33,6 +33,14 @@ type CoveredBondEtlWorkflow(dataRoot: string) =
         builder.Name <- "Covered bond ETL"
         builder.Root <- LoadCoveredBondsActivity(dataRoot)
 
+/// Loads CBA and CMHC mortgage-arrears observations.
+type ArrearsEtlWorkflow() =
+    inherit WorkflowBase()
+
+    override this.Build(builder: IWorkflowBuilder) =
+        builder.Name <- "Mortgage arrears ETL"
+        builder.Root <- LoadArrearsActivity()
+
 /// Loads every parsed dataset in dependency order.
 type NhambsEtlWorkflow(dataRoot: string, poolsDir: string, manifestPath: string) =
     inherit WorkflowBase()
@@ -47,5 +55,6 @@ type NhambsEtlWorkflow(dataRoot: string, poolsDir: string, manifestPath: string)
         sequence.Activities.Add(LoadMbsPoolsActivity(poolsDir, manifestPath))
         sequence.Activities.Add(LoadChtActivity(dataRoot))
         sequence.Activities.Add(LoadCoveredBondsActivity(dataRoot))
+        sequence.Activities.Add(LoadArrearsActivity())
 
         builder.Root <- sequence

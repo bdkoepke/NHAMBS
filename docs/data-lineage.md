@@ -7,8 +7,8 @@ The warehouse has two data schemas: `raw` for landed source documents and
 
 | Layer | Schema | Contents | Retention | Reload behaviour |
 | --- | --- | --- | --- | --- |
-| Raw | `raw` | One row per source file: path, filename, SHA-256, size, source timestamp, ETL run id, and the unmodified JSON document. | Current file for each dataset. A dataset is replaced on the next successful load; the previous copy is not kept. | `DELETE` by dataset, then bulk COPY. The SHA-256 makes a changed source file visible. |
-| Conformed tables | `nhambs` | Typed tables with natural keys, unique constraints and foreign keys (`mbs_pools` keyed by CUSIP, CHT by series, covered bonds by program/bond id). `source_file_id` points back to raw for the top-level facts. | Current snapshot of each dataset. Child rows follow their parent by `ON DELETE CASCADE`. | The MBS, CHT and covered-bond loaders truncate their datasets and reload one transaction at a time. A failed load rolls back the data changes. |
+| Raw | `raw` | One row per source file: path, filename, SHA-256, size, source timestamp, ETL run id, and the unmodified document. Parsed extracts use `raw.source_files` (JSONB); binary source workbooks use `raw.source_documents` (bytea). | Current file for each dataset. A dataset is replaced on the next successful load; the previous copy is not kept. | `DELETE` by dataset, then bulk COPY. The SHA-256 makes a changed source file visible. |
+| Conformed tables | `nhambs` | Typed tables with natural keys, unique constraints and foreign keys (`mbs_pools` keyed by CUSIP, CHT by series, covered bonds by program/bond id). `source_file_id` points back to raw for the top-level facts. | Current snapshot of each dataset. Child rows follow their parent by `ON DELETE CASCADE`. | The MBS, CHT, covered-bond and arrears loaders truncate their datasets and reload one transaction at a time. A failed load rolls back the data changes. |
 | Analytics views | `nhambs` | Dashboard and API views over the conformed tables. No ETL writes and no raw source JSON. | Recreated by migrations; always derived. | `CREATE OR REPLACE VIEW` on migration; no independent reload. |
 | Operations | `nhambs` | `etl_runs`, `etl_anomalies`, analytics views. | Audit history is retained. Views are derived. | Created and maintained by the ETL and migrations. |
 
@@ -34,9 +34,25 @@ raw.source_files (dataset, source_path, checksum_sha256, run_id, document)
                 │
                 ▼
         nhambs.v_mbs_* / nhambs.v_cht_* / nhambs.v_covered_bond_*
+        nhambs.v_arrears_*
                 │
                 ▼
         NHAMBS.Server → NHAMBS.Client
+```
+
+The arrears workbooks use a parallel binary lineage path:
+
+```text
+CBA / CMHC XLSX
+        │
+        ▼
+raw.source_documents (dataset, source_path, checksum_sha256, run_id, bytea document)
+        │
+        ▼
+nhambs.arrears_observations.source_document_id
+        │
+        ▼
+nhambs.v_arrears_series / v_arrears_latest / v_arrears_provider_comparison / v_arrears_freshness
 ```
 
 Every conformed top-level fact records the raw file that produced it. Child
@@ -54,6 +70,7 @@ bond key. `nhambs.etl_anomalies` records corrections and warnings with the
 | CHT outstanding history | `series` |
 | Covered bond program | `(issuer_name, program_name)` |
 | Covered bond registry | `name` |
+| Arrears observation | `(source_code, period_end, geography_code, lender_type, insured_status, product_type, arrears_stage, metric)` |
 
 ## Maturity year decoding
 

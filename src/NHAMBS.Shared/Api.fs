@@ -13,6 +13,7 @@ type DashboardApi =
         GetMbsFilterOptions: unit -> Async<MbsFilterOptions>
         GetCht: unit -> Async<ChtData>
         GetCoveredBonds: unit -> Async<CoveredBondData>
+        GetArrears: unit -> Async<ArrearsData>
         GetFreshness: unit -> Async<DatasetFreshness[]>
         GetForwardCurves: unit -> Async<ForwardCurveSet>
     }

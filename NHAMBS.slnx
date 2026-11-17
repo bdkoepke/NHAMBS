@@ -25,6 +25,7 @@
     <Project Path="tools/NHAMBS.SchemaTool/NHAMBS.SchemaTool.fsproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/NHAMBS.Arrears.Tests/NHAMBS.Arrears.Tests.fsproj" />
     <Project Path="tests/NHAMBS.Cht.Tests/NHAMBS.Cht.Tests.fsproj" />
     <Project Path="tests/NHAMBS.Circular.Tests/NHAMBS.Circular.Tests.fsproj" />
     <Project Path="tests/NHAMBS.Cli.Tests/NHAMBS.Cli.Tests.fsproj" />

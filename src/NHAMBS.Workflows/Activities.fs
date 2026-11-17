@@ -28,6 +28,12 @@ type LoadChtActivity(dataRoot: string) =
 
     override this.Execute(_context: ActivityExecutionContext) = ChtEtl.run this.DataRoot |> ignore
 
+/// Loads CBA and CMHC mortgage-arrears observations.
+type LoadArrearsActivity() =
+    inherit CodeActivity()
+
+    override this.Execute(_context: ActivityExecutionContext) = ArrearsEtl.run () |> ignore
+
 /// Loads covered bond programmes, their bonds and the CMHC registry.
 type LoadCoveredBondsActivity(dataRoot: string) =
     inherit CodeActivity()

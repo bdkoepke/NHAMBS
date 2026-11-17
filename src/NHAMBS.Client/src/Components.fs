@@ -10,6 +10,7 @@ type Page =
     | ForwardCurves
     | Cht
     | CoveredBonds
+    | Arrears
 
 type Loadable<'T> =
     | NotLoaded
@@ -24,6 +25,7 @@ let pageTitle =
     | ForwardCurves -> "Forward curves"
     | Cht -> "Canada Mortgage Bonds"
     | CoveredBonds -> "Covered bonds"
+    | Arrears -> "Mortgage arrears"
 
 let pageHash =
     function
@@ -32,6 +34,7 @@ let pageHash =
     | ForwardCurves -> "#/forward-curves"
     | Cht -> "#/cht"
     | CoveredBonds -> "#/covered-bonds"
+    | Arrears -> "#/arrears"
 
 let pageFromHash (hash: string) =
     match hash with
@@ -39,6 +42,7 @@ let pageFromHash (hash: string) =
     | "#/forward-curves" -> ForwardCurves
     | "#/cht" -> Cht
     | "#/covered-bonds" -> CoveredBonds
+    | "#/arrears" -> Arrears
     | _ -> Overview
 
 let PageHeader (eyebrow: string) (title: string) (subtitle: string) (actions: ReactElement list) =

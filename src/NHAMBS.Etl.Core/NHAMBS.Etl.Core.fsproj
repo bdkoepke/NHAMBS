@@ -9,6 +9,9 @@
   <ItemGroup>
     <Compile Include="Common.fs" />
     <Compile Include="Anomalies.fs" />
+    <Compile Include="ArrearsTypes.fs" />
+    <Compile Include="ArrearsParser.fs" />
+    <Compile Include="ArrearsEtl.fs" />
     <Compile Include="MbsEtl.fs" />
     <Compile Include="ChtEtl.fs" />
     <Compile Include="CoveredBondEtl.fs" />
@@ -16,5 +19,9 @@
   <ItemGroup>
     <PackageReference Include="Npgsql" Version="9.0.5" />
     <PackageReference Include="FSharp.Data" Version="8.2.0" />
+    <PackageReference Include="ExcelDataReader" Version="3.9.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NHAMBS.Sources\NHAMBS.Sources.fsproj" />
   </ItemGroup>
 </Project>

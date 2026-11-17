@@ -10,6 +10,7 @@ tablet (768x1024) and mobile (390x844) widths:
 | `#/forward-curves` | Forward curves |
 | `#/cht` | Canada Mortgage Bonds |
 | `#/covered-bonds` | Covered bond registry |
+| `#/arrears` | Mortgage arrears comparison |
 
 ## Findings fixed
 
@@ -29,10 +30,13 @@ tablet (768x1024) and mobile (390x844) widths:
   block is now a live `status` region and the error block is an `alert`.
 - **The pool-detail drawer had no dialog semantics.** It now exposes
   `role="dialog"`, `aria-modal` and an accessible close control.
+- **The new mortgage-arrears view needed source context.** It shows both
+  provider definitions, cadence, latest period and a stale badge next to the
+  national comparison chart and latest-rate table.
 
 ## Checks performed
 
-- All five routes render without console errors or document-level horizontal
+- All six routes render without console errors or document-level horizontal
   overflow at the three viewport widths.
 - Pool search, issuer filtering, coupon sorting, pagination, reset, CSV export
   and the detail drawer were exercised against the full 69,746-pool data set.
@@ -42,6 +46,9 @@ tablet (768x1024) and mobile (390x844) widths:
   backdrop.
 - The Chrome accessibility tree contains no unnamed text boxes, comboboxes,
   buttons or checkboxes on any route.
+- The arrears page was checked against the loaded CBA and CMHC data: the
+  national comparison chart, latest geography table, source cards and stale
+  flag all render correctly.
 - Chart and table values were spot-checked for currency, percentage, date and
   missing-value formatting.
 

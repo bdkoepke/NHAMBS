@@ -90,7 +90,7 @@ and health check. There is no hand-rolled `docker-compose.yml`.
 | `src/NHAMBS.Shared` | Transport-safe DTOs and the Fable.Remoting `DashboardApi` contract. |
 | `src/NHAMBS.Data` | SQLProvider context, typed repository reads, reporting queries and the forward-curve JSON loader. |
 | `src/NHAMBS.Migrations` | FluentMigrator schema and dashboard view migrations. |
-| `src/NHAMBS.Etl.Core` | Resumable, bulk-loading loaders for MBS, CHT and covered bond JSON. |
+| `src/NHAMBS.Etl.Core` | Resumable, bulk-loading loaders for MBS, CHT, covered bond and mortgage-arrears data. |
 | `src/NHAMBS.Workflows` | Elsa activities and workflow definitions for each dataset. |
 | `src/NHAMBS.Etl` | Elsa workflow CLI host and command-line entry point. |
 | `src/NHAMBS.ElsaServer` | Elsa Server APIs, persistence, identity and hosted Elsa Studio. |
@@ -232,9 +232,9 @@ dotnet run --project src/NHAMBS.Etl -- --dataset all
 ```
 
 The ETL host runs an Elsa workflow from `NHAMBS.Workflows`. `--dataset all`
-runs `NhambsEtlWorkflow`, which composes the MBS, CHT and covered bond
-activities in order; the per-dataset options select the matching workflow
-instead. The workflows load from `out/` and the pool manifest from
+runs `NhambsEtlWorkflow`, which composes the MBS, CHT, covered bond and
+mortgage-arrears activities in order; the per-dataset options select the
+matching workflow instead. The workflows load from `out/` and the pool manifest from
 `src/NHAMBS.Mbs/pool_urls.txt` by default. CHT reads the debt-issues snapshot
 directly from `out/debt-issues.json`, its offering circulars from
 `out/cht_circulars/` and the per-series cancellation history from
@@ -244,6 +244,7 @@ directly from `out/debt-issues.json`, its offering circulars from
 dotnet run --project src/NHAMBS.Etl -- --dataset mbs
 dotnet run --project src/NHAMBS.Etl -- --dataset cht
 dotnet run --project src/NHAMBS.Etl -- --dataset covered
+dotnet run --project src/NHAMBS.Etl -- --dataset arrears
 dotnet run --project src/NHAMBS.Etl -- --data-root out --pools-dir out/pools
 ```
 
@@ -259,7 +260,8 @@ The workflow definitions are intentionally isolated from the database loaders:
   `CodeActivity` wrappers and the `Registration.register` helper. The workflows
   also expose parameterless constructors using `NHAMBS_DATA_ROOT`,
   `NHAMBS_POOLS_DIR` and `NHAMBS_MANIFEST`, so Elsa Server can host and run them.
-- `NHAMBS.Etl.Core` contains the reusable MBS, CHT and covered bond loaders,
+- `NHAMBS.Etl.Core` contains the reusable MBS, CHT, covered bond and
+  mortgage-arrears loaders,
   JSON helpers and the binary `COPY` writer.
 - `NHAMBS.Etl` only parses arguments, builds the Elsa service provider, selects
   a workflow and surfaces its result. The same four workflows are registered in
@@ -321,6 +323,8 @@ retention policy and full lineage diagram.
 
 - `source_files` — one raw JSON document per source file with path, filename,
   SHA-256 checksum, size, source timestamp, ETL run id and load timestamp.
+- `source_documents` — binary source workbooks (currently the CBA and CMHC
+  arrears XLSX files) with the same lineage metadata.
 
 **Conformed tables (`nhambs`)**
 
@@ -353,6 +357,11 @@ retention policy and full lineage diagram.
   per-series history of bond purchases for cancellation and its periods.
 - `covered_bond_programs` / `covered_bond_parties` / `covered_bonds` /
   `covered_bond_isins` / `covered_bond_registry` — covered bond registry.
+- `arrears_sources` / `arrears_geographies` — provider definitions, cadence,
+  attribution and the country/province/region/CMA geography keys.
+- `arrears_observations` — one row per source, period, geography and metric
+  (90+ day arrears rate, arrears count or mortgage count). See
+  `docs/arrears.md` for the definitional reconciliation.
 
 **Analytics views (`nhambs`)**
 
@@ -360,8 +369,9 @@ Dashboard views are built from the `nhambs` tables only: `v_mbs_pool_grid`, `v_m
 `v_mbs_issuer_summary`, `v_mbs_province_summary`, `v_mbs_rate_type_summary`,
 `v_mbs_pool_type_summary`, `v_mbs_insurer_summary`, `v_mbs_maturity_summary`,
 `v_mbs_unresolved_entities`, `v_covered_bond_program_summary`,
-`v_covered_bond_registry_summary`, `v_cht_summary` and
-`v_cht_history_summary`.
+`v_covered_bond_registry_summary`, `v_cht_summary`,
+`v_cht_history_summary`, `v_arrears_series`, `v_arrears_latest`,
+`v_arrears_provider_comparison` and `v_arrears_freshness`.
 
 **Operations (`nhambs` / `elsa`)**
 
@@ -416,6 +426,7 @@ over those typed results.
 - `GetMbsFilterOptions`
 - `GetCht`
 - `GetCoveredBonds`
+- `GetArrears`
 - `GetFreshness`
 
 The server route builder maps these to `/api/DashboardApi/{method}`. Fable

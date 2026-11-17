@@ -475,6 +475,7 @@ type CopyWriter(connection: NpgsqlConnection, table: string, columns: string lis
 
     member _.Write(value: bool) = copy.Write(value)
     member _.WriteJson(value: string) = copy.Write(value, NpgsqlDbType.Jsonb)
+    member _.WriteBytes(value: byte[]) = copy.Write(value, NpgsqlDbType.Bytea)
     member _.WriteNull() = copy.WriteNull()
     member _.Complete() = copy.Complete()
 
@@ -561,6 +562,84 @@ let writeRawFiles
         ids.[reader.GetString 0] <- reader.GetInt64 1
 
     log (sprintf "  landed %d source files (%.1f MB) in raw.%s" paths.Length (float totalBytes / 1048576.0) dataset)
+    ids
+
+/// Land binary source documents (for example XLSX workbooks) in raw before
+/// parsing. The dataset is replaced atomically per run, matching the JSON raw
+/// layer, and the returned map carries the lineage id into nhambs.
+let writeRawDocuments
+    (connection: NpgsqlConnection)
+    (runId: int64)
+    (dataset: string)
+    (contentType: string)
+    (paths: string seq)
+    : Dictionary<string, int64> =
+    let paths = Seq.toArray paths
+
+    use delete =
+        new NpgsqlCommand("DELETE FROM raw.source_documents WHERE dataset = @dataset;", connection)
+
+    delete.Parameters.AddWithValue("dataset", dataset) |> ignore
+    delete.ExecuteNonQuery() |> ignore
+
+    use writer =
+        new CopyWriter(
+            connection,
+            "raw.source_documents",
+            [
+                "dataset"
+                "source_path"
+                "file_name"
+                "content_type"
+                "checksum_sha256"
+                "size_bytes"
+                "source_modified_at"
+                "run_id"
+                "document"
+            ]
+        )
+
+    let mutable totalBytes = 0L
+
+    for path in paths do
+        let bytes = File.ReadAllBytes path
+        totalBytes <- totalBytes + int64 bytes.Length
+
+        writer.StartRow()
+        writer.Write(dataset)
+        writer.Write(path)
+        writer.Write(Path.GetFileName path)
+        writer.Write(contentType)
+        writer.Write(sha256Hex bytes)
+        writer.Write(int64 bytes.Length)
+        writer.WriteTimestampTz(File.GetLastWriteTimeUtc path)
+        writer.Write(runId)
+        writer.WriteBytes bytes
+
+    writer.Complete() |> ignore
+    (writer :> IDisposable).Dispose()
+
+    use command =
+        new NpgsqlCommand(
+            "SELECT source_path, source_document_id FROM raw.source_documents WHERE dataset = @dataset;",
+            connection
+        )
+
+    command.Parameters.AddWithValue("dataset", dataset) |> ignore
+    use reader = command.ExecuteReader()
+    let ids = Dictionary<string, int64>(StringComparer.Ordinal)
+
+    while reader.Read() do
+        ids.[reader.GetString 0] <- reader.GetInt64 1
+
+    log (
+        sprintf
+            "  landed %d binary source files (%.1f MB) in raw.%s"
+            paths.Length
+            (float totalBytes / 1048576.0)
+            dataset
+    )
+
     ids
 
 let sourceFileId (ids: Dictionary<string, int64>) (path: string) =

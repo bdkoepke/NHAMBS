@@ -21,7 +21,7 @@ let private buildRoot (workflow: IWorkflow) =
     builder.Root
 
 [<Fact>]
-let ``NhambsEtlWorkflow sequences the three dataset activities`` () =
+let ``NhambsEtlWorkflow sequences the four dataset activities`` () =
     let root =
         buildRoot (NhambsEtlWorkflow("out", "out/pools", "pool_urls.txt") :> IWorkflow)
 
@@ -37,6 +37,7 @@ let ``NhambsEtlWorkflow sequences the three dataset activities`` () =
             typeof<LoadMbsPoolsActivity>
             typeof<LoadChtActivity>
             typeof<LoadCoveredBondsActivity>
+            typeof<LoadArrearsActivity>
         ],
         activityTypes
     )
@@ -48,6 +49,7 @@ let ``Each dataset workflow builds a single matching activity`` () =
             MbsEtlWorkflow("out/pools", "pool_urls.txt") :> IWorkflow, typeof<LoadMbsPoolsActivity>
             ChtEtlWorkflow("out") :> IWorkflow, typeof<LoadChtActivity>
             CoveredBondEtlWorkflow("out") :> IWorkflow, typeof<LoadCoveredBondsActivity>
+            ArrearsEtlWorkflow() :> IWorkflow, typeof<LoadArrearsActivity>
         ]
 
     for workflow, expected in cases do

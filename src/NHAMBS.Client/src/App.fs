@@ -16,6 +16,7 @@ type Model =
         ForwardCurves: Loadable<ForwardCurveSet>
         Cht: Loadable<ChtData>
         Covered: Loadable<CoveredBondData>
+        Arrears: Loadable<ArrearsData>
         Freshness: Loadable<DatasetFreshness[]>
         Filters: Loadable<MbsFilterOptions>
         Analytics: Loadable<MbsAnalytics>
@@ -34,6 +35,7 @@ type Msg =
     | ForwardCurvesLoaded of Result<ForwardCurveSet, string>
     | ChtLoaded of Result<ChtData, string>
     | CoveredLoaded of Result<CoveredBondData, string>
+    | ArrearsLoaded of Result<ArrearsData, string>
     | FreshnessLoaded of Result<DatasetFreshness[], string>
     | FiltersLoaded of Result<MbsFilterOptions, string>
     | AnalyticsLoaded of Result<MbsAnalytics, string>
@@ -53,6 +55,7 @@ let private emptyModel =
         ForwardCurves = NotLoaded
         Cht = NotLoaded
         Covered = NotLoaded
+        Arrears = NotLoaded
         Freshness = NotLoaded
         Filters = NotLoaded
         Analytics = NotLoaded
@@ -77,6 +80,10 @@ let private loadCht =
 let private loadCovered =
     Cmd.OfAsync.either (fun () -> Api.api.GetCoveredBonds()) () (Ok >> CoveredLoaded) (fun ex ->
         CoveredLoaded(Error ex.Message))
+
+let private loadArrears =
+    Cmd.OfAsync.either (fun () -> Api.api.GetArrears()) () (Ok >> ArrearsLoaded) (fun ex ->
+        ArrearsLoaded(Error ex.Message))
 
 let private loadFreshness =
     Cmd.OfAsync.either (fun () -> Api.api.GetFreshness()) () (Ok >> FreshnessLoaded) (fun ex ->
@@ -113,6 +120,7 @@ let init () =
         | ForwardCurves -> loadForwardCurves
         | Cht -> loadCht
         | CoveredBonds -> loadCovered
+        | Arrears -> loadArrears
 
     { emptyModel with Page = page }, Cmd.batch [ loadFreshness; pageCommand ]
 
@@ -123,6 +131,7 @@ let private refreshPage model =
     | ForwardCurves -> Cmd.batch [ loadForwardCurves; loadFreshness ]
     | Cht -> Cmd.batch [ loadCht; loadFreshness ]
     | CoveredBonds -> Cmd.batch [ loadCovered; loadFreshness ]
+    | Arrears -> Cmd.batch [ loadArrears; loadFreshness ]
 
 let update (msg: Msg) (model: Model) =
     match msg with
@@ -147,6 +156,7 @@ let update (msg: Msg) (model: Model) =
                 | ForwardCurves when model.ForwardCurves = NotLoaded -> loadForwardCurves
                 | Cht when model.Cht = NotLoaded -> loadCht
                 | CoveredBonds when model.Covered = NotLoaded -> loadCovered
+                | Arrears when model.Arrears = NotLoaded -> loadArrears
                 | _ -> Cmd.none
 
             model, command
@@ -178,6 +188,9 @@ let update (msg: Msg) (model: Model) =
 
     | CoveredLoaded(Ok data) -> { model with Covered = Loaded data }, Cmd.none
     | CoveredLoaded(Error message) -> { model with Covered = Failed message }, Cmd.none
+
+    | ArrearsLoaded(Ok data) -> { model with Arrears = Loaded data }, Cmd.none
+    | ArrearsLoaded(Error message) -> { model with Arrears = Failed message }, Cmd.none
 
     | FreshnessLoaded(Ok data) -> { model with Freshness = Loaded data }, Cmd.none
     | FreshnessLoaded(Error message) ->
@@ -327,6 +340,12 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                     Data = model.Covered
                     OnRefresh = fun () -> dispatch Refresh
                 }
+        | Arrears ->
+            Arrears.ArrearsPage
+                {
+                    Data = model.Arrears
+                    OnRefresh = fun () -> dispatch Refresh
+                }
 
     Html.div
         [
@@ -399,6 +418,7 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                                     Html.div [ prop.className "nav-section"; prop.text "Securities" ]
                                                     navItem Cht "◆" dispatch model.Page
                                                     navItem CoveredBonds "◇" dispatch model.Page
+                                                    navItem Arrears "▤" dispatch model.Page
                                                 ]
                                         ]
 

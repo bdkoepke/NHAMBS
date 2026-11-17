@@ -398,6 +398,49 @@ module Domain =
             Registry: CoveredBondRegistryRow[]
         }
 
+    type ArrearsObservationRow =
+        {
+            SourceCode: string
+            Provider: string
+            PeriodType: string
+            PeriodEnd: string
+            GeographyCode: string
+            GeographyName: string
+            GeographyLevel: string
+            LenderType: string
+            Metric: string
+            Value: decimal
+        }
+
+    type ArrearsSourceInfo =
+        {
+            SourceCode: string
+            Provider: string
+            DatasetName: string
+            Definition: string
+            Cadence: string
+            Attribution: string
+            LatestPeriodEnd: string option
+            IsStale: bool
+        }
+
+    /// One national 90+ day arrears-rate point used by the provider comparison
+    /// chart. CBA is monthly and CMHC is quarterly, so points are not aligned.
+    type ArrearsSeriesPoint =
+        {
+            Label: string
+            Date: string
+            Value: decimal
+            Source: string
+        }
+
+    type ArrearsData =
+        {
+            Comparison: ArrearsSeriesPoint[]
+            Latest: ArrearsObservationRow[]
+            Sources: ArrearsSourceInfo[]
+        }
+
     type DatasetFreshness =
         {
             Dataset: string

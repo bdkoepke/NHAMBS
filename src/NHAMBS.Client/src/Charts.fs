@@ -1,6 +1,7 @@
 module NHAMBS.Client.Charts
 
 open System
+open System.Globalization
 open Feliz
 open NHAMBS.Shared.Domain
 open NHAMBS.Client.Formatting
@@ -27,6 +28,145 @@ let private padBottom = 34.0
 
 let emptyChart (message: string) =
     Html.div [ prop.className "chart-empty"; prop.text message ]
+
+/// Multi-series date chart used for the CBA/CMHC arrears comparison. The two
+/// providers publish monthly and quarterly points, so the x-axis is calendar
+/// time rather than a shared array index.
+let arrearsComparisonChart (points: ArrearsSeriesPoint[]) =
+    if points.Length = 0 then
+        emptyChart "No arrears observations"
+    else
+        let parsed =
+            points
+            |> Array.choose (fun point ->
+                match DateTime.TryParse(point.Date, CultureInfo.InvariantCulture) with
+                | true, date -> Some(date, point)
+                | _ -> None)
+
+        if parsed.Length = 0 then
+            emptyChart "No dated arrears observations"
+        else
+            let dates = parsed |> Array.map fst
+            let minDate = dates |> Array.min
+            let maxDate = dates |> Array.max
+            let spanDays = max 1.0 (maxDate - minDate).TotalDays
+
+            let maxValue =
+                parsed |> Array.map (fun (_, point) -> point.Value) |> Array.max |> max 0.1m
+
+            let plotWidth = chartWidth - padLeft - padRight
+            let plotHeight = chartHeight - padTop - padBottom
+
+            let x (date: DateTime) =
+                padLeft + ((date - minDate).TotalDays / spanDays) * plotWidth
+
+            let y (value: decimal) =
+                padTop + plotHeight - (float value / float maxValue) * plotHeight
+
+            let series =
+                parsed
+                |> Array.groupBy (fun (_, point) -> point.Source)
+                |> Array.sortBy fst
+                |> Array.mapi (fun index (source, values) ->
+                    let ordered = values |> Array.sortBy fst
+
+                    let path =
+                        ordered
+                        |> Array.mapi (fun pointIndex (date, point) ->
+                            sprintf "%s %.2f %.2f" (if pointIndex = 0 then "M" else "L") (x date) (y point.Value))
+                        |> String.concat " "
+
+                    source, path, palette.[index % palette.Length])
+
+            let xLabels =
+                [ 0.0; 0.25; 0.5; 0.75; 1.0 ]
+                |> List.map (fun fraction -> minDate.AddDays(spanDays * fraction))
+
+            let yLabels = [ 0.0; 0.25; 0.5; 0.75; 1.0 ]
+
+            Html.div
+                [
+                    prop.className "arrears-chart"
+                    prop.children
+                        [
+                            Svg.svg
+                                [
+                                    svg.viewBox (0, 0, int chartWidth, int chartHeight)
+                                    svg.className "chart-svg"
+                                    svg.children
+                                        [
+                                            for fraction in yLabels do
+                                                let value = decimal fraction * maxValue
+
+                                                Svg.line
+                                                    [
+                                                        svg.x1 padLeft
+                                                        svg.y1 (y value)
+                                                        svg.x2 (chartWidth - padRight)
+                                                        svg.y2 (y value)
+                                                        svg.stroke "#e7e0d5"
+                                                        svg.strokeWidth 1.0
+                                                    ]
+
+                                                Svg.text
+                                                    [
+                                                        svg.x (padLeft - 8.0)
+                                                        svg.y (y value + 4.0)
+                                                        svg.custom ("text-anchor", "end")
+                                                        svg.fill "#8a8175"
+                                                        svg.fontSize 10.0
+                                                        svg.text (sprintf "%.2f%%" (float value))
+                                                    ]
+
+                                            for date in xLabels do
+                                                Svg.text
+                                                    [
+                                                        svg.x (x date)
+                                                        svg.y (chartHeight - 10.0)
+                                                        svg.custom ("text-anchor", "middle")
+                                                        svg.fill "#8a8175"
+                                                        svg.fontSize 10.0
+                                                        svg.text (
+                                                            date.ToString("MMM yyyy", CultureInfo.InvariantCulture)
+                                                        )
+                                                    ]
+
+                                            for source, path, colour in series do
+                                                Svg.path
+                                                    [
+                                                        svg.d path
+                                                        svg.fill "none"
+                                                        svg.stroke colour
+                                                        svg.strokeWidth 2.4
+                                                        svg.custom ("stroke-linejoin", "round")
+                                                        svg.custom ("stroke-linecap", "round")
+                                                        svg.custom ("aria-label", source + " national arrears rate")
+                                                    ]
+                                        ]
+                                ]
+                            Html.div
+                                [
+                                    prop.className "chart-legend"
+                                    prop.children
+                                        [
+                                            for source, _, colour in series do
+                                                Html.span
+                                                    [
+                                                        prop.className "chart-legend-item"
+                                                        prop.children
+                                                            [
+                                                                Html.span
+                                                                    [
+                                                                        prop.className "chart-legend-dot"
+                                                                        prop.style [ style.backgroundColor colour ]
+                                                                    ]
+                                                                Html.span [ prop.text source ]
+                                                            ]
+                                                    ]
+                                        ]
+                                ]
+                        ]
+                ]
 
 let areaChart (points: SeriesPoint[]) =
     if points.Length = 0 then
