@@ -53,6 +53,31 @@ Views:
 - `v_arrears_provider_comparison` — national rate comparison.
 - `v_arrears_freshness` — latest period, days since period end and a stale flag.
 
+## Dashboard geography selection
+
+`GetArrears` returns the full 90+ day rate history from `v_arrears_series`, the
+latest observations, the source definitions and every row in
+`nhambs.arrears_geographies`. The client groups the selector options into
+country, province or territory, region and CMA, and defaults to Canada.
+Selecting a geography updates the KPI cards, chart and coverage notes; the
+latest-rates table lists every loaded geography and can be used to switch the
+selection.
+
+The selector is data-driven, so a new geography loaded into
+`nhambs.arrears_geographies` appears without a client change. Coverage gaps are
+explicit:
+
+- the CBA does not publish separate New Brunswick, Nova Scotia, Prince Edward
+  Island or Newfoundland and Labrador series, so those provinces show the CMHC
+  series only;
+- the CBA does not publish CMA-level arrears, so CMAs show the CMHC series only;
+- CMHC does not publish the CBA's Atlantic or Territories aggregates, so those
+  regions show the CBA series only;
+- the province reference table includes the three territories, but CBA publishes
+  them only as the Territories aggregate and CMHC has no territorial series in
+  this dataset. Those rows therefore have no observations and render an empty
+  state rather than national values.
+
 ## Acquisition and parsing
 
 Run:

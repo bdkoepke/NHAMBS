@@ -1,5 +1,8 @@
 module NHAMBS.Client.Arrears
 
+open System
+open Browser.Types
+open Fable.Core.JsInterop
 open Feliz
 open NHAMBS.Shared.Domain
 open NHAMBS.Client
@@ -10,8 +13,79 @@ open NHAMBS.Client.Charts
 type ArrearsProps =
     {
         Data: Loadable<ArrearsData>
+        SelectedGeography: string
+        OnGeographyChange: string -> unit
         OnRefresh: unit -> unit
     }
+
+let private eventValue (event: Event) = string event.target?value
+
+let private geographyLevels = [| "country"; "province"; "region"; "cma" |]
+
+let private geographyLevelLabel =
+    function
+    | "country" -> "Country"
+    | "province" -> "Province or territory"
+    | "region" -> "Region"
+    | "cma" -> "Census metropolitan area"
+    | level -> titleCase level
+
+let groupedGeographies (geographies: ArrearsGeographyInfo[]) =
+    let known =
+        geographyLevels
+        |> Array.choose (fun level ->
+            let items =
+                geographies
+                |> Array.filter (fun geography -> geography.Level = level)
+                |> Array.sortBy (fun geography -> geography.SortOrder, geography.Name)
+
+            if items.Length = 0 then None else Some(level, items))
+
+    let unknown =
+        geographies
+        |> Array.filter (fun geography -> not (Array.contains geography.Level geographyLevels))
+        |> Array.sortBy (fun geography -> geography.SortOrder, geography.Name)
+
+    if unknown.Length = 0 then known
+    elif known.Length = 0 then [| "", unknown |]
+    else Array.append known [| "", unknown |]
+
+let private sourceLabel (sourceCode: string) =
+    if sourceCode = "cba" then "CBA"
+    elif sourceCode = "cmhc" then "CMHC"
+    else sourceCode
+
+let private hasSource (geography: ArrearsGeographyInfo) sourceCode =
+    geography.Sources |> Array.contains sourceCode
+
+let coverageValue (geography: ArrearsGeographyInfo) =
+    match geography.Sources with
+    | [||] -> "No data"
+    | [| "cba" |] -> "CBA only"
+    | [| "cmhc" |] -> "CMHC only"
+    | [| "cba"; "cmhc" |] -> "CBA + CMHC"
+    | sources -> sources |> Array.map sourceLabel |> String.concat " + "
+
+let coverageNote (geography: ArrearsGeographyInfo) =
+    let cba = hasSource geography "cba"
+    let cmhc = hasSource geography "cmhc"
+
+    match geography.Level, cba, cmhc with
+    | "cma", _, true ->
+        "CMHC publishes selected CMAs; the CBA does not publish CMA-level arrears, so this chart uses the CMHC/Equifax series only."
+    | "region", true, false ->
+        sprintf
+            "CMHC does not publish the %s aggregate; this chart uses the CBA chartered-bank series only."
+            geography.Name
+    | "province", false, true ->
+        sprintf
+            "The CBA does not publish a separate %s series; this chart uses the CMHC/Equifax all-lender series only."
+            geography.Name
+    | _, true, true ->
+        "CBA chartered-bank and CMHC/Equifax all-lender series are both shown. Their lender populations and publication cadences differ."
+    | _, false, true -> "CMHC/Equifax publishes this geography; no CBA series is available."
+    | _, true, false -> "The CBA publishes this geography; no CMHC series is available."
+    | _ -> "No provider observations are loaded for this geography."
 
 let private latestMetric (data: ArrearsData) (sourceCode: string) (metric: string) (geographyCode: string) =
     data.Latest
@@ -73,7 +147,12 @@ let private sourceCard (source: ArrearsSourceInfo) =
                 ]
         ]
 
-let private rateTable (rows: ArrearsObservationRow[]) =
+let private latestPeriod (row: ArrearsObservationRow option) =
+    row
+    |> Option.map (fun value -> sprintf "As of %s" (dateShort value.PeriodEnd))
+    |> Option.defaultValue "No observation"
+
+let private rateTable (selectedGeography: string) (onGeographyChange: string -> unit) (rows: ArrearsObservationRow[]) =
     if rows.Length = 0 then
         EmptyState "No arrears observations" "Load the CBA and CMHC data tables to populate this view."
     else
@@ -100,6 +179,7 @@ let private rateTable (rows: ArrearsObservationRow[]) =
                                                                         Html.th [ prop.text "Level" ]
                                                                         Html.th [ prop.text "Period" ]
                                                                         Html.th [ prop.text "90+ day rate" ]
+                                                                        Html.th [ prop.text "" ]
                                                                     ]
                                                             ]
                                                     ]
@@ -109,8 +189,13 @@ let private rateTable (rows: ArrearsObservationRow[]) =
                                                 prop.children
                                                     [
                                                         for row in rows do
+                                                            let isSelected = row.GeographyCode = selectedGeography
+
                                                             Html.tr
                                                                 [
+                                                                    prop.className (
+                                                                        if isSelected then "selected" else ""
+                                                                    )
                                                                     prop.children
                                                                         [
                                                                             Html.td
@@ -126,11 +211,36 @@ let private rateTable (rows: ArrearsObservationRow[]) =
                                                                             Html.td
                                                                                 [
                                                                                     prop.text (
-                                                                                        titleCase row.GeographyLevel
+                                                                                        geographyLevelLabel
+                                                                                            row.GeographyLevel
                                                                                     )
                                                                                 ]
                                                                             Html.td [ prop.text row.PeriodEnd ]
                                                                             Html.td [ prop.text (percent row.Value) ]
+                                                                            Html.td
+                                                                                [
+                                                                                    Html.button
+                                                                                        [
+                                                                                            prop.className
+                                                                                                "btn btn-ghost btn-small"
+                                                                                            prop.disabled isSelected
+                                                                                            prop.custom (
+                                                                                                "aria-label",
+                                                                                                sprintf
+                                                                                                    "View %s arrears"
+                                                                                                    row.GeographyName
+                                                                                            )
+                                                                                            prop.onClick (fun _ ->
+                                                                                                onGeographyChange
+                                                                                                    row.GeographyCode)
+                                                                                            prop.text (
+                                                                                                if isSelected then
+                                                                                                    "Selected"
+                                                                                                else
+                                                                                                    "View"
+                                                                                            )
+                                                                                        ]
+                                                                                ]
                                                                         ]
                                                                 ]
                                                     ]
@@ -140,18 +250,70 @@ let private rateTable (rows: ArrearsObservationRow[]) =
                     ]
             ]
 
-let private content (onRefresh: unit -> unit) (data: ArrearsData) =
-    let cbaRate =
-        latestMetric data "cba" "arrears_rate_percent" "canada"
-        |> Option.map (fun row -> row.Value)
+let private geographySelector
+    (geographies: ArrearsGeographyInfo[])
+    (selectedGeography: string)
+    (onGeographyChange: string -> unit)
+    =
+    Html.div
+        [
+            prop.className "arrears-selector"
+            prop.children
+                [
+                    Html.label
+                        [
+                            prop.className "arrears-selector-label"
+                            prop.htmlFor "arrears-geography"
+                            prop.text "Geography"
+                        ]
+                    Html.select
+                        [
+                            prop.id "arrears-geography"
+                            prop.className "field-input arrears-selector-input"
+                            prop.value selectedGeography
+                            prop.onChange (fun (event: Event) -> onGeographyChange (eventValue event))
+                            prop.children
+                                [
+                                    for level, items in groupedGeographies geographies do
+                                        Html.optgroup
+                                            [
+                                                if String.IsNullOrEmpty level then
+                                                    prop.custom ("label", "Other geographies")
+                                                else
+                                                    prop.custom ("label", geographyLevelLabel level)
+                                                prop.children
+                                                    [
+                                                        for geography in items do
+                                                            Html.option
+                                                                [ prop.value geography.Code; prop.text geography.Name ]
+                                                    ]
+                                            ]
+                                ]
+                        ]
+                ]
+        ]
 
-    let cmhcRate =
-        latestMetric data "cmhc" "arrears_rate_percent" "canada"
-        |> Option.map (fun row -> row.Value)
+let private content (props: ArrearsProps) (data: ArrearsData) =
+    let selected =
+        data.Geographies
+        |> Array.tryFind (fun geography -> geography.Code = props.SelectedGeography)
+        |> Option.orElse (data.Geographies |> Array.tryFind (fun geography -> geography.Code = "canada"))
+        |> Option.defaultValue
+            {
+                Code = "canada"
+                Name = "Canada"
+                Level = "country"
+                ProvinceCode = None
+                SortOrder = 0
+                Sources = [||]
+            }
 
-    let cbaCount =
-        latestMetric data "cba" "arrears_count" "canada"
-        |> Option.map (fun row -> row.Value)
+    let selectedSeries =
+        data.Series |> Array.filter (fun point -> point.GeographyCode = selected.Code)
+
+    let cbaRate = latestMetric data "cba" "arrears_rate_percent" selected.Code
+    let cmhcRate = latestMetric data "cmhc" "arrears_rate_percent" selected.Code
+    let cbaCount = latestMetric data "cba" "arrears_count" selected.Code
 
     let cbaInfo = sourceInfo data "cba"
     let cmhcInfo = sourceInfo data "cmhc"
@@ -165,9 +327,10 @@ let private content (onRefresh: unit -> unit) (data: ArrearsData) =
                 | "country" -> 0
                 | "province" -> 1
                 | "region" -> 2
-                | _ -> 3
+                | "cma" -> 3
+                | _ -> 4
 
-            levelOrder, row.SourceCode, row.GeographyName)
+            levelOrder, row.GeographyName, row.SourceCode)
 
     Html.div
         [
@@ -179,10 +342,11 @@ let private content (onRefresh: unit -> unit) (data: ArrearsData) =
                         "Mortgage arrears"
                         "90+ day arrears rates from the Canadian Bankers Association and CMHC, with source definitions and freshness."
                         [
+                            geographySelector data.Geographies selected.Code props.OnGeographyChange
                             Html.button
                                 [
                                     prop.className "btn btn-ghost"
-                                    prop.onClick (fun _ -> onRefresh ())
+                                    prop.onClick (fun _ -> props.OnRefresh())
                                     prop.text "↻ Refresh"
                                 ]
                         ]
@@ -192,42 +356,53 @@ let private content (onRefresh: unit -> unit) (data: ArrearsData) =
                             prop.children
                                 [
                                     KpiCard
-                                        "CBA national rate"
-                                        (cbaRate |> Option.map percent |> Option.defaultValue "—")
-                                        (cbaInfo
-                                         |> Option.bind (fun info -> info.LatestPeriodEnd)
-                                         |> Option.map (fun value -> sprintf "As of %s" (dateShort value))
-                                         |> Option.defaultValue "No observation")
+                                        "CBA arrears rate"
+                                        (cbaRate
+                                         |> Option.map (fun row -> row.Value)
+                                         |> Option.map percent
+                                         |> Option.defaultValue "—")
+                                        (sprintf "%s · %s" selected.Name (latestPeriod cbaRate))
                                         "#2e5771"
                                     KpiCard
-                                        "CMHC national rate"
-                                        (cmhcRate |> Option.map percent |> Option.defaultValue "—")
-                                        (cmhcInfo
-                                         |> Option.bind (fun info -> info.LatestPeriodEnd)
-                                         |> Option.map (fun value -> sprintf "As of %s" (dateShort value))
-                                         |> Option.defaultValue "No observation")
+                                        "CMHC arrears rate"
+                                        (cmhcRate
+                                         |> Option.map (fun row -> row.Value)
+                                         |> Option.map percent
+                                         |> Option.defaultValue "—")
+                                        (sprintf "%s · %s" selected.Name (latestPeriod cmhcRate))
                                         "#f47c3c"
                                     KpiCard
                                         "CBA mortgages in arrears"
-                                        (cbaCount |> Option.map number |> Option.defaultValue "—")
-                                        "Chartered-bank residential mortgages"
+                                        (cbaCount
+                                         |> Option.map (fun row -> row.Value)
+                                         |> Option.map number
+                                         |> Option.defaultValue "—")
+                                        (sprintf "%s · Chartered-bank mortgages" selected.Name)
                                         "#93c54b"
-                                    KpiCard "CBA coverage" "Monthly" "1995 to present" "#29abe0"
-                                    KpiCard "CMHC coverage" "Quarterly" "2012 Q3 to 2025 Q4" "#8e8c84"
+                                    KpiCard
+                                        "Selected geography"
+                                        selected.Name
+                                        (geographyLevelLabel selected.Level)
+                                        "#29abe0"
+                                    KpiCard
+                                        "Provider coverage"
+                                        (coverageValue selected)
+                                        "CBA chartered banks · CMHC/Equifax all lenders"
+                                        "#8e8c84"
                                 ]
                         ]
 
                     Card
-                        "National 90+ day arrears rate"
-                        "CBA chartered-bank series (monthly) versus CMHC/Equifax all-lender series (quarterly). The definitions are similar but the lender populations differ."
+                        (sprintf "%s 90+ day arrears rate" selected.Name)
+                        (coverageNote selected)
                         []
-                        [ arrearsComparisonChart data.Comparison ]
+                        [ arrearsComparisonChart selected.Name selectedSeries ]
 
                     Card
                         "Latest rates by geography"
-                        "CBA publishes Canada, Atlantic and the territories as aggregates; CMHC publishes provinces and selected CMAs."
+                        "Every loaded geography is listed. Select View to update the KPIs and chart for that country, province, territory, region or CMA."
                         []
-                        [ rateTable rates ]
+                        [ rateTable selected.Code props.OnGeographyChange rates ]
 
                     Html.div
                         [
@@ -246,4 +421,4 @@ let private content (onRefresh: unit -> unit) (data: ArrearsData) =
         ]
 
 let ArrearsPage (props: ArrearsProps) =
-    LoadableBlock "Loading mortgage arrears" props.Data (content props.OnRefresh)
+    LoadableBlock "Loading mortgage arrears" props.Data (content props)

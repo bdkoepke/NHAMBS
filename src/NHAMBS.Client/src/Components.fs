@@ -13,6 +13,49 @@ type Page =
     | Arrears
     | GovernmentBonds
 
+/// Navigation taxonomy. Securities are issued instruments with a CUSIP/ISIN;
+/// market data is the rate, price, curve and arrears information used to
+/// monitor or value them.
+type PageSection =
+    | MarketData
+    | Securities
+
+let pageSection =
+    function
+    | Overview
+    | ForwardCurves
+    | Arrears -> MarketData
+    | Pools
+    | Cht
+    | CoveredBonds
+    | GovernmentBonds -> Securities
+
+let pageSectionTitle =
+    function
+    | MarketData -> "Market data"
+    | Securities -> "Securities"
+
+/// Ordered pages and sidebar icons. The sidebar groups this list through
+/// pageSection, so desktop and mobile navigation always share one taxonomy.
+let navigationItems =
+    [|
+        Overview, "◫"
+        ForwardCurves, "∿"
+        Arrears, "▤"
+        Pools, "▦"
+        Cht, "◆"
+        CoveredBonds, "◇"
+        GovernmentBonds, "▥"
+    |]
+
+let navigationSections =
+    [| MarketData; Securities |]
+    |> Array.map (fun section ->
+        let items =
+            navigationItems |> Array.filter (fun (page, _) -> pageSection page = section)
+
+        section, items)
+
 type Loadable<'T> =
     | NotLoaded
     | Loading

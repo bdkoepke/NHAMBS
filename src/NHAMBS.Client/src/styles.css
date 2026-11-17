@@ -1882,6 +1882,25 @@ a {
   }
 }
 
+.arrears-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 240px;
+}
+
+.arrears-selector-label {
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.arrears-selector-input {
+  min-width: 240px;
+}
+
 .arrears-chart {
   display: flex;
   flex-direction: column;
@@ -1945,6 +1964,19 @@ a {
 
 .data-table tbody tr:hover {
   background: #fcfaf6;
+}
+
+.data-table tbody tr.selected {
+  background: var(--primary-soft);
+}
+
+.data-table tbody tr.selected:hover {
+  background: var(--primary-soft);
+}
+
+.data-table button:disabled {
+  cursor: default;
+  opacity: 0.65;
 }
 
 .arrears-source {

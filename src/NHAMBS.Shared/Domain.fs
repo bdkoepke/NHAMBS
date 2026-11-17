@@ -412,6 +412,19 @@ module Domain =
             Value: decimal
         }
 
+    /// A geography in the loaded arrears dataset. Sources identifies which
+    /// providers publish observations for the geography, so the dashboard can
+    /// explain coverage gaps instead of substituting another geography.
+    type ArrearsGeographyInfo =
+        {
+            Code: string
+            Name: string
+            Level: string
+            ProvinceCode: string option
+            SortOrder: int
+            Sources: string[]
+        }
+
     type ArrearsSourceInfo =
         {
             SourceCode: string
@@ -424,10 +437,11 @@ module Domain =
             IsStale: bool
         }
 
-    /// One national 90+ day arrears-rate point used by the provider comparison
-    /// chart. CBA is monthly and CMHC is quarterly, so points are not aligned.
+    /// One 90+ day arrears-rate point used by the provider comparison chart.
+    /// CBA is monthly and CMHC is quarterly, so points are not aligned.
     type ArrearsSeriesPoint =
         {
+            GeographyCode: string
             Label: string
             Date: string
             Value: decimal
@@ -436,7 +450,8 @@ module Domain =
 
     type ArrearsData =
         {
-            Comparison: ArrearsSeriesPoint[]
+            Series: ArrearsSeriesPoint[]
+            Geographies: ArrearsGeographyInfo[]
             Latest: ArrearsObservationRow[]
             Sources: ArrearsSourceInfo[]
         }

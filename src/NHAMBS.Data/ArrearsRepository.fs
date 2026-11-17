@@ -8,6 +8,11 @@ let private dateText (value: DateTime option) =
     value
     |> Option.map (fun date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
 
+let private sourceLabel (sourceCode: string) (provider: string) =
+    if sourceCode = "cba" then "CBA"
+    elif sourceCode = "cmhc" then "CMHC"
+    else provider
+
 let get (context: Provider.Sql.dataContext) =
     let latest =
         query {
@@ -50,33 +55,61 @@ let get (context: Provider.Sql.dataContext) =
                 | "country" -> 0
                 | "province" -> 1
                 | "region" -> 2
-                | _ -> 3
+                | "cma" -> 3
+                | _ -> 4
 
             levelOrder, row.GeographyName, row.SourceCode)
         |> Seq.toArray
 
-    let comparison =
+    let sourcesByGeography =
+        latest
+        |> Array.groupBy (fun row -> row.GeographyCode)
+        |> Array.map (fun (geographyCode, rows) ->
+            geographyCode, rows |> Array.map (fun row -> row.SourceCode) |> Array.distinct |> Array.sort)
+        |> dict
+
+    let geographies =
         query {
-            for row in context.Nhambs.VArrearsProviderComparison do
+            for row in context.Nhambs.ArrearsGeographies do
+                select row
+        }
+        |> Seq.map (fun row ->
+            ({
+                Code = row.GeographyCode
+                Name = row.Name
+                Level = row.Level
+                ProvinceCode = row.ProvinceCode
+                SortOrder = row.SortOrder
+                Sources =
+                    match sourcesByGeography.TryGetValue row.GeographyCode with
+                    | true, sources -> sources
+                    | _ -> [||]
+            }
+            : ArrearsGeographyInfo))
+        |> Seq.sortBy (fun geography -> geography.SortOrder, geography.Name)
+        |> Seq.toArray
+
+    let series =
+        query {
+            for row in context.Nhambs.VArrearsSeries do
+                where (row.Metric = Some "arrears_rate_percent")
                 select row
         }
         |> Seq.choose (fun row ->
-            match row.PeriodEnd, row.ArrearsRatePercent, row.Provider, row.SourceCode with
-            | Some period, Some value, Some provider, Some source ->
+            match row.PeriodEnd, row.Value, row.Provider, row.SourceCode, row.GeographyCode with
+            | Some period, Some value, Some provider, Some source, Some geography ->
                 Some(
                     {
+                        GeographyCode = geography
                         Label = period.ToString("MMM yyyy", CultureInfo.InvariantCulture)
                         Date = period.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                         Value = value
-                        Source =
-                            if source = "cba" then "CBA"
-                            elif source = "cmhc" then "CMHC"
-                            else provider
+                        Source = sourceLabel source provider
                     }
                     : ArrearsSeriesPoint
                 )
             | _ -> None)
-        |> Seq.sortBy (fun point -> point.Date)
+        |> Seq.sortBy (fun point -> point.Date, point.Source)
         |> Seq.toArray
 
     let freshness =
@@ -110,7 +143,8 @@ let get (context: Provider.Sql.dataContext) =
         |> Seq.toArray
 
     {
-        Comparison = comparison
+        Series = series
+        Geographies = geographies
         Latest = latest
         Sources = sources
     }

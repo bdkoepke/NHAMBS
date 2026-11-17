@@ -10,7 +10,7 @@ tablet (768x1024) and mobile (390x844) widths:
 | `#/forward-curves` | Forward curves |
 | `#/cht` | Canada Mortgage Bonds |
 | `#/covered-bonds` | Covered bond registry |
-| `#/arrears` | Mortgage arrears comparison |
+| `#/arrears` | Mortgage arrears comparison with a geography selector |
 | `#/government-bonds` | Government bond issues and profiles |
 
 ## Findings fixed
@@ -40,6 +40,13 @@ tablet (768x1024) and mobile (390x844) widths:
 - **Provincial coverage was added as a historical PBPP section.** It clearly
   labels the 2020–2021 purchase programme separately from current federal
   outstanding debt and shows province bars plus an issue-level purchase table.
+- **Market data and securities were mixed in the sidebar.** NHA MBS pools moved
+  to Securities; mortgage arrears moved to Market data alongside forward curves.
+  The navigation is now driven by a single page-section mapping.
+- **Arrears were previously national-only outside the latest table.** The
+  mortgage-arrears panel now has a data-driven geography selector covering every
+  loaded country, province or territory, region and CMA, with explicit
+  provider-coverage notes.
 
 ## Checks performed
 
@@ -56,6 +63,14 @@ tablet (768x1024) and mobile (390x844) widths:
 - The arrears page was checked against the loaded CBA and CMHC data: the
   national comparison chart, latest geography table, source cards and stale
   flag all render correctly.
+- The arrears geography selector was exercised at desktop and mobile widths for
+  Canada, Ontario, Toronto, New Brunswick and Atlantic. KPIs, chart headings,
+  coverage notes and the selected table rows update together; CMHC-only,
+  CBA-only and no-data cases render without substituting national values.
+- The sidebar was checked after the taxonomy change: Market data contains
+  Overview, Forward curves and Mortgage arrears; Securities contains NHA MBS
+  pools, Canada Mortgage Bonds, Covered bonds and Government bonds. The order is
+  identical when the mobile menu is opened.
 - The government-bond page was checked against the latest Bank of Canada
   snapshot: 65 bonds and 20 treasury bills render with the correct totals,
   weighted coupon, maturity/coupon profiles and issue table. The PBPP section

@@ -17,6 +17,7 @@ type Model =
         Cht: Loadable<ChtData>
         Covered: Loadable<CoveredBondData>
         Arrears: Loadable<ArrearsData>
+        ArrearsGeography: string
         GovernmentBonds: Loadable<GovernmentBondData>
         Freshness: Loadable<DatasetFreshness[]>
         Filters: Loadable<MbsFilterOptions>
@@ -37,6 +38,7 @@ type Msg =
     | ChtLoaded of Result<ChtData, string>
     | CoveredLoaded of Result<CoveredBondData, string>
     | ArrearsLoaded of Result<ArrearsData, string>
+    | ArrearsGeographyChanged of string
     | GovernmentBondsLoaded of Result<GovernmentBondData, string>
     | FreshnessLoaded of Result<DatasetFreshness[], string>
     | FiltersLoaded of Result<MbsFilterOptions, string>
@@ -58,6 +60,7 @@ let private emptyModel =
         Cht = NotLoaded
         Covered = NotLoaded
         Arrears = NotLoaded
+        ArrearsGeography = "canada"
         GovernmentBonds = NotLoaded
         Freshness = NotLoaded
         Filters = NotLoaded
@@ -199,8 +202,31 @@ let update (msg: Msg) (model: Model) =
     | CoveredLoaded(Ok data) -> { model with Covered = Loaded data }, Cmd.none
     | CoveredLoaded(Error message) -> { model with Covered = Failed message }, Cmd.none
 
-    | ArrearsLoaded(Ok data) -> { model with Arrears = Loaded data }, Cmd.none
+    | ArrearsLoaded(Ok data) ->
+        let selectedGeography =
+            if
+                data.Geographies
+                |> Array.exists (fun geography -> geography.Code = model.ArrearsGeography)
+            then
+                model.ArrearsGeography
+            else
+                data.Geographies
+                |> Array.tryFind (fun geography -> geography.Code = "canada")
+                |> Option.map (fun geography -> geography.Code)
+                |> Option.defaultValue "canada"
+
+        { model with
+            Arrears = Loaded data
+            ArrearsGeography = selectedGeography
+        },
+        Cmd.none
     | ArrearsLoaded(Error message) -> { model with Arrears = Failed message }, Cmd.none
+
+    | ArrearsGeographyChanged geography ->
+        { model with
+            ArrearsGeography = geography
+        },
+        Cmd.none
 
     | GovernmentBondsLoaded(Ok data) ->
         { model with
@@ -365,6 +391,8 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
             Arrears.ArrearsPage
                 {
                     Data = model.Arrears
+                    SelectedGeography = model.ArrearsGeography
+                    OnGeographyChange = ArrearsGeographyChanged >> dispatch
                     OnRefresh = fun () -> dispatch Refresh
                 }
         | GovernmentBonds ->
@@ -438,15 +466,15 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                             prop.custom ("aria-label", "Primary navigation")
                                             prop.children
                                                 [
-                                                    Html.div [ prop.className "nav-section"; prop.text "Market" ]
-                                                    navItem Overview "◫" dispatch model.Page
-                                                    navItem Pools "▦" dispatch model.Page
-                                                    navItem ForwardCurves "∿" dispatch model.Page
-                                                    Html.div [ prop.className "nav-section"; prop.text "Securities" ]
-                                                    navItem Cht "◆" dispatch model.Page
-                                                    navItem CoveredBonds "◇" dispatch model.Page
-                                                    navItem Arrears "▤" dispatch model.Page
-                                                    navItem GovernmentBonds "▥" dispatch model.Page
+                                                    for section, items in navigationSections do
+                                                        Html.div
+                                                            [
+                                                                prop.className "nav-section"
+                                                                prop.text (pageSectionTitle section)
+                                                            ]
+
+                                                        for page, icon in items do
+                                                            navItem page icon dispatch model.Page
                                                 ]
                                         ]
 

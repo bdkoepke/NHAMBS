@@ -32,7 +32,7 @@ let emptyChart (message: string) =
 /// Multi-series date chart used for the CBA/CMHC arrears comparison. The two
 /// providers publish monthly and quarterly points, so the x-axis is calendar
 /// time rather than a shared array index.
-let arrearsComparisonChart (points: ArrearsSeriesPoint[]) =
+let arrearsComparisonChart (geographyName: string) (points: ArrearsSeriesPoint[]) =
     if points.Length = 0 then
         emptyChart "No arrears observations"
     else
@@ -140,7 +140,10 @@ let arrearsComparisonChart (points: ArrearsSeriesPoint[]) =
                                                         svg.strokeWidth 2.4
                                                         svg.custom ("stroke-linejoin", "round")
                                                         svg.custom ("stroke-linecap", "round")
-                                                        svg.custom ("aria-label", source + " national arrears rate")
+                                                        svg.custom (
+                                                            "aria-label",
+                                                            sprintf "%s %s 90+ day arrears rate" geographyName source
+                                                        )
                                                     ]
                                         ]
                                 ]

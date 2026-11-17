@@ -81,7 +81,15 @@ and health check. There is no hand-rolled `docker-compose.yml`.
 - **Forward curves** — forward rate curves loaded from `forward_curves.json`,
   with snapshot/horizon KPIs, an SVG curve chart, tenor observations and series
   metadata.
+- **Mortgage arrears** — CBA and CMHC/Equifax 90+ day arrears comparison with a
+  geography selector covering every loaded country, province/territory, region
+  and CMA. Provider coverage gaps are labelled instead of substituting another
+  geography's values.
 - **CSV export** — export the currently loaded pool result set from the grid.
+
+The sidebar groups pages as **Market data** (overview, forward curves, mortgage
+arrears) and **Securities** (NHA MBS pools, Canada Mortgage Bonds, covered bonds,
+government bonds).
 
 ## Project layout
 
