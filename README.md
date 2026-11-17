@@ -366,7 +366,10 @@ retention policy and full lineage diagram.
 - `government_bond_programs` / `government_bond_issues` — issue-level
   Government of Canada bonds and treasury bills from Bank of Canada Valet,
   including ISIN, coupon, issue/maturity dates, outstanding amounts and
-  inflation adjustments. See `docs/government-bonds.md`.
+  inflation adjustments.
+- `provincial_bond_transactions` — issue-level Provincial Bond Purchase Program
+  purchases (issuer, ISIN, coupon, maturity, trade dates, amount purchased and
+  purchase yield). See `docs/government-bonds.md`.
 
 **Analytics views (`nhambs`)**
 
@@ -377,8 +380,9 @@ Dashboard views are built from the `nhambs` tables only: `v_mbs_pool_grid`, `v_m
 `v_covered_bond_registry_summary`, `v_cht_summary`,
 `v_cht_history_summary`, `v_arrears_series`, `v_arrears_latest`,
 `v_arrears_provider_comparison`, `v_arrears_freshness`,
-`v_government_bond_latest`, `v_government_bond_program_summary` and
-`v_government_bond_freshness`.
+`v_government_bond_latest`, `v_government_bond_program_summary`,
+`v_government_bond_freshness`, `v_provincial_bond_transactions`,
+`v_provincial_bond_issue_summary` and `v_provincial_bond_summary`.
 
 **Operations (`nhambs` / `elsa`)**
 

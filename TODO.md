@@ -27,10 +27,10 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
 
 ## 2. Add information on other government bonds
 
-- [x] Identify the additional federal, provincial, and agency bond programs to cover. The first program is issue-level Government of Canada domestic marketable bonds and treasury bills; provincial and agency candidates and their data limitations are documented in `docs/government-bonds.md`.
-- [x] Add source acquisition and parsers for the selected programs. The Bank of Canada Valet `GOC_OUTSTANDING` feed is downloaded, landed in `raw.source_documents`, and parsed into issue-level rows.
-- [x] Extend the domain model and database schema for issuers, programs, issues, coupons, maturity dates, and outstanding amounts. `government_bond_programs` and `government_bond_issues` carry program, ISIN, instrument type, coupon, issue/maturity dates, outstanding amount, inflation adjustment and as-of date.
-- [x] Add API endpoints, repository queries, and dashboard views. `GetGovernmentBonds` and the `#/government-bonds` page show totals, weighted coupon, maturity/coupon profiles and the issue table.
+- [x] Identify the additional federal, provincial, and agency bond programs to cover. The federal program is issue-level Government of Canada domestic marketable bonds and treasury bills; provincial coverage uses issue-level Provincial Bond Purchase Program purchases, and agency candidates and data limitations are documented in `docs/government-bonds.md`.
+- [x] Add source acquisition and parsers for the selected programs. The Bank of Canada Valet `GOC_OUTSTANDING` and `PBPP_TRANSACTION_DATA` feeds are downloaded, landed in `raw.source_documents`, and parsed into federal issue and provincial transaction rows.
+- [x] Extend the domain model and database schema for issuers, programs, issues, coupons, maturity dates, and outstanding amounts. `government_bond_programs`, `government_bond_issues` and `provincial_bond_transactions` carry program, ISIN, instrument type, coupon, issue/maturity dates, outstanding or purchased amount, inflation adjustment, purchase yield and as-of/trade date.
+- [x] Add API endpoints, repository queries, and dashboard views. `GetGovernmentBonds` and the `#/government-bonds` page show federal totals, weighted coupon, maturity/coupon profiles, the federal issue table, and PBPP provincial purchase summaries and issues.
 - [x] Add fixtures and tests for the new sources. `tests/NHAMBS.Tests/GovernmentBondTests.fs` covers latest-snapshot selection, field mapping and fixed-rate inflation handling.
 
 ## 3. Clean up the database to 5NF

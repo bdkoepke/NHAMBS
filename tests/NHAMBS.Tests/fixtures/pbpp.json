@@ -1,0 +1,40 @@
+{
+  "observations": [
+    {
+      "pbpp_id": "1",
+      "PBPP_TRANSACTION_ISIN": { "v": "CA68323AEA84" },
+      "PBPP_TRANSACTION_ISSUER_NAME": { "v": "Province of Ontario" },
+      "PBPP_TRANSACTION_COUPON": { "v": "1.350" },
+      "PBPP_TRANSACTION_SECURITY_MATURITY_DATE": { "v": "2022-03-08" },
+      "PBPP_TRANSACTION_TRADE_DATE": { "v": "2020-05-20" },
+      "PBPP_TRANSACTION_SETTLEMENT_DATE": { "v": "2020-05-22" },
+      "PBPP_TRANSACTION_AMOUNT_PURCHASED": { "v": "1000000" },
+      "PBPP_TRANSACTION_PURCHASE_PRICE": { "v": "101.25" },
+      "PBPP_TRANSACTION_PURCHASE_YIELD": { "v": "0.648" }
+    },
+    {
+      "pbpp_id": "2",
+      "PBPP_TRANSACTION_ISIN": { "v": "CA74814ZEL37" },
+      "PBPP_TRANSACTION_ISSUER_NAME": { "v": "Province of Quebec" },
+      "PBPP_TRANSACTION_COUPON": { "v": "3.500" },
+      "PBPP_TRANSACTION_SECURITY_MATURITY_DATE": { "v": "2022-12-01" },
+      "PBPP_TRANSACTION_TRADE_DATE": { "v": "2021-05-06" },
+      "PBPP_TRANSACTION_SETTLEMENT_DATE": { "v": "2021-05-10" },
+      "PBPP_TRANSACTION_AMOUNT_PURCHASED": { "v": "2500000" },
+      "PBPP_TRANSACTION_PURCHASE_PRICE": { "v": "104.887" },
+      "PBPP_TRANSACTION_PURCHASE_YIELD": { "v": "0.346" }
+    },
+    {
+      "pbpp_id": "3",
+      "PBPP_TRANSACTION_ISIN": { "v": "CA0000000001" },
+      "PBPP_TRANSACTION_ISSUER_NAME": { "v": "Province of Atlantis" },
+      "PBPP_TRANSACTION_COUPON": { "v": "2.000" },
+      "PBPP_TRANSACTION_SECURITY_MATURITY_DATE": { "v": "2025-01-01" },
+      "PBPP_TRANSACTION_TRADE_DATE": { "v": "2020-06-01" },
+      "PBPP_TRANSACTION_SETTLEMENT_DATE": { "v": "2020-06-03" },
+      "PBPP_TRANSACTION_AMOUNT_PURCHASED": { "v": "500000" },
+      "PBPP_TRANSACTION_PURCHASE_PRICE": { "v": "100.0" },
+      "PBPP_TRANSACTION_PURCHASE_YIELD": { "v": "1.0" }
+    }
+  ]
+}

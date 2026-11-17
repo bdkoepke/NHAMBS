@@ -15,6 +15,16 @@ type GovernmentBondsProps =
     }
 
 let private programCard (program: GovernmentBondProgramInfo) =
+    let statusLabel =
+        if program.Cadence = "historical" then "Historical"
+        elif program.IsStale then "Stale"
+        else "Current"
+
+    let statusClass =
+        if program.Cadence = "historical" then "badge"
+        elif program.IsStale then "badge badge-warning"
+        else "badge badge-success"
+
     Card
         program.Name
         program.IssuerName
@@ -34,7 +44,7 @@ let private programCard (program: GovernmentBondProgramInfo) =
                                             Html.span
                                                 [
                                                     prop.className "arrears-source-value"
-                                                    prop.text (optionText program.LatestAsOfDate)
+                                                    prop.text (dateShortOption program.LatestAsOfDate)
                                                 ]
                                             Html.span [ prop.className "arrears-source-label"; prop.text "Cadence" ]
                                             Html.span
@@ -42,16 +52,7 @@ let private programCard (program: GovernmentBondProgramInfo) =
                                                     prop.className "arrears-source-value"
                                                     prop.text (titleCase program.Cadence)
                                                 ]
-                                            Html.span
-                                                [
-                                                    prop.className (
-                                                        if program.IsStale then
-                                                            "badge badge-warning"
-                                                        else
-                                                            "badge badge-success"
-                                                    )
-                                                    prop.text (if program.IsStale then "Stale" else "Current")
-                                                ]
+                                            Html.span [ prop.className statusClass; prop.text statusLabel ]
                                         ]
                                 ]
                             Html.p [ prop.className "arrears-definition"; prop.text program.Notes ]
@@ -150,11 +151,115 @@ let private issueTable (issues: GovernmentBondIssueRow[]) =
                     ]
             ]
 
+let private provincialTable (rows: ProvincialBondIssueRow[]) =
+    if rows.Length = 0 then
+        EmptyState "No provincial bond purchases" "Run the government-bonds ETL to populate the PBPP transactions."
+    else
+        Html.div
+            [
+                prop.className "table-scroll"
+                prop.children
+                    [
+                        Html.table
+                            [
+                                prop.className "data-table"
+                                prop.children
+                                    [
+                                        Html.thead
+                                            [
+                                                prop.children
+                                                    [
+                                                        Html.tr
+                                                            [
+                                                                prop.children
+                                                                    [
+                                                                        Html.th [ prop.text "Issuer" ]
+                                                                        Html.th [ prop.text "Province" ]
+                                                                        Html.th [ prop.text "ISIN" ]
+                                                                        Html.th [ prop.text "Coupon" ]
+                                                                        Html.th [ prop.text "Maturity" ]
+                                                                        Html.th [ prop.text "Trades" ]
+                                                                        Html.th [ prop.text "Purchased" ]
+                                                                        Html.th [ prop.text "Avg yield" ]
+                                                                    ]
+                                                            ]
+                                                    ]
+                                            ]
+                                        Html.tbody
+                                            [
+                                                prop.children
+                                                    [
+                                                        for row in rows do
+                                                            Html.tr
+                                                                [
+                                                                    prop.children
+                                                                        [
+                                                                            Html.td [ prop.text row.IssuerName ]
+                                                                            Html.td [ prop.text row.ProvinceName ]
+                                                                            Html.td [ prop.text row.Isin ]
+                                                                            Html.td
+                                                                                [
+                                                                                    prop.text (
+                                                                                        percent row.CouponRatePercent
+                                                                                    )
+                                                                                ]
+                                                                            Html.td [ prop.text row.MaturityDate ]
+                                                                            Html.td
+                                                                                [
+                                                                                    prop.text (
+                                                                                        string row.TransactionCount
+                                                                                    )
+                                                                                ]
+                                                                            Html.td
+                                                                                [
+                                                                                    prop.text (
+                                                                                        moneyCompact row.AmountPurchased
+                                                                                    )
+                                                                                ]
+                                                                            Html.td
+                                                                                [
+                                                                                    prop.text (
+                                                                                        row.WeightedAverageYield
+                                                                                        |> Option.map percent
+                                                                                        |> Option.defaultValue "—"
+                                                                                    )
+                                                                                ]
+                                                                        ]
+                                                                ]
+                                                    ]
+                                            ]
+                                    ]
+                            ]
+                    ]
+            ]
+
+let private provincialChart (rows: ProvincialBondSummaryRow[]) =
+    rows
+    |> Array.map (fun row ->
+        {
+            Label = row.ProvinceName
+            Value = row.AmountPurchased
+            Count = row.TransactionCount
+        })
+    |> miniBars
+
 let private content (onRefresh: unit -> unit) (data: GovernmentBondData) =
     let analytics = data.Analytics
 
     let program =
         data.Programs |> Array.tryFind (fun program -> program.ProgramCode = "goc")
+
+    let pbppProgram =
+        data.Programs |> Array.tryFind (fun program -> program.ProgramCode = "pbpp")
+
+    let provincialTotal =
+        data.ProvincialSummary |> Array.sumBy (fun row -> row.AmountPurchased)
+
+    let provincialIssues =
+        data.ProvincialIssues
+        |> Array.map (fun row -> row.Isin)
+        |> Array.distinct
+        |> Array.length
 
     Html.div
         [
@@ -206,6 +311,29 @@ let private content (onRefresh: unit -> unit) (data: GovernmentBondData) =
                                 ]
                         ]
 
+                    Html.div
+                        [
+                            prop.className "kpi-grid kpi-grid-5"
+                            prop.children
+                                [
+                                    KpiCard
+                                        "Provincial purchases (PBPP)"
+                                        (moneyCompact provincialTotal)
+                                        "Bank of Canada 2020–2021 programme"
+                                        "#2e5771"
+                                    KpiCard
+                                        "Provincial issues purchased"
+                                        (number (decimal provincialIssues))
+                                        "Distinct ISINs"
+                                        "#f47c3c"
+                                    KpiCard
+                                        "Provincial coverage"
+                                        (sprintf "%d" data.ProvincialSummary.Length)
+                                        "Provinces and territories"
+                                        "#93c54b"
+                                ]
+                        ]
+
                     Card
                         "Outstanding bonds by maturity year"
                         "Par value outstanding, grouped by calendar maturity year."
@@ -224,7 +352,23 @@ let private content (onRefresh: unit -> unit) (data: GovernmentBondData) =
                         []
                         [ issueTable data.Issues ]
 
+                    Card
+                        "Provincial bond purchases (PBPP)"
+                        "Amount purchased by the Bank of Canada under the Provincial Bond Purchase Program. This is a historical 2020–2021 programme, not a current outstanding balance."
+                        []
+                        [ provincialChart data.ProvincialSummary ]
+
+                    Card
+                        "Provincial issues purchased"
+                        "Issue-level provincial bonds purchased under the PBPP, aggregated by ISIN and issuer."
+                        []
+                        [ provincialTable data.ProvincialIssues ]
+
                     match program with
+                    | Some value -> programCard value
+                    | None -> Html.div []
+
+                    match pbppProgram with
                     | Some value -> programCard value
                     | None -> Html.div []
                 ]

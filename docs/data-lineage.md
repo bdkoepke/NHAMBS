@@ -64,6 +64,17 @@ nhambs.government_bond_issues.source_document_id
         │
         ▼
 nhambs.v_government_bond_latest / v_government_bond_program_summary / v_government_bond_freshness
+
+Bank of Canada Valet PBPP_TRANSACTION_DATA JSON
+        │
+        ▼
+raw.source_documents (dataset = government-bonds-pbpp)
+        │
+        ▼
+nhambs.provincial_bond_transactions.source_document_id
+        │
+        ▼
+nhambs.v_provincial_bond_transactions / v_provincial_bond_issue_summary / v_provincial_bond_summary
 ```
 
 Every conformed top-level fact records the raw file that produced it. Child
@@ -83,6 +94,7 @@ bond key. `nhambs.etl_anomalies` records corrections and warnings with the
 | Covered bond registry | `name` |
 | Arrears observation | `(source_code, period_end, geography_code, lender_type, insured_status, product_type, arrears_stage, metric)` |
 | Government bond issue | `(program_code, isin, as_of_date)` |
+| Provincial bond transaction | `(program_code, isin, trade_date, amount_purchased, purchase_price)` |
 
 ## Maturity year decoding
 

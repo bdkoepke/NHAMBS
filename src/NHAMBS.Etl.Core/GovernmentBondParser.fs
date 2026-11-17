@@ -124,3 +124,117 @@ let parseGocOutstanding (json: string) : GovernmentBondParseResult =
                 AsOfDate = Some asOf
                 Warnings = warnings
             }
+
+let private provinceKey (issuerName: string) =
+    let normalized =
+        issuerName.Normalize(System.Text.NormalizationForm.FormD)
+        |> Seq.filter (fun character ->
+            System.Globalization.CharUnicodeInfo.GetUnicodeCategory character
+            <> System.Globalization.UnicodeCategory.NonSpacingMark)
+        |> Array.ofSeq
+        |> String
+        |> fun value -> value.ToLowerInvariant()
+        |> fun value -> System.Text.RegularExpressions.Regex.Replace(value, @"[^a-z]+", " ")
+        |> fun value -> value.Trim()
+
+    if normalized.Contains "alberta" then
+        Some "alberta"
+    elif normalized.Contains "british columbia" then
+        Some "britishColumbia"
+    elif normalized.Contains "manitoba" then
+        Some "manitoba"
+    elif normalized.Contains "new brunswick" then
+        Some "newBrunswick"
+    elif normalized.Contains "newfoundland" then
+        Some "newfoundland"
+    elif normalized.Contains "nova scotia" then
+        Some "novaScotia"
+    elif normalized.Contains "ontario" then
+        Some "ontario"
+    elif normalized.Contains "prince edward island" then
+        Some "princeEdwardIsland"
+    elif normalized.Contains "quebec" then
+        Some "quebec"
+    elif normalized.Contains "saskatchewan" then
+        Some "saskatchewan"
+    elif normalized.Contains "yukon" then
+        Some "yukon"
+    elif normalized.Contains "northwest territories" then
+        Some "northwestTerritories"
+    elif normalized.Contains "nunavut" then
+        Some "nunavut"
+    else
+        None
+
+/// Parse the Bank of Canada Provincial Bond Purchase Program transaction
+/// observations. Each row is one purchase; multiple rows can refer to the same
+/// ISIN on different trade dates.
+let parsePbppTransactions (json: string) : ProvincialBondParseResult =
+    use document = JsonDocument.Parse json
+
+    match document.RootElement.TryGetProperty "observations" with
+    | false, _ ->
+        {
+            Transactions = [||]
+            LatestTradeDate = None
+            Warnings = [| "The PBPP response has no observations array." |]
+        }
+    | true, observations ->
+        let rows = observations.EnumerateArray() |> Seq.toArray
+
+        let transactions =
+            rows
+            |> Array.choose (fun row ->
+                match
+                    textValue "PBPP_TRANSACTION_ISIN" row,
+                    textValue "PBPP_TRANSACTION_ISSUER_NAME" row,
+                    decimalValue "PBPP_TRANSACTION_COUPON" row,
+                    dateValue "PBPP_TRANSACTION_SECURITY_MATURITY_DATE" row,
+                    dateValue "PBPP_TRANSACTION_TRADE_DATE" row,
+                    decimalValue "PBPP_TRANSACTION_AMOUNT_PURCHASED" row
+                with
+                | Some isin, Some issuerName, Some coupon, Some maturityDate, Some tradeDate, Some amountPurchased ->
+                    Some
+                        {
+                            IssuerName = issuerName
+                            ProvinceCode = provinceKey issuerName
+                            Isin = isin
+                            CouponRatePercent = coupon
+                            MaturityDate = maturityDate
+                            TradeDate = tradeDate
+                            SettlementDate = dateValue "PBPP_TRANSACTION_SETTLEMENT_DATE" row
+                            AmountPurchased = amountPurchased
+                            PurchasePrice = decimalValue "PBPP_TRANSACTION_PURCHASE_PRICE" row
+                            PurchaseYieldPercent = decimalValue "PBPP_TRANSACTION_PURCHASE_YIELD" row
+                        }
+                | _ -> None)
+            |> Array.distinctBy (fun item -> item.Isin, item.TradeDate, item.AmountPurchased, item.PurchasePrice)
+            |> Array.sortBy (fun item -> item.TradeDate, item.Isin)
+
+        let latestTradeDate =
+            transactions
+            |> Array.map (fun item -> item.TradeDate)
+            |> Array.sortDescending
+            |> Array.tryHead
+
+        let unknownIssuers =
+            transactions
+            |> Array.filter (fun item -> item.ProvinceCode.IsNone)
+            |> Array.map (fun item -> item.IssuerName)
+            |> Array.distinct
+
+        let warnings =
+            if transactions.Length = 0 then
+                [| "No provincial bond transactions were parsed." |]
+            elif unknownIssuers.Length > 0 then
+                [|
+                    sprintf "Unmapped provincial issuers: %s" (String.concat ", " unknownIssuers)
+                |]
+            else
+                [||]
+
+        {
+            Transactions = transactions
+            LatestTradeDate = latestTradeDate
+            Warnings = warnings
+        }

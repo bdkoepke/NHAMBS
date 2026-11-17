@@ -25,3 +25,24 @@ type GovernmentBondParseResult =
         AsOfDate: DateTime option
         Warnings: string[]
     }
+
+type ProvincialBondTransaction =
+    {
+        IssuerName: string
+        ProvinceCode: string option
+        Isin: string
+        CouponRatePercent: decimal
+        MaturityDate: DateTime
+        TradeDate: DateTime
+        SettlementDate: DateTime option
+        AmountPurchased: decimal
+        PurchasePrice: decimal option
+        PurchaseYieldPercent: decimal option
+    }
+
+type ProvincialBondParseResult =
+    {
+        Transactions: ProvincialBondTransaction[]
+        LatestTradeDate: DateTime option
+        Warnings: string[]
+    }

@@ -491,11 +491,41 @@ module Domain =
             BySecurityType: CategoryPoint[]
         }
 
+    type ProvincialBondSummaryRow =
+        {
+            ProvinceCode: string option
+            ProvinceName: string
+            TransactionCount: int
+            IssueCount: int
+            IssuerCount: int
+            AmountPurchased: decimal
+            WeightedAverageYield: decimal option
+            FirstTradeDate: string option
+            LastTradeDate: string option
+        }
+
+    type ProvincialBondIssueRow =
+        {
+            IssuerName: string
+            ProvinceCode: string option
+            ProvinceName: string
+            Isin: string
+            CouponRatePercent: decimal
+            MaturityDate: string
+            TransactionCount: int
+            AmountPurchased: decimal
+            WeightedAverageYield: decimal option
+            FirstTradeDate: string option
+            LastTradeDate: string option
+        }
+
     type GovernmentBondData =
         {
             Analytics: GovernmentBondAnalytics
             Issues: GovernmentBondIssueRow[]
             Programs: GovernmentBondProgramInfo[]
+            ProvincialSummary: ProvincialBondSummaryRow[]
+            ProvincialIssues: ProvincialBondIssueRow[]
         }
 
     type DatasetFreshness =

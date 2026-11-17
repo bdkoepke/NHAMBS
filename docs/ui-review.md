@@ -37,6 +37,9 @@ tablet (768x1024) and mobile (390x844) widths:
 - **The government-bond view needed a maturity and coupon profile.** It shows
   bond/T-bill totals, weighted coupon, maturity-year bars, coupon buckets, the
   issue table and the source card.
+- **Provincial coverage was added as a historical PBPP section.** It clearly
+  labels the 2020–2021 purchase programme separately from current federal
+  outstanding debt and shows province bars plus an issue-level purchase table.
 
 ## Checks performed
 
@@ -55,7 +58,9 @@ tablet (768x1024) and mobile (390x844) widths:
   flag all render correctly.
 - The government-bond page was checked against the latest Bank of Canada
   snapshot: 65 bonds and 20 treasury bills render with the correct totals,
-  weighted coupon, maturity/coupon profiles and issue table.
+  weighted coupon, maturity/coupon profiles and issue table. The PBPP section
+  shows 1,200 transactions, 139 distinct issues and 11 provinces/territories
+  without being presented as current outstanding debt.
 - Chart and table values were spot-checked for currency, percentage, date and
   missing-value formatting.
 

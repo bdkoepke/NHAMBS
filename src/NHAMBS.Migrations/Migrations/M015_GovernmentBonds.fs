@@ -107,7 +107,7 @@ type M015_GovernmentBonds() =
             p.source_url,
             p.cadence,
             p.notes,
-            max(i.as_of_date) AS latest_as_of_date,
+            COALESCE(max(i.as_of_date), p.latest_as_of_date) AS latest_as_of_date,
             count(DISTINCT i.isin) AS issue_count,
             COALESCE(sum(i.outstanding_amount) FILTER (WHERE i.security_type = 'BOND'), 0) AS bond_outstanding,
             COALESCE(sum(i.outstanding_amount) FILTER (WHERE i.security_type IN ('TBILL', 'MM')), 0) AS bill_outstanding,
@@ -132,6 +132,7 @@ type M015_GovernmentBonds() =
             END AS days_since_as_of,
             CASE
                 WHEN latest_as_of_date IS NULL THEN true
+                WHEN cadence = 'historical' THEN false
                 ELSE current_date - latest_as_of_date > 10
             END AS is_stale,
             last_loaded_at

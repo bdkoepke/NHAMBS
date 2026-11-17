@@ -172,6 +172,53 @@ let get (context: Provider.Sql.dataContext) =
         |> Array.sortDescending
         |> Array.tryHead
 
+    let provincialSummary =
+        query {
+            for row in context.Nhambs.VProvincialBondSummary do
+                select row
+        }
+        |> Seq.map (fun row ->
+            ({
+                ProvinceCode = row.ProvinceCode
+                ProvinceName = Option.get row.ProvinceName
+                TransactionCount = defaultArg row.TransactionCount 0L |> int
+                IssueCount = defaultArg row.IssueCount 0L |> int
+                IssuerCount = defaultArg row.IssuerCount 0L |> int
+                AmountPurchased = defaultArg row.AmountPurchased 0m
+                WeightedAverageYield = row.WeightedAverageYield
+                FirstTradeDate = dateText row.FirstTradeDate
+                LastTradeDate = dateText row.LastTradeDate
+            }
+            : ProvincialBondSummaryRow))
+        |> Seq.sortByDescending (fun row -> row.AmountPurchased)
+        |> Seq.toArray
+
+    let provincialIssues =
+        query {
+            for row in context.Nhambs.VProvincialBondIssueSummary do
+                select row
+        }
+        |> Seq.map (fun row ->
+            ({
+                IssuerName = Option.get row.IssuerName
+                ProvinceCode = row.ProvinceCode
+                ProvinceName = Option.get row.ProvinceName
+                Isin = Option.get row.Isin
+                CouponRatePercent = defaultArg row.CouponRatePercent 0m
+                MaturityDate =
+                    row.MaturityDate
+                    |> Option.map (fun date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+                    |> Option.defaultValue ""
+                TransactionCount = defaultArg row.TransactionCount 0L |> int
+                AmountPurchased = defaultArg row.AmountPurchased 0m
+                WeightedAverageYield = row.WeightedAverageYield
+                FirstTradeDate = dateText row.FirstTradeDate
+                LastTradeDate = dateText row.LastTradeDate
+            }
+            : ProvincialBondIssueRow))
+        |> Seq.sortByDescending (fun row -> row.AmountPurchased)
+        |> Seq.toArray
+
     {
         Analytics =
             {
@@ -188,4 +235,6 @@ let get (context: Provider.Sql.dataContext) =
             }
         Issues = issues
         Programs = programs
+        ProvincialSummary = provincialSummary
+        ProvincialIssues = provincialIssues
     }
