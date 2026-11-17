@@ -24,10 +24,23 @@ let private runProcess (fileName: string) (arguments: string list) =
         startInfo.RedirectStandardError <- true
         startInfo.UseShellExecute <- false
 
+        // Tesseract uses OpenMP internally. Without a limit, batch workers
+        // each start a multi-threaded OCR job and oversubscribe the machine,
+        // which makes the parallel run dramatically slower than serial work.
+        startInfo.Environment.["OMP_THREAD_LIMIT"] <- "1"
+        startInfo.Environment.["OMP_NUM_THREADS"] <- "1"
+
         use proc = Process.Start startInfo
-        let output = proc.StandardOutput.ReadToEnd()
-        let error = proc.StandardError.ReadToEnd()
+
+        // Read both pipes concurrently. Reading stdout to completion first can
+        // deadlock when a tool writes enough diagnostics to fill the stderr
+        // pipe, which happens with some damaged PDFs.
+        let outputTask = proc.StandardOutput.ReadToEndAsync()
+        let errorTask = proc.StandardError.ReadToEndAsync()
         proc.WaitForExit()
+
+        let output = outputTask.GetAwaiter().GetResult()
+        let error = errorTask.GetAwaiter().GetResult()
 
         if proc.ExitCode <> 0 then
             failwithf "%s exited with code %d: %s" fileName proc.ExitCode (error.Trim())
@@ -60,6 +73,81 @@ let private hasCoverText (text: string) =
     // The label, not a prose mention of a "pool number".
     Regex.IsMatch(text, @"(?m)^[ \t\f]*POOL[ \t]+NO[.:]", RegexOptions.IgnoreCase ||| RegexOptions.CultureInvariant)
 
+let private hasPoolNumberValue (text: string) =
+    Regex.IsMatch(
+        text,
+        @"(?im)^[ \t\f]*POOL[ \t]*[.:;,\-]*[ \t]*N[O0][ \t]*[.:;,\-]*[ \t]*[0-9$STOIlZ?%#][0-9A-Za-z$?%*# \t\-]{5,}",
+        RegexOptions.CultureInvariant
+    )
+
+let private lineHasAmount (line: string) =
+    Regex.IsMatch(line, @"\d[\d, .]{5,}", RegexOptions.CultureInvariant)
+
+let private hasDateAfterLabel (label: string) (text: string) =
+    let labelPattern = Regex.Escape(label).Replace(@"\ ", @"[ \t]+")
+
+    let datePattern =
+        @"[A-Za-zÀ-ÿ]{3,}\s*\d{1,2}(?:st|nd|rd|th)?\s*[,./\- ]\s*\d{2,4}|\d{1,2}(?:er|e)?\s+[A-Za-zÀ-ÿ]+\s+\d{4}|\d{1,2}\s*[/\-]\s*\d{1,2}\s*[/\-]\s*\d{2,4}|\d{1,2}\s*[/\-]\s*\d{4}"
+
+    Regex.IsMatch(
+        text,
+        @"(?im)" + labelPattern + @"[ \t]*:?[ \t]*(?:" + datePattern + @")",
+        RegexOptions.CultureInvariant
+    )
+
+/// 2022-era forms draw the field values as graphics or a separate text layer,
+/// leaving only the printed labels in the pdftotext output. Detect that so the
+/// OCR fallback is used even though the cover labels are present.
+let private hasCoverValues (text: string) =
+    let lines = text.Split('\n')
+    let mutable amount = false
+
+    for index in 0 .. lines.Length - 1 do
+        if
+            not amount
+            && Regex.IsMatch(
+                lines.[index],
+                @"^[ \t\f]*Aggregate[ \t]+Principal[ \t]+Amount[ \t]*:?(?:[ \t]*[$\d].*)?[ \t]*$",
+                RegexOptions.IgnoreCase ||| RegexOptions.CultureInvariant
+            )
+        then
+            let previous =
+                [ index - 1 .. -1 .. max 0 (index - 3) ]
+                |> List.tryFind (fun candidate -> lines.[candidate].Trim() <> "")
+                |> Option.map (fun candidate -> lines.[candidate])
+                |> Option.defaultValue ""
+
+            amount <- lineHasAmount lines.[index] || lineHasAmount previous
+
+    let coupon =
+        Regex.IsMatch(
+            text,
+            @"(?im)^[ \t]*[#$\d][^\r\n]{0,80}?(?:%|[ \t]{2,})[ \t]*M[o0][A-Za-z0-9]{0,4}gage",
+            RegexOptions.CultureInvariant
+        )
+
+    let datesComplete =
+        [ "FIRST PAYMENT DUE"; "ISSUE DATE"; "MATURITY DATE"; "SETTLEMENT DATE" ]
+        |> List.forall (fun label -> hasDateAfterLabel label text)
+        && (hasDateAfterLabel "FINAL PAYMENT DUE" text
+            || hasDateAfterLabel "FINAL PAYMENT DATE" text)
+
+    hasPoolNumberValue text && amount && coupon && datesComplete
+
+let private hasAddendumValues (text: string) =
+    Regex.IsMatch(
+        text,
+        @"(?im)^[ \t]*Total[ \t]+Number[ \t]+of[ \t]+Mortgages?[^\r\n]*\d",
+        RegexOptions.CultureInvariant
+    )
+    && hasDateAfterLabel "Weighted Average Interest Adjustment Date" text
+    && hasDateAfterLabel "Weighted Average Maturity Date" text
+    && Regex.IsMatch(
+        text,
+        @"(?im)^[ \t]*MORTGAGE[ \t]+(?:LOAN[ \t]+)?POOL[ \t]+PROFILE[ \t]+AT[ \t]+ISSUE[ \t]+DATE[\s\S]{0,1200}?\d+[.,]\d{2}",
+        RegexOptions.CultureInvariant
+    )
+
 let private hasAddendumText (text: string) =
     // Match the printed heading as a whole line; the body text also mentions
     // "Mortgage Pool Profile at Issue Date".
@@ -81,7 +169,15 @@ let private pageCount (path: string) =
     | m when m.Success -> Int32.Parse(m.Groups.[1].Value, CultureInfo.InvariantCulture)
     | _ -> 1
 
-let private renderPages (path: string) (first: int) (last: int) (directory: string) =
+/// Rasterization resolution for OCR. The CMHC scans themselves are often only
+/// 100 dpi; 200 dpi preserves the printed detail while roughly halving the OCR
+/// cost compared with 300 dpi.
+let private ocrDpi =
+    match Int32.TryParse(Environment.GetEnvironmentVariable "NHAMBS_OCR_DPI") with
+    | true, value when value >= 72 -> value
+    | _ -> 200
+
+let private renderPages (dpi: int) (path: string) (first: int) (last: int) (directory: string) =
     let prefix = Path.Combine(directory, sprintf "page-%03d" first)
 
     runProcess
@@ -92,7 +188,7 @@ let private renderPages (path: string) (first: int) (last: int) (directory: stri
             "-l"
             string last
             "-r"
-            "300"
+            string dpi
             "-gray"
             "-png"
             path
@@ -292,8 +388,8 @@ let private withTempDirectory (action: string -> string) =
             ()
 
 /// OCR a PDF page range and return approximate layout-preserving text.
-let private extractOcrRange (path: string) (first: int) (last: int) (directory: string) =
-    let imageFiles = renderPages path first last directory
+let private extractOcrRange (dpi: int) (path: string) (first: int) (last: int) (directory: string) =
+    let imageFiles = renderPages dpi path first last directory
 
     imageFiles
     |> Array.mapi (fun index image -> ocrImage image directory (first * 100 + index))
@@ -302,7 +398,7 @@ let private extractOcrRange (path: string) (first: int) (last: int) (directory: 
 
 /// OCR only the pages that the circular parser needs: the cover (page 1) and
 /// the addendum (usually pages 5-10, occasionally later or earlier).
-let private extractOcr (path: string) (needCover: bool) (needAddendum: bool) =
+let private extractOcrWithDpi (dpi: int) (path: string) (needCover: bool) (needAddendum: bool) =
     withTempDirectory (fun directory ->
         let pages = pageCount path
 
@@ -310,7 +406,7 @@ let private extractOcr (path: string) (needCover: bool) (needAddendum: bool) =
             if first > pages then
                 ""
             else
-                extractOcrRange path first (min last pages) directory
+                extractOcrRange dpi path first (min last pages) directory
 
         let mutable text = ""
 
@@ -334,30 +430,37 @@ let private extractOcr (path: string) (needCover: bool) (needAddendum: bool) =
 
         normalizeOcr text)
 
+let private extractOcr (path: string) (needCover: bool) (needAddendum: bool) =
+    extractOcrWithDpi ocrDpi path needCover needAddendum
+
+/// OCR only the addendum pages at an explicit resolution. Used as a targeted
+/// retry when the first pass cannot read a required weighted-average date.
+let extractOcrAddendumWithDpi (dpi: int) (path: string) = extractOcrWithDpi dpi path false true
+
 /// OCR only the cover pages. Used as a targeted retry when a text-based PDF
 /// has a graphic field (amount, coupon or date) that pdftotext cannot see.
 let extractOcrCover (path: string) =
-    withTempDirectory (fun directory -> extractOcrRange path 1 4 directory |> normalizeOcr)
+    withTempDirectory (fun directory -> extractOcrRange ocrDpi path 1 4 directory |> normalizeOcr)
 
 /// Serializes writes when `NHAMBS_DUMP_TEXT` is set, since batch mode can
 /// extract several PDFs concurrently.
 let private dumpTextLock = obj ()
 
-/// Extract text from a text-based PDF, falling back to OCR when the cover or
-/// addendum is a scanned image.
-let extractText (path: string) : string =
-    let layout = extractLayout path
-    let hasCover = hasCoverText layout
-    let hasAddendum = hasAddendumText layout
+/// Extract text from a text-based PDF using an already-extracted layout.
+/// Callers that inspect the layout first (to skip non-circular documents or
+/// blank coupon fields) can avoid running OCR on them.
+let extractTextWithLayout (path: string) (layout: string) : string =
+    let coverComplete = hasCoverText layout && hasCoverValues layout
+    let addendumComplete = hasAddendumText layout && hasAddendumValues layout
 
     let text =
-        if hasCover && hasAddendum then
+        if coverComplete && addendumComplete then
             layout
         else
-            let ocr = extractOcr path (not hasCover) (not hasAddendum)
+            let ocr = extractOcr path (not coverComplete) (not addendumComplete)
 
             if String.IsNullOrWhiteSpace ocr then layout
-            elif not hasCover then ocr + "\n" + layout
+            elif not coverComplete then ocr + "\n" + layout
             else layout + "\n" + ocr
 
     match Environment.GetEnvironmentVariable "NHAMBS_DUMP_TEXT" with
@@ -366,3 +469,9 @@ let extractText (path: string) : string =
     | output -> lock dumpTextLock (fun () -> File.WriteAllText(output, text))
 
     text
+
+/// Extract text from a text-based PDF, falling back to OCR when the cover or
+/// addendum is a scanned image or when a form only exposes its labels to
+/// pdftotext.
+let extractText (path: string) : string =
+    extractTextWithLayout path (extractLayout path)

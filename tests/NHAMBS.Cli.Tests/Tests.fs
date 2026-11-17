@@ -3,6 +3,7 @@ module NHAMBS.Cli.Tests
 open System
 open System.IO
 open System.Text.Json.Nodes
+open System.Text.RegularExpressions
 open Xunit
 open NHAMBS.Circular
 open NHAMBS.Cli
@@ -42,6 +43,103 @@ let ``parseText reads the fixed coupon`` () =
     Assert.Equal("fixed", stringAt [ "mbs"; "coupon"; "kind" ] root)
     Assert.Equal("1.76000%", stringAt [ "mbs"; "coupon"; "displayText" ] root)
     Assert.Equal(1.76M, decimalAt [ "mbs"; "coupon"; "fixedRatePercent" ] root)
+
+[<Fact>]
+let ``parseText repairs an OCR-mangled coupon line`` () =
+    let mangled =
+        text.Replace("1.76000% Mortgage-Backed Securities", "#10   %   Morigage-Backed     Securities")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal(4.1M, decimalAt [ "mbs"; "coupon"; "fixedRatePercent" ] root)
+
+[<Fact>]
+let ``parseText joins a spaced pool number and trims an OCR extra digit`` () =
+    let mangled =
+        text.Replace("POOL NO.:                        97507987", "POOL NO.: 980 111 513")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal("98011151", stringAt [ "mbs"; "poolNumber" ] root)
+
+[<Fact>]
+let ``parseText recovers an impossible loan-type share from the other rows`` () =
+    let mangled =
+        text.Replace("Multiple Family:                  0.00%", "Multiple Family:                  10000.0000%")
+
+    let root = CircularPdf.parseText mangled
+    let addendum = at [ "addendum" ] root
+
+    Assert.Equal(0M, decimalAt [ "loanTypeProfile"; "multipleFamilyPercent" ] addendum)
+
+[<Fact>]
+let ``parseText repairs OCR amount separators and prefixes`` () =
+    let mangled =
+        text.Replace("Aggregate Principal Amount: $7,509,942.67", "Aggregate Principal Amount: $ §,314,487.32")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal(5314487.32M, decimalAt [ "mbs"; "aggregatePrincipalAmount" ] root)
+
+[<Fact>]
+let ``parseText repairs an amount with a missing decimal point`` () =
+    let mangled =
+        text.Replace("Aggregate Principal Amount: $7,509,942.67", "Aggregate Principal Amount: 524,609:772 97")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal(524609772.97M, decimalAt [ "mbs"; "aggregatePrincipalAmount" ] root)
+
+[<Fact>]
+let ``parseText reads a coupon whose mortgage label lost a letter`` () =
+    let mangled =
+        text.Replace("1.76000% Mortgage-Backed Securities", "3.840 % Martgage-Backed Securities")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal(3.84M, decimalAt [ "mbs"; "coupon"; "fixedRatePercent" ] root)
+
+[<Fact>]
+let ``parseText treats a lone letter in the day position as one`` () =
+    let mangled =
+        Regex.Replace(text, @"(Weighted Average Maturity Date:\s+)May 5, 2021", "${1}May t, 2021")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal("2021-05-01", stringAt [ "addendum"; "weightedAverageMaturityDate" ] root)
+
+[<Fact>]
+let ``parseText recovers a percent-of-total row read with a leading four`` () =
+    let mangled =
+        Regex.Replace(text, @"(31\.4057\s+13\.6731\s+)100\.0000", "${1}400.0000")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal(100M, decimalAt [ "addendum"; "interestAdjustmentProfile"; "percentOfTotal"; "total" ] root)
+
+[<Fact>]
+let ``parseText parses an OCR digit in the mortgage loan count`` () =
+    let mangled =
+        Regex.Replace(text, @"(Total Number of Mortgage Loans:\s+)32", "${1}4l")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal(41, (at [ "addendum"; "totalNumberOfMortgageLoans" ] root).GetValue<int>())
+
+[<Fact>]
+let ``parseTextWithPoolNumber prefers the manifest pool number`` () =
+    let root = CircularPdf.parseTextWithPoolNumber (Some "97-007-371") text
+
+    Assert.Equal("97007371", stringAt [ "mbs"; "poolNumber" ] root)
+
+[<Fact>]
+let ``hasPrintedCoupon distinguishes blank coupon fields`` () =
+    Assert.True(CircularPdf.hasPrintedCoupon text)
+
+    let blank =
+        text.Replace("1.76000% Mortgage-Backed Securities", "% Mortgage-Backed Securities")
+
+    Assert.False(CircularPdf.hasPrintedCoupon blank)
 
 [<Fact>]
 let ``parseText reads the addendum tables`` () =

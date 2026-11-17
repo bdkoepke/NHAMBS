@@ -40,10 +40,7 @@ let infra () =
                 Volumes =
                     toInputList
                         [|
-                            ContainerVolumeArgs(
-                                ContainerPath = "/var/lib/postgresql/data",
-                                VolumeName = dataVolume.Name
-                            )
+                            ContainerVolumeArgs(ContainerPath = "/var/lib/postgresql", VolumeName = dataVolume.Name)
                         |],
                 Healthcheck =
                     ContainerHealthcheckArgs(

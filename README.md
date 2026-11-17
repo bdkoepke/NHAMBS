@@ -55,7 +55,7 @@ management and run inspection. Elsa persists its definitions, runtime instances
 and identity data in the `elsa` PostgreSQL schema.
 
 Infrastructure is managed with **Pulumi** (`src/NHAMBS.Pulumi/`). The local
-stack uses the Pulumi Docker provider to run PostgreSQL 17 with a named volume
+stack uses the Pulumi Docker provider to run PostgreSQL 18 with a named volume
 and health check. There is no hand-rolled `docker-compose.yml`.
 
 ## Features
@@ -190,12 +190,17 @@ The default stack configuration is in `src/NHAMBS.Pulumi/Pulumi.dev.yaml`:
 
 ```yaml
 config:
-  nhambs:image: postgres:17-alpine
+  nhambs:image: postgres:18-alpine
   nhambs:port: "54322"
   nhambs:database: nhambs
   nhambs:username: nhambs
   nhambs:password: nhambs
 ```
+
+PostgreSQL 18 stores its cluster under `/var/lib/postgresql/<major>/docker`, so the
+stack mounts the named volume at `/var/lib/postgresql`. A volume created by an
+older image (for example PostgreSQL 17) cannot be reused directly; migrate it with
+`pg_dump`/`pg_restore` or `pg_upgrade` instead.
 
 Change the password for anything beyond local development:
 

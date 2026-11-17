@@ -189,7 +189,10 @@ module Program =
 
                     let processCode =
                         if processData then
-                            CircularCommand.processBatch inputDirectory outputDirectory
+                            CircularCommand.processBatchWithManifest
+                                inputDirectory
+                                outputDirectory
+                                (args.TryGetResult BatchArguments.Pools_Urls)
                         else
                             0
 
