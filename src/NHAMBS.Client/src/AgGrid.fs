@@ -595,6 +595,7 @@ let AgGrid (options: GridOptions) =
                                                     Html.input
                                                         [
                                                             prop.className "grid-quick-filter"
+                                                            prop.custom ("aria-label", "Quick filter")
                                                             prop.placeholder "Quick filter…"
                                                             prop.value quickFilterText
                                                             prop.onInput (fun (event: Event) ->

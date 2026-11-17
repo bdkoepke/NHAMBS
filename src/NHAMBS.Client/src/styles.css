@@ -105,7 +105,7 @@ a {
   top: 0;
   height: 100vh;
   overflow-y: auto;
-  z-index: 20;
+  z-index: 40;
 }
 
 .brand {
@@ -195,6 +195,30 @@ a {
 
 .nav-item.active .nav-icon {
   color: #d3eab0;
+}
+
+.sidebar-close {
+  display: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  place-items: center;
+}
+
+.sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sidebar-backdrop {
+  display: none;
 }
 
 .sidebar-footer {
@@ -1764,6 +1788,18 @@ a {
 
   .menu-open .sidebar {
     transform: translateX(0);
+  }
+
+  .sidebar-close {
+    display: grid;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(12, 25, 34, 0.48);
   }
 
   .menu-toggle {

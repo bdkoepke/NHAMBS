@@ -343,6 +343,13 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                             prop.className "sidebar"
                             prop.children
                                 [
+                                    Html.button
+                                        [
+                                            prop.className "sidebar-close"
+                                            prop.custom ("aria-label", "Close navigation menu")
+                                            prop.onClick (fun _ -> dispatch ToggleMenu)
+                                            prop.text "×"
+                                        ]
                                     Html.div
                                         [
                                             prop.className "brand"
@@ -382,6 +389,7 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                     Html.nav
                                         [
                                             prop.className "nav"
+                                            prop.custom ("aria-label", "Primary navigation")
                                             prop.children
                                                 [
                                                     Html.div [ prop.className "nav-section"; prop.text "Market" ]
@@ -438,6 +446,13 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                 ]
                         ]
 
+                    if model.MenuOpen then
+                        Html.div
+                            [
+                                prop.className "sidebar-backdrop"
+                                prop.onClick (fun _ -> dispatch ToggleMenu)
+                            ]
+
                     Html.div
                         [
                             prop.className "main"
@@ -451,6 +466,8 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                                     Html.button
                                                         [
                                                             prop.className "menu-toggle"
+                                                            prop.custom ("aria-label", "Toggle navigation menu")
+                                                            prop.custom ("aria-expanded", string model.MenuOpen)
                                                             prop.onClick (fun _ -> dispatch ToggleMenu)
                                                             prop.text "☰"
                                                         ]
@@ -491,6 +508,7 @@ let private shell (model: Model) (dispatch: Msg -> unit) =
                                                                         [
                                                                             prop.className "icon-button"
                                                                             prop.title "Refresh data"
+                                                                            prop.custom ("aria-label", "Refresh data")
                                                                             prop.onClick (fun _ -> dispatch Refresh)
                                                                             prop.text "↻"
                                                                         ]

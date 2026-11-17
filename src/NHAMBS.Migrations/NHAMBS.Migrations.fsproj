@@ -23,6 +23,7 @@
     <Compile Include="Migrations/M010_PostgresFuzzyAliases.fs" />
     <Compile Include="Migrations/M011_FuzzyAliasGuard.fs" />
     <Compile Include="Migrations/M012_RawAndNhambs.fs" />
+    <Compile Include="Migrations/M013_ReferenceDimensions.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

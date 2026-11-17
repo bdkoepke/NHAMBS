@@ -324,18 +324,27 @@ retention policy and full lineage diagram.
 
 **Conformed tables (`nhambs`)**
 
-- `mbs_pools` — one row per NHA MBS pool keyed by CUSIP, with issuer, coupon,
-  principal, dates, loan counts, scheduled maturity totals and JSONB series.
-  `source_file_id` points back to the raw document.
-- `mbs_pool_insurers` — insurer dollar and percentage allocations.
-- `mbs_pool_locations` — provincial loan and principal allocations.
-- `mbs_pool_scheduled_maturity` — 1/2/3/4/5-month, at-maturity and total buckets.
-- `mbs_pool_rate_bands` — interest-rate bands and remaining face values by date.
+- `mbs_pools` — one row per NHA MBS pool keyed by CUSIP, with coupon, principal,
+  dates, loan counts and JSONB series. `issuer_id` links to the canonical
+  issuer; `source_file_id` points back to the raw document. Scheduled maturity
+  totals are read from the `total` bucket instead of being duplicated here.
+- `mbs_pool_insurers` — insurer allocations keyed by `(pool_cusip, insurer_id)`.
+- `mbs_pool_locations` — provincial allocations keyed by
+  `(pool_cusip, province)`.
+- `mbs_pool_scheduled_maturity` — 1/2/3/4/5-month, at-maturity and total
+  buckets keyed by `(pool_cusip, bucket)`.
+- `mbs_pool_rate_bands` — canonical rate-band allocations and remaining face
+  values by date.
 - `issuers` / `insurers` — canonical entity reference tables with stable
   surrogate ids; facts link through `issuer_id` / `insurer_id`.
 - `issuer_aliases` — normalized source-name key to canonical issuer key/name.
   The ETL and `nhambs` views join through this table rather than a hard-coded
   application map.
+- `provinces` / `rate_types` / `pool_types` / `rate_bands` /
+  `maturity_buckets` — reference tables for repeated MBS labels. Base tables
+  store the stable code or key, and the views join for display text. Rate-band
+  labels are snapped to canonical 25 basis-point buckets; source text remains in
+  `raw`.
 - `cht_issues` / `cht_offering_circulars` — outstanding CHT series and circular
   links.
 - `cht_circulars` / `cht_circular_ratings` / `cht_circular_payment_dates` —
@@ -361,16 +370,17 @@ Dashboard views are built from the `nhambs` tables only: `v_mbs_pool_grid`, `v_m
 - `elsa.*` — Elsa workflow definitions, runtime instances, triggers, users and
   operational history maintained by `NHAMBS.ElsaServer` in the `elsa` schema.
 
-The ETL cleans issuer names and stores the normalized key plus the source
-display text. Canonical names are resolved from `nhambs.issuer_aliases`; add a
-row there for a new spelling or OCR variant. Exact aliases win, and near
-matches use PostgreSQL's built-in `fuzzystrmatch` functions
-(`levenshtein_less_equal` plus a `dmetaphone` guard) rather than a custom
-edit-distance implementation. Insurer labels are normalized
-across case, spacing, legal suffixes and common boilerplate; combined labels
-such as `CMHC and Sagen` are expanded to the canonical names.
-`nhambs.v_mbs_unresolved_entities` is the review queue for anything that still
-cannot be resolved.
+The ETL cleans issuer names and resolves them before the bulk COPY, so
+`mbs_pools` stores only `issuer_id`. Canonical names are resolved from
+`nhambs.issuer_aliases`; add a row there for a new spelling or OCR variant.
+Exact aliases win, and near matches use PostgreSQL's built-in
+`fuzzystrmatch` functions (`levenshtein_less_equal` plus a `dmetaphone` guard)
+rather than a custom edit-distance implementation. Insurer labels are
+normalized across case, spacing, legal suffixes and common boilerplate;
+combined labels such as `CMHC and Sagen` are expanded to the canonical names.
+`nhambs.v_mbs_unresolved_entities` lists issuers without an alias mapping and
+insurers that remain `Unknown insurer`; it is the review queue for adding
+aliases or fixing a source scan.
 
 ## SQLProvider offline schema
 
@@ -378,10 +388,10 @@ cannot be resolved.
 solution compiles without a live database. The committed schema file is
 `src/NHAMBS.Data/sqlprovider.schema`.
 
-After changing migrations or views, regenerate it:
+After changing migrations or views, regenerate it with the local database
+running:
 
 ```bash
-rm src/NHAMBS.Data/sqlprovider.schema
 ./tools/generate-provider-schema.sh
 ```
 
@@ -410,6 +420,11 @@ over those typed results.
 
 The server route builder maps these to `/api/DashboardApi/{method}`. Fable
 clients call the same functions directly through `Fable.Remoting.Client`.
+The transport is Fable.Remoting's MessagePack binary serialization rather than
+JSON: Fable.SimpleJson 3.24 under Fable 5 misclassifies `FSharpOption` as a
+union and cannot decode the nullable date/text fields that the API preserves.
+`/health` remains a plain-text endpoint, and the API routes are intended for the
+generated Fable client or another MessagePack-capable Fable.Remoting client.
 
 ## Dependency versions
 

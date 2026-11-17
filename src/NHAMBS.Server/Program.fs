@@ -82,6 +82,7 @@ let private apiHandler =
     |> Remoting.withErrorHandler (fun ex route ->
         eprintfn "API error in %s: %s" route.path ex.Message
         ErrorResult.Propagate ex)
+    |> Remoting.withBinarySerialization
     |> Remoting.fromValue dashboardApi
     |> Remoting.buildHttpHandler
 

@@ -6,4 +6,5 @@ open NHAMBS.Shared
 let api: DashboardApi =
     Remoting.createApi ()
     |> Remoting.withBaseUrl "/api/"
+    |> Remoting.withBinarySerialization
     |> Remoting.buildProxy<DashboardApi>

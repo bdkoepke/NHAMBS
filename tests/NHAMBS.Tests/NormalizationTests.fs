@@ -44,3 +44,35 @@ let ``Combined insurer labels keep each canonical insurer`` () =
         "Canada Mortgage and Housing Corporation (CMHC) and Sagen Mortgage Insurance Company Canada",
         canonicalInsurerName "CMHC and Sagen"
     )
+
+[<Fact>]
+let ``Rate-band spacing and precision variants snap to one bucket`` () =
+    let cases =
+        [
+            "3.751 - 4.000"
+            "3.76 - 4.00"
+            "3.76     -        4.00"
+            "3.7501 - 4.0000"
+            "3.751-4.000"
+        ]
+
+    for value in cases do
+        let band = canonicalRateBand value
+        Assert.Equal("3.7500|4.0000", band.Key)
+        Assert.Equal("3.75 - 4.00", band.Label)
+        Assert.Equal(Some 3.75m, band.LowerPercent)
+        Assert.Equal(Some 4.00m, band.UpperPercent)
+
+[<Fact>]
+let ``Malformed rate band keeps its source label and raw key`` () =
+    let band = canonicalRateBand "n/a"
+    Assert.Equal("raw:n/a", band.Key)
+    Assert.Equal("n/a", band.Label)
+    Assert.Equal(None, band.LowerPercent)
+    Assert.Equal(None, band.UpperPercent)
+
+[<Fact>]
+let ``Inverted rate band snaps to a forward quarter-point bucket`` () =
+    let band = canonicalRateBand "6.01 - 5.25"
+    Assert.Equal("6.0000|6.2500", band.Key)
+    Assert.Equal("6.00 - 6.25", band.Label)

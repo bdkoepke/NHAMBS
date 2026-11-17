@@ -127,12 +127,13 @@ let private loadPoolFacts (context: Provider.Sql.dataContext) =
 let private loadInsurers (context: Provider.Sql.dataContext) =
     query {
         for row in context.Nhambs.MbsPoolInsurers do
-            select row
+            join insurer in context.Nhambs.Insurers on (row.InsurerId = insurer.InsurerId)
+            select (row, insurer.CanonicalName)
     }
-    |> Seq.map (fun row ->
+    |> Seq.map (fun (row, name) ->
         {
             PoolCusip = row.PoolCusip
-            Name = row.Name
+            Name = name
             DollarValue = row.DollarValue
             PercentOfLoans = row.PercentOfLoans
         })
@@ -141,12 +142,13 @@ let private loadInsurers (context: Provider.Sql.dataContext) =
 let private loadLocations (context: Provider.Sql.dataContext) =
     query {
         for row in context.Nhambs.MbsPoolLocations do
-            select row
+            join province in context.Nhambs.Provinces on (row.Province = province.Code)
+            select (row, province.Name)
     }
-    |> Seq.map (fun row ->
+    |> Seq.map (fun (row, name) ->
         {
             PoolCusip = row.PoolCusip
-            ProvinceName = row.ProvinceName
+            ProvinceName = name
             PrincipalAmountPercent = row.PrincipalAmountPercent
         })
     |> Seq.toArray
@@ -645,7 +647,8 @@ let filterOptions (context: Provider.Sql.dataContext) =
     let insurers =
         query {
             for row in context.Nhambs.MbsPoolInsurers do
-                select row.Name
+                join insurer in context.Nhambs.Insurers on (row.InsurerId = insurer.InsurerId)
+                select insurer.CanonicalName
         }
         |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
         |> Seq.distinct
@@ -655,7 +658,8 @@ let filterOptions (context: Provider.Sql.dataContext) =
     let provinces =
         query {
             for row in context.Nhambs.MbsPoolLocations do
-                select row.ProvinceName
+                join province in context.Nhambs.Provinces on (row.Province = province.Code)
+                select province.Name
         }
         |> Seq.distinct
         |> Seq.sort
@@ -738,13 +742,14 @@ let getDetail (context: Provider.Sql.dataContext) (cusip: string) =
             let insurers =
                 query {
                     for row in context.Nhambs.MbsPoolInsurers do
+                        join insurer in context.Nhambs.Insurers on (row.InsurerId = insurer.InsurerId)
                         where (row.PoolCusip = cusip)
-                        select row
+                        select (row, insurer.CanonicalName)
                 }
-                |> Seq.sortByDescending (fun row -> row.DollarValue |> Option.defaultValue 0m)
-                |> Seq.map (fun row ->
+                |> Seq.sortByDescending (fun (row, _) -> row.DollarValue |> Option.defaultValue 0m)
+                |> Seq.map (fun (row, name) ->
                     {
-                        Name = row.Name
+                        Name = name
                         DollarValue = defaultArg row.DollarValue 0m
                         PercentOfLoans = defaultArg row.PercentOfLoans 0m
                     })
@@ -753,43 +758,30 @@ let getDetail (context: Provider.Sql.dataContext) (cusip: string) =
             let locations =
                 query {
                     for row in context.Nhambs.MbsPoolLocations do
+                        join province in context.Nhambs.Provinces on (row.Province = province.Code)
                         where (row.PoolCusip = cusip)
-                        select row
+                        select (row, province.Name)
                 }
-                |> Seq.sortByDescending (fun row -> row.PrincipalAmountPercent |> Option.defaultValue 0m)
-                |> Seq.map (fun row ->
+                |> Seq.sortByDescending (fun (row, _) -> row.PrincipalAmountPercent |> Option.defaultValue 0m)
+                |> Seq.map (fun (row, name) ->
                     {
-                        Province = row.ProvinceName
+                        Province = name
                         LoansPercent = defaultArg row.LoansPercent 0m
                         PrincipalAmountPercent = defaultArg row.PrincipalAmountPercent 0m
                     })
                 |> Seq.toArray
 
-            let bucketOrder =
-                dict
-                    [
-                        "5 months", 0
-                        "4 months", 1
-                        "3 months", 2
-                        "2 months", 3
-                        "1 month", 4
-                        "At maturity", 5
-                        "Total", 6
-                    ]
-
             let buckets =
                 query {
                     for row in context.Nhambs.MbsPoolScheduledMaturity do
+                        join bucket in context.Nhambs.MaturityBuckets on (row.Bucket = bucket.Code)
                         where (row.PoolCusip = cusip)
-                        select row
+                        select (row, bucket.Label, bucket.Sequence)
                 }
-                |> Seq.sortBy (fun row ->
-                    match bucketOrder.TryGetValue row.Bucket with
-                    | true, value -> value
-                    | _ -> 99)
-                |> Seq.map (fun row ->
+                |> Seq.sortBy (fun (_, _, sequence) -> sequence)
+                |> Seq.map (fun (row, label, _) ->
                     {
-                        Bucket = row.Bucket
+                        Bucket = label
                         RemainingFaceValue = defaultArg row.RemainingFaceValue 0m
                         WeightedAverageRate = defaultArg row.WeightedAverageRate 0m
                         WeightedAverageAmortization = defaultArg row.WeightedAverageAmortization 0m
@@ -802,24 +794,36 @@ let getDetail (context: Provider.Sql.dataContext) (cusip: string) =
             let bands =
                 query {
                     for row in context.Nhambs.MbsPoolRateBands do
+                        join band in context.Nhambs.RateBands on (row.RateBand = band.BandKey)
                         where (row.PoolCusip = cusip)
-                        select row
+                        select (row, band.Label, band.LowerPercent)
                 }
-                |> Seq.sortBy (fun row -> row.Id)
-                |> Seq.map (fun row ->
+                |> Seq.sortBy (fun (_, _, lower) -> defaultArg lower 0m)
+                |> Seq.map (fun (row, label, _) ->
                     {
-                        RateBand = row.RateBand
+                        RateBand = label
                         Total = defaultArg row.Total 0m
                         PercentOfTotal = defaultArg row.PercentOfTotal 0m
                         RemainingFaceValueByDate = parseDecimalArray row.RemainingFaceValueByDate
                     })
                 |> Seq.toArray
 
+            let totalBucket = buckets |> Array.tryFind (fun bucket -> bucket.Bucket = "Total")
+
+            let mortgageInsurer =
+                if insurers.Length = 0 then
+                    None
+                else
+                    insurers
+                    |> Array.map (fun insurer -> insurer.Name)
+                    |> String.concat " and "
+                    |> Some
+
             Some
                 {
                     Row = poolRow
                     Custodian = pool.Custodian
-                    MortgageInsurer = pool.MortgageInsurer
+                    MortgageInsurer = mortgageInsurer
                     FormVersion = pool.FormVersion
                     CouponKind = pool.CouponKind
                     CouponIndex = pool.CouponIndex
@@ -829,11 +833,26 @@ let getDetail (context: Provider.Sql.dataContext) (cusip: string) =
                     FinalPaymentDue = dateOption pool.FinalPaymentDue
                     WeightedAverageInterestAdjustmentDate = dateOption pool.WeightedAverageInterestAdjustmentDate
                     WeightedAverageMaturityDate = dateOption pool.WeightedAverageMaturityDate
-                    ScheduledRemainingFaceValue = defaultArg pool.ScheduledRemainingFaceValue 0m
-                    ScheduledWac = defaultArg pool.ScheduledWac 0m
-                    ScheduledWam = defaultArg pool.ScheduledWam 0m
-                    ScheduledIndexSpreadTotal = defaultArg pool.ScheduledIndexSpreadTotal 0m
-                    ScheduledMonthlyPayment = defaultArg pool.ScheduledMonthlyPayment 0m
+                    ScheduledRemainingFaceValue =
+                        totalBucket
+                        |> Option.map (fun bucket -> bucket.RemainingFaceValue)
+                        |> Option.defaultValue 0m
+                    ScheduledWac =
+                        totalBucket
+                        |> Option.map (fun bucket -> bucket.WeightedAverageRate)
+                        |> Option.defaultValue 0m
+                    ScheduledWam =
+                        totalBucket
+                        |> Option.map (fun bucket -> bucket.WeightedAverageAmortization)
+                        |> Option.defaultValue 0m
+                    ScheduledIndexSpreadTotal =
+                        totalBucket
+                        |> Option.map (fun bucket -> bucket.IndexSpreadTotal)
+                        |> Option.defaultValue 0m
+                    ScheduledMonthlyPayment =
+                        totalBucket
+                        |> Option.map (fun bucket -> bucket.MonthlyPayment)
+                        |> Option.defaultValue 0m
                     HomeownerPercent = defaultArg pool.HomeownerPercent 0m
                     MultipleFamilyPercent = defaultArg pool.MultipleFamilyPercent 0m
                     SocialHousingPercent = defaultArg pool.SocialHousingPercent 0m

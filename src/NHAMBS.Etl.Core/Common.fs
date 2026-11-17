@@ -288,6 +288,53 @@ let issuerDisplayName (name: string) =
     else
         cleaned
 
+type CanonicalRateBand =
+    {
+        Key: string
+        Label: string
+        LowerPercent: decimal option
+        UpperPercent: decimal option
+    }
+
+/// Normalize the free-text rate-band labels printed on the circulars into a
+/// canonical 25 basis-point bucket. Labels such as "3.751 - 4.000" and
+/// "3.76 - 4.00" both become 3.75 - 4.00. Unparseable labels keep their source
+/// text and a `raw:` key so no information is silently discarded.
+let canonicalRateBand (value: string) =
+    let trimmed = value.Trim()
+
+    let matchValue =
+        Regex.Match(trimmed, @"^([0-9]+(?:\.[0-9]+)?)\s*-\s*([0-9]+(?:\.[0-9]+)?)$")
+
+    if matchValue.Success then
+        let lower =
+            Decimal.Parse(matchValue.Groups.[1].Value, NumberStyles.Number, CultureInfo.InvariantCulture)
+
+        let upper =
+            Decimal.Parse(matchValue.Groups.[2].Value, NumberStyles.Number, CultureInfo.InvariantCulture)
+
+        let lowerPercent = Math.Floor(lower / 0.25m) * 0.25m
+
+        let upperPercent =
+            if upper > lowerPercent + 0.25m then
+                Math.Ceiling(upper / 0.25m) * 0.25m
+            else
+                lowerPercent + 0.25m
+
+        {
+            Key = String.Format(CultureInfo.InvariantCulture, "{0:F4}|{1:F4}", lowerPercent, upperPercent)
+            Label = String.Format(CultureInfo.InvariantCulture, "{0:F2} - {1:F2}", lowerPercent, upperPercent)
+            LowerPercent = Some lowerPercent
+            UpperPercent = Some upperPercent
+        }
+    else
+        {
+            Key = "raw:" + trimmed
+            Label = trimmed
+            LowerPercent = None
+            UpperPercent = None
+        }
+
 /// Normalize the insurer labels found in the addendum tables and the cover
 /// page. Combined labels such as "CMHC and Sagen" are kept as a deterministic
 /// combination of the canonical names.

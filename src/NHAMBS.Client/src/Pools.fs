@@ -1388,12 +1388,16 @@ let private detailDrawer (props: PoolsProps) =
                     Html.aside
                         [
                             prop.className "drawer"
+                            prop.custom ("role", "dialog")
+                            prop.custom ("aria-modal", "true")
+                            prop.custom ("aria-label", "Pool detail")
                             prop.onClick (fun event -> event.stopPropagation ())
                             prop.children
                                 [
                                     Html.button
                                         [
                                             prop.className "drawer-close"
+                                            prop.custom ("aria-label", "Close pool detail")
                                             prop.onClick (fun _ -> close ())
                                             prop.text "×"
                                         ]
@@ -1589,6 +1593,7 @@ let private PoolDataGrid (props: PoolGridProps) =
                                         Html.select
                                             [
                                                 prop.className "grid-group-select"
+                                                prop.custom ("aria-label", "Add grouping field")
                                                 prop.value ""
                                                 prop.onChange (fun (event: Event) ->
                                                     let field = string event.target?value
@@ -1623,6 +1628,7 @@ let private PoolDataGrid (props: PoolGridProps) =
                                         Html.select
                                             [
                                                 prop.className "grid-group-select"
+                                                prop.custom ("aria-label", "Pivot by field")
                                                 prop.value (defaultArg pivotField "")
                                                 prop.onChange (fun (event: Event) ->
                                                     let field = string event.target?value

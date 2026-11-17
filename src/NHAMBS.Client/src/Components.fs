@@ -116,6 +116,8 @@ let LoadingBlock (label: string) =
     Html.div
         [
             prop.className "loading-block"
+            prop.custom ("role", "status")
+            prop.custom ("aria-live", "polite")
             prop.children [ Html.div [ prop.className "spinner" ]; Html.span [ prop.text label ] ]
         ]
 
@@ -123,6 +125,7 @@ let ErrorBlock (message: string) =
     Html.div
         [
             prop.className "error-block"
+            prop.custom ("role", "alert")
             prop.children
                 [
                     Html.strong [ prop.text "Could not load data" ]

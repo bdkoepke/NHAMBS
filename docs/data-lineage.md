@@ -88,14 +88,92 @@ circular (`62918ZUW1` / pool `97516363`) prints a final payment date of
 canonical display name for each normalized key. `nhambs.issuer_aliases` maps a
 normalized source-name key to the canonical key and display name; add a row
 there for a new spelling or OCR variant instead of changing application code.
-The ETL writes the cleaned source name and normalized key, then resolves it
-through `nhambs.resolve_issuer_alias`. Exact aliases are preferred; near
-matches use PostgreSQL's `fuzzystrmatch` extension
-(`levenshtein_less_equal` with a `dmetaphone` guard). Fact rows carry
-`issuer_id` / `insurer_id`.
+Before the COPY starts, the ETL resolves each source issuer through
+`nhambs.resolve_issuer_alias` and writes only `issuer_id` on the pool. Exact
+aliases are preferred; near matches use PostgreSQL's `fuzzystrmatch` extension
+(`levenshtein_less_equal` with a `dmetaphone` guard). Insurer allocations carry
+`insurer_id`.
 
-`nhambs.v_mbs_unresolved_entities` lists names that could not be resolved and is
-the review queue for adding aliases or fixing a source scan.
+The remaining repeated MBS labels live in reference tables:
+
+| Reference table | Key | Used by |
+| --- | --- | --- |
+| `provinces` | `code` | `mbs_pool_locations.province` |
+| `rate_types` | `code` | `mbs_pools.rate_type` |
+| `pool_types` | `code` | `mbs_pools.pool_type` |
+| `rate_bands` | `band_key` | `mbs_pool_rate_bands.rate_band` |
+| `maturity_buckets` | `code` | `mbs_pool_scheduled_maturity.bucket` |
+
+`rate_bands` uses canonical 25 basis-point buckets. Source labels such as
+`3.751 - 4.000` and `3.76 - 4.00` both map to `3.7500|4.0000` / `3.75 - 4.00`.
+The original label remains in `raw.source_files.document`; an unparseable label
+uses a `raw:` key and null bounds rather than being dropped.
+
+`nhambs.v_mbs_unresolved_entities` lists issuers without an alias mapping and
+insurers that remain `Unknown insurer`; it is the review queue for adding
+aliases or fixing a source scan.
+
+## Normalization validation and rollback
+
+Migration `M013_ReferenceDimensions` moves the MBS dimensions into the
+reference tables and drops the duplicated columns. Validate a migrated
+database with:
+
+```sql
+-- Every fact row must resolve through its reference key.
+SELECT count(*) FROM nhambs.mbs_pools p
+LEFT JOIN nhambs.issuers i ON i.issuer_id = p.issuer_id
+WHERE i.issuer_id IS NULL;
+
+SELECT count(*) FROM nhambs.mbs_pool_insurers x
+LEFT JOIN nhambs.insurers i ON i.insurer_id = x.insurer_id
+WHERE i.insurer_id IS NULL;
+
+SELECT count(*) FROM nhambs.mbs_pool_locations x
+LEFT JOIN nhambs.provinces p ON p.code = x.province
+WHERE p.code IS NULL;
+
+SELECT count(*) FROM nhambs.mbs_pool_scheduled_maturity x
+LEFT JOIN nhambs.maturity_buckets b ON b.code = x.bucket
+WHERE b.code IS NULL;
+
+SELECT count(*) FROM nhambs.mbs_pool_rate_bands x
+LEFT JOIN nhambs.rate_bands b ON b.band_key = x.rate_band
+WHERE b.band_key IS NULL;
+```
+
+All five queries must return zero. Confirm that the grid view still returns one
+row per pool and that the scheduled totals match the `total` bucket:
+
+```sql
+SELECT count(*) FROM nhambs.mbs_pools;
+SELECT count(*) FROM nhambs.v_mbs_pool_grid;
+
+SELECT p.cusip
+FROM nhambs.mbs_pools p
+LEFT JOIN nhambs.mbs_pool_scheduled_maturity s
+    ON s.pool_cusip = p.cusip AND s.bucket = 'total'
+WHERE s.id IS NULL;
+```
+
+`mbs_pool_rate_bands` intentionally has no unique constraint on
+`(pool_cusip, rate_band)`: a handful of malformed source labels (for example
+`6.01 - 5.25`) canonicalize onto the same bucket as a valid row. Both source
+rows remain separate facts and the original labels are visible in `raw`.
+
+Inspect those cases with:
+
+```sql
+SELECT pool_cusip, rate_band, count(*)
+FROM nhambs.mbs_pool_rate_bands
+GROUP BY 1, 2
+HAVING count(*) > 1;
+```
+
+The rollback path is `dotnet run --project src/NHAMBS.Migrations -- --down`.
+`M013.Down` restores the duplicated columns from the reference tables,
+recreates the legacy indexes and views, and drops the reference tables. Run a
+fresh MBS ETL afterwards so the reloaded facts use the restored layout.
 
 ## Idempotency
 

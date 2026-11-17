@@ -35,12 +35,12 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
 
 ## 3. Clean up the database to 5NF
 
-- [x] Audit every table in the `nhambs` schema for repeating groups, transitive dependencies, and redundant columns. The first findings were repeated issuer/insurer names and duplicated pool-type/province labels.
-- [ ] Extract issuers, insurers, programs, locations, rate bands, and other repeated attributes into reference tables. Issuers and insurers are now in `nhambs.issuers`/`nhambs.insurers` with stable ids; the remaining attributes still need the same treatment.
-- [ ] Replace many-to-many relationships with junction tables and enforce foreign keys and uniqueness constraints.
-- [ ] Remove derived or duplicated values from base tables; expose them through the `nhambs` analytics views instead.
-- [ ] Write forward migrations that normalize existing data, with validation queries and a rollback plan.
-- [ ] Update ETL loaders and typed queries to use the normalized model.
+- [x] Audit every table in the `nhambs` schema for repeating groups, transitive dependencies, and redundant columns. The findings were repeated issuer/insurer names, duplicated pool-type/province labels, free-text rate bands, and scheduled-maturity totals copied onto `mbs_pools`.
+- [x] Extract issuers, insurers, programs, locations, rate bands, and other repeated attributes into reference tables. Issuers and insurers live in `nhambs.issuers`/`nhambs.insurers`; `nhambs.provinces`, `nhambs.rate_types`, `nhambs.pool_types`, `nhambs.rate_bands` and `nhambs.maturity_buckets` hold the remaining MBS dimensions.
+- [x] Replace many-to-many relationships with junction tables and enforce foreign keys and uniqueness constraints. `mbs_pool_insurers`, `mbs_pool_locations` and `mbs_pool_scheduled_maturity` are keyed by pool plus dimension and have unique constraints; all dimension keys are foreign keys.
+- [x] Remove derived or duplicated values from base tables; expose them through the `nhambs` analytics views instead. `mbs_pools` no longer stores issuer text, mortgage-insurer text, or scheduled-maturity totals; the views join `issuers`, `insurers` and the `total` maturity bucket.
+- [x] Write forward migrations that normalize existing data, with validation queries and a rollback plan. See `M013_ReferenceDimensions` and `docs/data-lineage.md`.
+- [x] Update ETL loaders and typed queries to use the normalized model. The MBS loader resolves references before COPY and the repositories join the reference tables.
 
 ## 4. Fix issuers, insurers, and maturity years
 
@@ -60,14 +60,14 @@ Rework the ETL and database layout into a raw landing layer and the conformed/an
 
 ## 6. Full review of the user interface
 
-- [ ] Review every screen in the client for layout, navigation, and visual consistency.
-- [ ] Check loading, empty, error, and partial-data states on each view.
-- [ ] Verify tables, charts, filters, sorting, and pagination work correctly with real data.
-- [ ] Review data formatting for currency, percentages, dates, and missing values.
-- [ ] Check responsiveness at desktop, tablet, and mobile breakpoints.
-- [ ] Audit accessibility: keyboard navigation, focus states, labels, contrast, and semantic markup.
-- [ ] Test the main workflows end to end in supported browsers.
-- [ ] Record findings and fix the issues, adding regression checks where practical.
+- [x] Review every screen in the client for layout, navigation, and visual consistency. All five routes were reviewed at desktop, tablet and mobile widths.
+- [x] Check loading, empty, error, and partial-data states on each view. Loading and error rendering were verified; an impossible pool search shows the grid empty state.
+- [x] Verify tables, charts, filters, sorting, and pagination work correctly with real data. Search, issuer filter, sort, page navigation, reset and the pool-detail drawer were exercised against 69,746 pools.
+- [x] Review data formatting for currency, percentages, dates, and missing values. Missing dates and text render as empty or `—`; currency and percentage formatting was spot-checked.
+- [x] Check responsiveness at desktop, tablet, and mobile breakpoints. No document-level horizontal overflow at 1440, 768 or 390 pixels.
+- [x] Audit accessibility: keyboard navigation, focus states, labels, contrast, and semantic markup. Added missing names, dialog semantics, live regions and a mobile close control; no unnamed interactive nodes remain in the Chrome accessibility tree.
+- [x] Test the main workflows end to end in supported browsers. Playwright against Chromium exercised every route and the main pool workflows.
+- [x] Record findings and fix the issues, adding regression checks where practical. See `docs/ui-review.md`; the nullable-option API failure was fixed by switching the Fable.Remoting transport to MessagePack.
 
 ## 7. Add information on the expected renewal rate
 
