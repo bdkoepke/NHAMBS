@@ -15,6 +15,14 @@
     <Compile Include="Migrations/M002_DashboardViews.fs" />
     <Compile Include="Migrations/M003_ChtOutstandingHistory.fs" />
     <Compile Include="Migrations/M004_DataAnomalies.fs" />
+    <Compile Include="Migrations/M005_MedallionArchitecture.fs" />
+    <Compile Include="Migrations/M006_ReferenceEntities.fs" />
+    <Compile Include="Migrations/M007_MoveGoldViewsToNhambs.fs" />
+    <Compile Include="Migrations/M008_IssuerAliases.fs" />
+    <Compile Include="Migrations/M009_SilverCompatibilityViews.fs" />
+    <Compile Include="Migrations/M010_PostgresFuzzyAliases.fs" />
+    <Compile Include="Migrations/M011_FuzzyAliasGuard.fs" />
+    <Compile Include="Migrations/M012_RawAndNhambs.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

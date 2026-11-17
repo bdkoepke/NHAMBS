@@ -21,21 +21,21 @@ let private issueRows (issues: ChtIssueRow[]) =
         createObj
             [
                 "series" ==> issue.Series
-                "settlementDate" ==> issue.SettlementDate
-                "coupon" ==> issue.CouponDisplay
-                "maturityDate" ==> issue.MaturityDate
-                "currency" ==> issue.Currency
-                "frequency" ==> titleCase issue.InterestPaymentFrequency
+                "settlementDate" ==> textOrEmpty issue.SettlementDate
+                "coupon" ==> textOrEmpty issue.CouponDisplay
+                "maturityDate" ==> textOrEmpty issue.MaturityDate
+                "currency" ==> textOrEmpty issue.Currency
+                "frequency" ==> titleCaseOption issue.InterestPaymentFrequency
                 "investors" ==> issue.IssuedToInvestors * 1_000_000m
                 "government" ==> issue.IssuedToGovernment * 1_000_000m
                 "totalIssuance" ==> issue.TotalIssuance * 1_000_000m
                 "outstanding" ==> issue.Outstanding * 1_000_000m
-                "identifier" ==> issue.Identifier
+                "identifier" ==> textOrEmpty issue.Identifier
                 "circulars" ==> issue.CircularCount
                 "history" ==> (if issue.HistoryAvailable then "Yes" else "No")
                 "cancellations" ==> issue.CancellationCount
                 "cancelled" ==> issue.CancelledMillions * 1_000_000m
-                "sourceUrl" ==> issue.SourceUrl
+                "sourceUrl" ==> textOrEmpty issue.SourceUrl
             ])
 
 let private issueColumns =
@@ -65,19 +65,19 @@ let private circularRows (circulars: ChtCircularRow[]) =
             [
                 "series" ==> circular.Series
                 "designation" ==> circular.Designation
-                "documentDate" ==> circular.DocumentDate
-                "currency" ==> circular.Currency
+                "documentDate" ==> textOrEmpty circular.DocumentDate
+                "currency" ==> textOrEmpty circular.Currency
                 "principal" ==> circular.AggregatePrincipalAmount
-                "coupon" ==> circular.CouponDisplay
+                "coupon" ==> textOrEmpty circular.CouponDisplay
                 "couponValue" ==> circular.CouponValue
-                "maturityDate" ==> circular.MaturityDate
-                "settlementDate" ==> circular.SettlementDate
-                "frequency" ==> titleCase circular.InterestPaymentFrequency
-                "isin" ==> circular.Isin
-                "cusip" ==> circular.Cusip
+                "maturityDate" ==> textOrEmpty circular.MaturityDate
+                "settlementDate" ==> textOrEmpty circular.SettlementDate
+                "frequency" ==> titleCaseOption circular.InterestPaymentFrequency
+                "isin" ==> textOrEmpty circular.Isin
+                "cusip" ==> textOrEmpty circular.Cusip
                 "ratings" ==> circular.Ratings
                 "yield" ==> circular.YieldPercent
-                "sourceUrl" ==> circular.SourceUrl
+                "sourceUrl" ==> textOrEmpty circular.SourceUrl
             ])
 
 let private circularColumns =
@@ -106,25 +106,25 @@ let private historyRows (history: ChtHistoryRow[]) =
             |> Array.map (fun period ->
                 sprintf
                     "%s to %s (%s)"
-                    (dateShort period.FromDate)
-                    (dateShort period.ToDate)
+                    (dateShortOption period.FromDate)
+                    (dateShortOption period.ToDate)
                     (moneyCompact (period.CancelledAmount * 1_000_000m)))
             |> String.concat "; "
 
         createObj
             [
                 "series" ==> row.Series
-                "asOfDate" ==> row.AsOfDate
-                "coupon" ==> row.CouponDisplay
+                "asOfDate" ==> textOrEmpty row.AsOfDate
+                "coupon" ==> textOrEmpty row.CouponDisplay
                 "couponValue" ==> row.CouponValue
-                "maturityDate" ==> row.MaturityDate
-                "identifier" ==> row.Identifier
+                "maturityDate" ==> textOrEmpty row.MaturityDate
+                "identifier" ==> textOrEmpty row.Identifier
                 "cancellations" ==> row.CancellationCount
                 "cancelled" ==> row.CancelledMillions * 1_000_000m
-                "firstCancellation" ==> row.FirstCancellationDate
-                "lastCancellation" ==> row.LastCancellationDate
+                "firstCancellation" ==> textOrEmpty row.FirstCancellationDate
+                "lastCancellation" ==> textOrEmpty row.LastCancellationDate
                 "periods" ==> periods
-                "sourceUrl" ==> row.SourceUrl
+                "sourceUrl" ==> textOrEmpty row.SourceUrl
             ])
 
 let private historyColumns =
@@ -212,7 +212,7 @@ let ChtPage (props: ChtProps) =
                                                             "#93c54b"
                                                         KpiCard
                                                             "Next maturity"
-                                                            (dateShort analytics.NextMaturityDate)
+                                                            (dateShortOption analytics.NextMaturityDate)
                                                             "Nearest outstanding maturity"
                                                             "#29abe0"
                                                         KpiCard
@@ -282,7 +282,7 @@ let ChtPage (props: ChtProps) =
                                                                                         analytics.CancelledMillions)
                                                                                 MiniLabel
                                                                                     "History as of"
-                                                                                    (dateShort
+                                                                                    (dateShortOption
                                                                                         analytics.HistoryAsOfDate)
                                                                                 MiniLabel
                                                                                     "Average coupon"

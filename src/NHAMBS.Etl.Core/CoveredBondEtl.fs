@@ -7,13 +7,19 @@ open System.Text.Json
 open Npgsql
 open NHAMBS.Etl.Common
 
-let private insertProgram (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (root: JsonElement) =
+let private insertProgram
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (root: JsonElement)
+    =
     use command =
         new NpgsqlCommand(
             """
             INSERT INTO nhambs.covered_bond_programs
-                (issuer_name, program_name, minimum_asset_percentage, maximum_asset_percentage, source_url, raw)
-            VALUES (@issuer, @program, @minimum, @maximum, @source_url, @raw::jsonb)
+                (issuer_name, program_name, minimum_asset_percentage, maximum_asset_percentage,
+                 source_url, source_file_id, raw)
+            VALUES (@issuer, @program, @minimum, @maximum, @source_url, @source_file_id, @raw::jsonb)
             RETURNING id;
             """,
             connection,
@@ -50,6 +56,7 @@ let private insertProgram (connection: NpgsqlConnection) (transaction: NpgsqlTra
     )
     |> ignore
 
+    command.Parameters.AddWithValue("source_file_id", sourceFileId) |> ignore
     command.Parameters.AddWithValue("raw", root.GetRawText()) |> ignore
     command.ExecuteScalar() :?> int
 
@@ -171,15 +178,25 @@ let private insertBonds
 
     count
 
-let private loadProgram (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (path: string) =
+let private loadProgram
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (path: string)
+    =
     use document = readJson path
     let root = document.RootElement
-    let programId = insertProgram connection transaction root
+    let programId = insertProgram connection transaction sourceFileId root
     insertParties connection transaction programId root
     let bondCount = insertBonds connection transaction programId root
     programId, bondCount
 
-let private loadRegistry (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (path: string) =
+let private loadRegistry
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (path: string)
+    =
     use document = readJson path
     let root = document.RootElement
     let sourceUrl = stringOr [ "sourceUrl" ] "" root
@@ -190,15 +207,18 @@ let private loadRegistry (connection: NpgsqlConnection) (transaction: NpgsqlTran
             new NpgsqlCommand(
                 """
                 INSERT INTO nhambs.covered_bond_registry
-                    (name, status, registration_date, business_address, website_url, program_page, source_url)
-                VALUES (@name, @status, @registration_date, @address, @website, @program_page, @source_url)
+                    (name, status, registration_date, business_address, website_url, program_page,
+                     source_url, source_file_id)
+                VALUES (@name, @status, @registration_date, @address, @website, @program_page,
+                        @source_url, @source_file_id)
                 ON CONFLICT (name) DO UPDATE SET
                     status = EXCLUDED.status,
                     registration_date = EXCLUDED.registration_date,
                     business_address = EXCLUDED.business_address,
                     website_url = EXCLUDED.website_url,
                     program_page = EXCLUDED.program_page,
-                    source_url = EXCLUDED.source_url;
+                    source_url = EXCLUDED.source_url,
+                    source_file_id = EXCLUDED.source_file_id;
                 """,
                 connection,
                 Transaction = transaction
@@ -227,6 +247,7 @@ let private loadRegistry (connection: NpgsqlConnection) (transaction: NpgsqlTran
         |> ignore
 
         command.Parameters.AddWithValue("source_url", sourceUrl) |> ignore
+        command.Parameters.AddWithValue("source_file_id", sourceFileId) |> ignore
         command.ExecuteNonQuery() |> ignore
         count <- count + 1
 
@@ -251,6 +272,17 @@ let run (dataDir: string) =
     let stopwatch = Stopwatch.StartNew()
 
     try
+        log "  landing source files in raw..."
+
+        let sourceIds =
+            writeRawFiles
+                runConnection
+                runId
+                "covered-bonds"
+                ([]
+                 @ (programFiles |> Array.toList)
+                 @ (if File.Exists registryPath then [ registryPath ] else []))
+
         use connection = new NpgsqlConnection(connectionStringValue)
         connection.Open()
 
@@ -270,7 +302,9 @@ let run (dataDir: string) =
 
         for path in programFiles do
             try
-                let _, bondCount = loadProgram connection transaction path
+                let _, bondCount =
+                    loadProgram connection transaction (sourceFileId sourceIds path) path
+
                 programs <- programs + 1
                 bonds <- bonds + bondCount
             with ex ->
@@ -280,7 +314,7 @@ let run (dataDir: string) =
         let registryCount =
             if File.Exists registryPath then
                 log "  loading covered bond registry..."
-                loadRegistry connection transaction registryPath
+                loadRegistry connection transaction (sourceFileId sourceIds registryPath) registryPath
             else
                 0
 

@@ -10,6 +10,110 @@ open NHAMBS.Circular
 open NHAMBS.Mbs
 open NHAMBS.Sources
 
+let private tryGetJsonDate (value: JsonObject) (key: string) =
+    let node: JsonNode = value.[key]
+
+    if isNull node then
+        None
+    else
+        match
+            DateTime.TryParseExact(
+                node.GetValue<string>(),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None
+            )
+        with
+        | true, date -> Some date
+        | _ -> None
+
+let private setJsonDate (value: JsonObject) (key: string) (date: DateTime) =
+    value.[key] <- JsonValue.Create(date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+
+let private replaceYear (date: DateTime) (year: int) =
+    DateTime(year, date.Month, min date.Day (DateTime.DaysInMonth(year, date.Month)))
+
+/// Repair OCR years before schema validation. A malformed year is anchored to
+/// the final payment date (or the other way around); a weighted-average
+/// maturity that is more than a year after the final payment is also reset to
+/// that year. This keeps the CLI output usable when a low-quality scan prints
+/// "2610", "0201" or "2081" instead of the intended four-digit year.
+let private repairJsonDates (root: JsonObject) =
+    let asObject (key: string) : JsonObject option =
+        match root.[key] with
+        | :? JsonObject as value -> Some value
+        | _ -> None
+
+    match asObject "mbs", asObject "addendum" with
+    | Some mbs, Some addendum ->
+        let issue = tryGetJsonDate mbs "issueDate"
+        let maturity = tryGetJsonDate mbs "maturityDate"
+        let finalPayment = tryGetJsonDate mbs "finalPaymentDue"
+        let firstPayment = tryGetJsonDate mbs "firstPaymentDue"
+
+        let repairedFirstPayment =
+            match firstPayment, issue with
+            | Some value, Some issueDate when value < issueDate ->
+                let sameYear = replaceYear value issueDate.Year
+
+                Some(
+                    if sameYear >= issueDate then
+                        sameYear
+                    else
+                        replaceYear value (issueDate.Year + 1)
+                )
+            | _ -> firstPayment
+
+        repairedFirstPayment |> Option.iter (setJsonDate mbs "firstPaymentDue")
+
+        let repairedMaturity =
+            match maturity, finalPayment with
+            | Some value, Some anchor when value.Year < 1970 || value.Year > 2200 -> Some(replaceYear value anchor.Year)
+            | Some value, Some anchor when value > anchor.AddYears(1) -> Some(replaceYear value anchor.Year)
+            | Some value, _ ->
+                match issue with
+                | Some issueDate when value <= issueDate -> Some(replaceYear value (issueDate.Year + 5))
+                | Some issueDate when value.Year > issueDate.Year + 50 -> Some(replaceYear value (issueDate.Year + 5))
+                | _ -> maturity
+            | None, _ -> None
+
+        let repairedFinalPayment =
+            match finalPayment, repairedMaturity with
+            | Some value, Some anchor when value.Year < 1970 || value.Year > 2200 -> Some(replaceYear value anchor.Year)
+            | Some value, Some anchor when value > anchor.AddYears(1) -> Some(replaceYear value anchor.Year)
+            | Some value, Some anchor when value < anchor.AddYears(-1) -> Some(replaceYear value anchor.Year)
+            | Some value, _ ->
+                match issue with
+                | Some issueDate when value.Year > issueDate.Year + 50 -> Some(replaceYear value (issueDate.Year + 5))
+                | _ -> finalPayment
+            | None, _ -> None
+
+        repairedMaturity |> Option.iter (setJsonDate mbs "maturityDate")
+        repairedFinalPayment |> Option.iter (setJsonDate mbs "finalPaymentDue")
+
+        match tryGetJsonDate addendum "weightedAverageMaturityDate", repairedFinalPayment, issue with
+        | Some value, Some anchor, _ when
+            value.Year < 1970
+            || value.Year > 2200
+            || value > anchor.AddYears(1)
+            || value < anchor.AddYears(-15)
+            ->
+            setJsonDate addendum "weightedAverageMaturityDate" (replaceYear value anchor.Year)
+        | Some value, None, Some anchor when value < anchor ->
+            setJsonDate addendum "weightedAverageMaturityDate" (replaceYear value (anchor.Year + 5))
+        | _ -> ()
+
+        match tryGetJsonDate addendum "weightedAverageInterestAdjustmentDate", issue with
+        | Some value, Some anchor when
+            value.Year < 1970
+            || value.Year > 2200
+            || value > anchor.AddYears(1)
+            || value < anchor.AddYears(-10)
+            ->
+            setJsonDate addendum "weightedAverageInterestAdjustmentDate" (replaceYear value anchor.Year)
+        | _ -> ()
+    | _ -> ()
+
 /// Parse and validate one NHA MBS circular from already-extracted text. The
 /// expected pool number comes from the source manifest (keyed by CUSIP) and is
 /// used when a scanned cover cannot be read reliably.
@@ -17,6 +121,7 @@ let private parseTextResult (expectedPoolNumber: string option) input text =
     let attempt (value: string) =
         try
             let jsonObject = CircularPdf.parseTextWithPoolNumber expectedPoolNumber value
+            repairJsonDates jsonObject
             let json = CircularPdf.toJson jsonObject
 
             match Schema.validate json with
@@ -66,22 +171,7 @@ let private isRetryableParseError (errors: string list) =
         || error.Contains("total number of mortgage loans", StringComparison.OrdinalIgnoreCase)
         || error.Contains("implausible", StringComparison.OrdinalIgnoreCase))
 
-let private tryGetDate (value: JsonObject) (key: string) =
-    let node: JsonNode = value.[key]
-
-    if isNull node then
-        None
-    else
-        match
-            DateTime.TryParseExact(
-                node.GetValue<string>(),
-                "yyyy-MM-dd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None
-            )
-        with
-        | true, date -> Some date
-        | _ -> None
+let private tryGetDate = tryGetJsonDate
 
 /// Reject OCR-derived dates that are internally inconsistent (for example a
 /// weighted-average maturity before the issue date or a final payment before
@@ -128,7 +218,7 @@ let private hasPlausibleDates (json: string) =
             && finalPayment >= maturity.AddYears(-1)
             && finalPayment <= maturity.AddDays 90.0
             && weightedAverageInterestAdjustment >= issue.AddYears(-10)
-            && weightedAverageInterestAdjustment <= issue.AddDays 90.0
+            && weightedAverageInterestAdjustment <= issue.AddYears(1)
             && weightedAverageMaturity >= issue
             && weightedAverageMaturity > weightedAverageInterestAdjustment.AddDays 30.0
             && weightedAverageMaturity <= maturity.AddYears(1)

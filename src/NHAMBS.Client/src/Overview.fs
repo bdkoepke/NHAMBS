@@ -154,7 +154,7 @@ let OverviewPage (props: OverviewProps) =
                                         (sprintf
                                             "%s pools · since %s"
                                             (number (decimal mbs.PoolCount))
-                                            (dateShort mbs.NewestIssueDate))
+                                            (dateShortOption mbs.NewestIssueDate))
                                         "#2e5771"
                                     KpiCard
                                         "Mortgage loans"
@@ -441,7 +441,9 @@ let OverviewPage (props: OverviewProps) =
                                                                 "Total issuance"
                                                                 (moneyFromMillions cht.TotalIssuanceMillions)
                                                             MiniLabel "Average coupon" (rate cht.AverageCoupon)
-                                                            MiniLabel "Next maturity" (dateShort cht.NextMaturityDate)
+                                                            MiniLabel
+                                                                "Next maturity"
+                                                                (dateShortOption cht.NextMaturityDate)
                                                             MiniLabel
                                                                 "Circulars parsed"
                                                                 (number (decimal cht.CircularCount))
@@ -468,10 +470,10 @@ let OverviewPage (props: OverviewProps) =
                                                                 (number (decimal covered.CurrencyCount))
                                                             MiniLabel
                                                                 "Earliest maturity"
-                                                                (dateShort covered.EarliestMaturity)
+                                                                (dateShortOption covered.EarliestMaturity)
                                                             MiniLabel
                                                                 "Latest maturity"
-                                                                (dateShort covered.LatestMaturity)
+                                                                (dateShortOption covered.LatestMaturity)
                                                         ]
                                                 ]
                                             miniBarsWith numberCompact covered.ByCurrency

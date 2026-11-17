@@ -147,6 +147,52 @@ let ``Implausibly distant maturity date is recorded as an error`` () =
     Assert.Contains(normalized.Anomalies, fun anomaly -> anomaly.Field = "maturity_date" && anomaly.Severity = "error")
 
 [<Fact>]
+let ``OCR year 2610 is repaired from the final payment date`` () =
+    let poolDates =
+        dates
+            (Some(DateTime(2007, 6, 1)))
+            (Some(DateTime(2007, 6, 27)))
+            (Some(DateTime(2007, 7, 15)))
+            (Some(DateTime(2610, 11, 1)))
+            (Some(DateTime(2010, 11, 15)))
+
+    let normalized =
+        normalizeMbsDates "mbs" "62918ZUW1" (DateTime(2026, 11, 15)) poolDates
+
+    Assert.Equal(Some(DateTime(2010, 11, 1)), normalized.Dates.MaturityDate)
+
+    Assert.Contains(
+        normalized.Anomalies,
+        fun anomaly ->
+            anomaly.Field = "maturity_date"
+            && anomaly.Severity = "corrected"
+            && anomaly.CorrectedValue = Some "2010-11-01"
+    )
+
+[<Fact>]
+let ``OCR year 0201 is repaired from the final payment date`` () =
+    let poolDates =
+        dates
+            (Some(DateTime(2007, 6, 1)))
+            (Some(DateTime(2007, 6, 27)))
+            (Some(DateTime(2007, 7, 15)))
+            (Some(DateTime(201, 9, 1)))
+            (Some(DateTime(2011, 9, 15)))
+
+    let normalized =
+        normalizeMbsDates "mbs" "62918ZUN1" (DateTime(2026, 11, 15)) poolDates
+
+    Assert.Equal(Some(DateTime(2011, 9, 1)), normalized.Dates.MaturityDate)
+
+    Assert.Contains(
+        normalized.Anomalies,
+        fun anomaly ->
+            anomaly.Field = "maturity_date"
+            && anomaly.Severity = "corrected"
+            && anomaly.CorrectedValue = Some "2011-09-01"
+    )
+
+[<Fact>]
 let ``Maturity before issue date is recorded as an error`` () =
     let poolDates =
         dates

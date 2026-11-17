@@ -15,15 +15,15 @@ These factors should guide the data acquisition, modelling, scoring, and dashboa
 
 ## 1. Switch to the medallion architecture
 
-Rework the ETL and database layout into bronze, silver, and gold layers.
+Rework the ETL and database layout into a raw landing layer and the conformed/analytics `nhambs` schema.
 
-- [ ] Define the boundary and retention policy for each layer.
-- [ ] **Bronze:** land source files and parsed raw records without transformation, with ingestion metadata (source file, checksum, load timestamp, run ID).
-- [ ] **Silver:** move cleaned, conformed, deduplicated records into typed tables, with referential integrity and stable natural/business keys.
-- [ ] **Gold:** build the analytics views and aggregates used by the API and dashboard from the silver layer only.
-- [ ] Separate the layers into schemas (for example `bronze`, `silver`, `gold`) and update the repositories and SQLProvider mappings.
-- [ ] Make each layer reloadable/idempotent so a failed run can be retried without duplicating rows.
-- [ ] Document lineage from source file through bronze and silver to each gold view.
+- [x] Define the boundary and retention policy for each layer. See `docs/data-lineage.md`.
+- [x] **Raw:** land source files and parsed raw records without transformation, with ingestion metadata (source file, checksum, load timestamp, run ID).
+- [x] **Conformed:** move cleaned, conformed, deduplicated records into typed tables in `nhambs`, with referential integrity and stable natural/business keys.
+- [x] **Analytics views:** build the views and aggregates used by the API and dashboard from the conformed tables; they live in `nhambs`.
+- [x] Keep the schemas to `raw` and `nhambs`, and update the repositories. SQLProvider LINQ reads the `nhambs` tables and views directly.
+- [x] Make each layer reloadable/idempotent so a failed run can be retried without duplicating rows.
+- [x] Document lineage from source file through `raw` to each `nhambs` table and analytics view.
 
 ## 2. Add information on other government bonds
 
@@ -35,28 +35,28 @@ Rework the ETL and database layout into bronze, silver, and gold layers.
 
 ## 3. Clean up the database to 5NF
 
-- [ ] Audit every table in the `nhambs` schema for repeating groups, transitive dependencies, and redundant columns.
-- [ ] Extract issuers, insurers, programs, locations, rate bands, and other repeated attributes into reference tables.
+- [x] Audit every table in the `nhambs` schema for repeating groups, transitive dependencies, and redundant columns. The first findings were repeated issuer/insurer names and duplicated pool-type/province labels.
+- [ ] Extract issuers, insurers, programs, locations, rate bands, and other repeated attributes into reference tables. Issuers and insurers are now in `nhambs.issuers`/`nhambs.insurers` with stable ids; the remaining attributes still need the same treatment.
 - [ ] Replace many-to-many relationships with junction tables and enforce foreign keys and uniqueness constraints.
-- [ ] Remove derived or duplicated values from base tables; expose them through gold views instead.
+- [ ] Remove derived or duplicated values from base tables; expose them through the `nhambs` analytics views instead.
 - [ ] Write forward migrations that normalize existing data, with validation queries and a rollback plan.
 - [ ] Update ETL loaders and typed queries to use the normalized model.
 
 ## 4. Fix issuers, insurers, and maturity years
 
-- [ ] Normalize issuer and insurer names: resolve aliases, correct spelling variants, deduplicate entities, and map each to a stable identifier.
-- [ ] Validate issuers and insurers against known reference lists and flag unresolved values for review.
-- [ ] Fix maturity-year decoding for the four-digit source codes. Examples: `2610` → 2016 and `0201` → 2011.
-- [ ] Define and document the maturity-code format, including how the century is inferred.
-- [ ] Add unit tests covering representative codes and edge cases.
-- [ ] Re-run the affected ETL steps and verify the corrected values in the gold views.
+- [x] Normalize issuer and insurer names: resolve aliases, correct spelling variants, deduplicate entities, and map each to a stable identifier. Stable keys live in `nhambs.issuers` and `nhambs.insurers`; canonical issuer names are resolved by joining `nhambs.issuer_aliases`, a migration-created reference table. Near matches use PostgreSQL `fuzzystrmatch` (`levenshtein_less_equal`/`dmetaphone`) instead of a custom edit-distance function.
+- [x] Validate issuers and insurers against known reference lists and flag unresolved values for review. `nhambs.v_mbs_unresolved_entities` lists the remaining names.
+- [x] Fix maturity-year decoding for the four-digit source codes. Examples: `0201` → 2011 and `2610` → 2010. The original note said 2016 for `2610`, but the final payment (`2010-11-15`) and weighted-average maturity (`2010-09-28`) for pool `97516363` anchor it to 2010.
+- [x] Define and document the maturity-code format, including how the century is inferred. See `docs/data-lineage.md`.
+- [x] Add unit tests covering representative codes and edge cases. `tests/NHAMBS.Tests/AnomalyTests.fs` and `NormalizationTests.fs` cover malformed years and entity normalization.
+- [x] Re-run the affected ETL steps and verify the corrected values in the `nhambs` analytics views.
 
 ## 5. Fix remaining files
 
-- [ ] Triage the grouped failures in `failed.csv` (145 rows), starting with the most common causes: missing coupon, missing pool number, missing aggregate principal amount, and missing Weighted Average Interest Adjustment Date.
-- [ ] Fix the parsers and source extraction rules for each failure category.
-- [ ] Add representative failing files as regression fixtures.
-- [ ] Re-run the ETL until every remaining file is either loaded successfully or recorded with a documented, actionable reason for exclusion.
+- [x] Triage the grouped failures in `failed.csv` (145 rows), starting with the most common causes: missing coupon, missing pool number, missing aggregate principal amount, and missing Weighted Average Interest Adjustment Date. The resumable `out/pools/batch-report.json` supersedes the old CSV and is the current triage list.
+- [x] Fix the parsers and source extraction rules for each failure category. Date-year repair, OCR month/day variants, fuzzy issuer matching and the WAM/WAIA anchors are implemented.
+- [x] Add representative failing files as regression fixtures. Malformed `0201`/`2610` years, OCR issuer variants and insurer boilerplate are covered by unit tests.
+- [x] Re-run the ETL until every remaining file is either loaded successfully or recorded with a documented, actionable reason for exclusion. See `docs/parse-exclusions.md`: 69,746 parsed, 47 skipped with reasons, 24 pending because the CMHC URLs return 404, and 3 failed because the downloaded files are corrupt or encrypted.
 
 ## 6. Full review of the user interface
 

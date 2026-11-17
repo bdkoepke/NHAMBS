@@ -148,8 +148,8 @@ let private filterPanel (props: PoolsProps) (options: MbsFilterOptions) =
                                             prop.text (
                                                 sprintf
                                                     "Data available from %s to %s"
-                                                    (dateShort options.MinIssueDate)
-                                                    (dateShort options.MaxIssueDate)
+                                                    (dateShortOption options.MinIssueDate)
+                                                    (dateShortOption options.MaxIssueDate)
                                             )
                                         ]
                                     Html.div
@@ -237,8 +237,8 @@ let private poolSortValue (field: string) (row: MbsPoolRow) =
     | "poolType" -> PoolText(poolTypeLabel row.PoolType row.PoolTypeDescription)
     | "coupon" -> PoolText row.CouponDisplay
     | "principal" -> PoolNumber row.Principal
-    | "issueDate" -> PoolText row.IssueDate
-    | "maturityDate" -> PoolText row.MaturityDate
+    | "issueDate" -> PoolText(textOrEmpty row.IssueDate)
+    | "maturityDate" -> PoolText(textOrEmpty row.MaturityDate)
     | "loans" -> PoolNumber(decimal row.Loans)
     | "wac" -> PoolNumber row.Wac
     | "wam" -> PoolNumber row.Wam
@@ -453,8 +453,8 @@ let private matchesQuickFilter (text: string) (row: MbsPoolRow) =
             titleCase row.RateType
             row.PoolTypeDescription
             row.CouponDisplay
-            row.IssueDate
-            row.MaturityDate
+            textOrEmpty row.IssueDate
+            textOrEmpty row.MaturityDate
             row.Provinces
             row.Insurers
             string row.Principal
@@ -499,10 +499,9 @@ let private poolGroupValue (field: string) (row: MbsPoolRow) =
     | "rateType" -> titleCase row.RateType
     | "poolType" -> poolTypeLabel row.PoolType row.PoolTypeDescription
     | "maturityYear" ->
-        if row.MaturityDate.Length >= 4 then
-            row.MaturityDate.Substring(0, 4)
-        else
-            "Unknown"
+        match row.MaturityDate with
+        | Some value when value.Length >= 4 -> value.Substring(0, 4)
+        | _ -> "Unknown"
     | "provinces" -> row.Provinces
     | "insurers" -> row.Insurers
     | _ -> ""
@@ -980,7 +979,7 @@ let private detailDrawer (props: PoolsProps) =
                                                 MiniLabel "Loans" (number (decimal row.Loans))
                                                 MiniLabel "WAC" (rate row.Wac)
                                                 MiniLabel "WAM" (months row.Wam)
-                                                MiniLabel "Maturity" (dateShort row.MaturityDate)
+                                                MiniLabel "Maturity" (dateShortOption row.MaturityDate)
                                             ]
                                     ]
 
@@ -1024,21 +1023,23 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            dateShort row.IssueDate
+                                                                                            dateShortOption
+                                                                                                row.IssueDate
                                                                                         )
                                                                                     ]
                                                                                 Html.dt [ prop.text "Settlement date" ]
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            dateShort row.SettlementDate
+                                                                                            dateShortOption
+                                                                                                row.SettlementDate
                                                                                         )
                                                                                     ]
                                                                                 Html.dt [ prop.text "First payment" ]
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            dateShort
+                                                                                            dateShortOption
                                                                                                 detail.FirstPaymentDue
                                                                                         )
                                                                                     ]
@@ -1046,7 +1047,7 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            dateShort
+                                                                                            dateShortOption
                                                                                                 detail.FinalPaymentDue
                                                                                         )
                                                                                     ]
@@ -1054,14 +1055,7 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            if
-                                                                                                String
-                                                                                                    .IsNullOrWhiteSpace
-                                                                                                    detail
-                                                                                                        .MortgageInsurer
-                                                                                            then
-                                                                                                "—"
-                                                                                            else
+                                                                                            optionText
                                                                                                 detail.MortgageInsurer
                                                                                         )
                                                                                     ]
@@ -1069,27 +1063,14 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            if
-                                                                                                String
-                                                                                                    .IsNullOrWhiteSpace
-                                                                                                    detail.Custodian
-                                                                                            then
-                                                                                                "—"
-                                                                                            else
-                                                                                                detail.Custodian
+                                                                                            optionText detail.Custodian
                                                                                         )
                                                                                     ]
                                                                                 Html.dt [ prop.text "Form version" ]
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            if
-                                                                                                String
-                                                                                                    .IsNullOrWhiteSpace
-                                                                                                    detail.FormVersion
-                                                                                            then
-                                                                                                "—"
-                                                                                            else
+                                                                                            optionText
                                                                                                 detail.FormVersion
                                                                                         )
                                                                                     ]
@@ -1357,14 +1338,7 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            if
-                                                                                                String
-                                                                                                    .IsNullOrWhiteSpace
-                                                                                                    detail
-                                                                                                        .PrepaymentSectionA
-                                                                                            then
-                                                                                                "—"
-                                                                                            else
+                                                                                            optionText
                                                                                                 detail
                                                                                                     .PrepaymentSectionA
                                                                                         )
@@ -1373,14 +1347,7 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            if
-                                                                                                String
-                                                                                                    .IsNullOrWhiteSpace
-                                                                                                    detail
-                                                                                                        .PrepaymentSectionB
-                                                                                            then
-                                                                                                "—"
-                                                                                            else
+                                                                                            optionText
                                                                                                 detail
                                                                                                     .PrepaymentSectionB
                                                                                         )
@@ -1390,19 +1357,17 @@ let private detailDrawer (props: PoolsProps) =
                                                                                 Html.dd
                                                                                     [
                                                                                         prop.text (
-                                                                                            if
-                                                                                                String
-                                                                                                    .IsNullOrWhiteSpace
-                                                                                                    detail
-                                                                                                        .PrepaymentOther
-                                                                                            then
-                                                                                                "—"
-                                                                                            else
+                                                                                            optionText
                                                                                                 detail.PrepaymentOther
                                                                                         )
                                                                                     ]
                                                                                 Html.dt [ prop.text "Source file" ]
-                                                                                Html.dd [ prop.text detail.SourceFile ]
+                                                                                Html.dd
+                                                                                    [
+                                                                                        prop.text (
+                                                                                            optionText detail.SourceFile
+                                                                                        )
+                                                                                    ]
                                                                                 Html.dt [ prop.text "Ingested" ]
                                                                                 Html.dd [ prop.text detail.IngestedAt ]
                                                                             ]
@@ -1816,7 +1781,7 @@ let PoolsPage (props: PoolsProps) =
                                                 "#93c54b"
                                             KpiCard
                                                 "Newest issue"
-                                                (dateShort analytics.NewestIssueDate)
+                                                (dateShortOption analytics.NewestIssueDate)
                                                 "Latest issue date in selection"
                                                 "#29abe0"
                                             KpiCard
@@ -1903,8 +1868,8 @@ let PoolsPage (props: PoolsProps) =
                             row.PoolTypeDescription
                             row.CouponDisplay
                             row.Principal.ToString("N2")
-                            row.IssueDate
-                            row.MaturityDate
+                            textOrEmpty row.IssueDate
+                            textOrEmpty row.MaturityDate
                             string row.Loans
                             (if row.Wac = 0m then "" else row.Wac.ToString("N3"))
                             (if row.Wam = 0m then "" else row.Wam.ToString("N1"))

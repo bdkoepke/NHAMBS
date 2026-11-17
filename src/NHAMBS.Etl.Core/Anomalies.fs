@@ -36,6 +36,55 @@ let private dateText (value: DateTime) =
 
 let private isFuture (today: DateTime) (value: DateTime) = value.Date > today.Date
 
+let private isPlausibleYear (value: int) = value >= 1970 && value <= 2100
+
+/// OCR occasionally turns a printed year into four unrelated digits, for
+/// example "2010" into "2610" or "201]" into "0201". When the field is out of
+/// range, reuse the year from a nearby date (normally the final payment date)
+/// so the month and day survive.
+let private repairOutOfRangeYear
+    (field: string)
+    (value: DateTime option)
+    (anchor: DateTime option)
+    (issueDate: DateTime option)
+    (record: string -> string -> string option -> string -> string -> unit)
+    =
+    match value with
+    | Some date when date.Year < 1970 || date.Year > 2200 ->
+        let anchorYear =
+            match anchor with
+            | Some candidate when isPlausibleYear candidate.Year -> Some candidate.Year
+            | _ -> None
+
+        let fallbackYear =
+            issueDate
+            |> Option.filter (fun issue -> isPlausibleYear issue.Year)
+            |> Option.map (fun issue -> issue.Year + 5)
+
+        match anchorYear |> Option.orElse fallbackYear with
+        | Some year ->
+            let day = min date.Day (DateTime.DaysInMonth(year, date.Month))
+            let corrected = DateTime(year, date.Month, day)
+
+            record
+                field
+                (dateText date)
+                (Some(dateText corrected))
+                "corrected"
+                (sprintf "Out-of-range year %d corrected to %d using a nearby date." date.Year year)
+
+            Some corrected
+        | None ->
+            record
+                field
+                (dateText date)
+                None
+                "error"
+                "Date year is outside the plausible 1970-2100 range and could not be corrected."
+
+            None
+    | _ -> value
+
 /// Detects impossible future dates and repairs obvious century/year typos
 /// using the settlement date as an anchor. For example, an issue date of
 /// 2103-12-01 with a settlement date of 2013-12-19 becomes 2013-12-01.
@@ -58,6 +107,30 @@ let normalizeMbsDates (dataset: string) (recordKey: string) (today: DateTime) (d
                 Message = message
             }
         )
+
+    let issueRepaired =
+        repairOutOfRangeYear "issue_date" dates.IssueDate dates.SettlementDate None add
+
+    let settlementRepaired =
+        repairOutOfRangeYear "settlement_date" dates.SettlementDate issueRepaired None add
+
+    let firstPaymentRepaired =
+        repairOutOfRangeYear "first_payment_due" dates.FirstPaymentDue issueRepaired None add
+
+    let maturityRepaired =
+        repairOutOfRangeYear "maturity_date" dates.MaturityDate dates.FinalPaymentDue issueRepaired add
+
+    let finalPaymentRepaired =
+        repairOutOfRangeYear "final_payment_due" dates.FinalPaymentDue maturityRepaired issueRepaired add
+
+    let dates =
+        {
+            IssueDate = issueRepaired
+            SettlementDate = settlementRepaired
+            FirstPaymentDue = firstPaymentRepaired
+            MaturityDate = maturityRepaired
+            FinalPaymentDue = finalPaymentRepaired
+        }
 
     let originalIssueDate = dates.IssueDate
 

@@ -17,10 +17,11 @@ let private dashboardApi: DashboardApi =
         GetOverview =
             fun () ->
                 async {
-                    let mbs = MbsRepository.analytics emptyMbsFilter
-                    let cht = (ChtRepository.getData ()).Analytics
-                    let covered = (CoveredBondRepository.getData ()).Analytics
-                    let freshness = EtlRepository.getFreshness ()
+                    let context = Provider.dataContext ()
+                    let mbs = MbsRepository.analytics context emptyMbsFilter
+                    let cht = (ChtRepository.getData context).Analytics
+                    let covered = (CoveredBondRepository.getData context).Analytics
+                    let freshness = EtlRepository.getFreshness context
 
                     return
                         {
@@ -30,13 +31,48 @@ let private dashboardApi: DashboardApi =
                             Freshness = freshness
                         }
                 }
-        GetMbsAnalytics = fun filter -> async { return MbsRepository.analytics filter }
-        GetMbsPools = fun query -> async { return MbsRepository.search query }
-        GetMbsPool = fun cusip -> async { return MbsRepository.getDetail cusip |> Option.toArray }
-        GetMbsFilterOptions = fun () -> async { return MbsRepository.filterOptions () }
-        GetCht = fun () -> async { return ChtRepository.getData () }
-        GetCoveredBonds = fun () -> async { return CoveredBondRepository.getData () }
-        GetFreshness = fun () -> async { return EtlRepository.getFreshness () }
+        GetMbsAnalytics =
+            fun filter ->
+                async {
+                    let context = Provider.dataContext ()
+                    return MbsRepository.analytics context filter
+                }
+        GetMbsPools =
+            fun query ->
+                async {
+                    let context = Provider.dataContext ()
+                    return MbsRepository.search context query
+                }
+        GetMbsPool =
+            fun cusip ->
+                async {
+                    let context = Provider.dataContext ()
+                    return MbsRepository.getDetail context cusip |> Option.toArray
+                }
+        GetMbsFilterOptions =
+            fun () ->
+                async {
+                    let context = Provider.dataContext ()
+                    return MbsRepository.filterOptions context
+                }
+        GetCht =
+            fun () ->
+                async {
+                    let context = Provider.dataContext ()
+                    return ChtRepository.getData context
+                }
+        GetCoveredBonds =
+            fun () ->
+                async {
+                    let context = Provider.dataContext ()
+                    return CoveredBondRepository.getData context
+                }
+        GetFreshness =
+            fun () ->
+                async {
+                    let context = Provider.dataContext ()
+                    return EtlRepository.getFreshness context
+                }
         GetForwardCurves = fun () -> async { return ForwardCurveRepository.get () }
     }
 

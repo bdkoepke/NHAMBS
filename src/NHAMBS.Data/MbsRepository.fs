@@ -3,15 +3,12 @@ module NHAMBS.Data.MbsRepository
 open System
 open System.Globalization
 open System.Text.Json
-open System.Data.Common
-open Npgsql
 open NHAMBS.Shared.Domain
 open NHAMBS.Data
 
-let private dateText (value: DateTime option) =
+let private dateOption (value: DateTime option) =
     value
     |> Option.map (fun date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
-    |> Option.defaultValue ""
 
 let private parseDate (value: string) =
     if String.IsNullOrWhiteSpace value then
@@ -20,686 +17,6 @@ let private parseDate (value: string) =
         match DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal) with
         | true, date -> Some(date.Date)
         | _ -> None
-
-let private readString (reader: DbDataReader) index =
-    if reader.IsDBNull index then "" else reader.GetString index
-
-let private readDecimalOpt (reader: DbDataReader) index =
-    if reader.IsDBNull index then
-        None
-    else
-        Some(reader.GetDecimal index)
-
-let private readInt (reader: DbDataReader) index =
-    if reader.IsDBNull index then
-        0
-    else
-        Convert.ToInt32(reader.GetValue index, CultureInfo.InvariantCulture)
-
-let private readDateText (reader: DbDataReader) index =
-    if reader.IsDBNull index then
-        ""
-    else
-        reader.GetDateTime(index).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-
-let private readDecimalOptFromScalar (command: NpgsqlCommand) =
-    match command.ExecuteScalar() with
-    | :? decimal as value -> Some value
-    | :? double as value -> Some(decimal value)
-    | :? int as value -> Some(decimal value)
-    | _ -> None
-
-let private sortColumn =
-    function
-    | "pool_number" -> "g.pool_number"
-    | "cusip" -> "g.cusip"
-    | "issuer_name" -> "g.issuer_name"
-    | "rate_type" -> "g.rate_type"
-    | "pool_type" -> "g.pool_type"
-    | "coupon_value" -> "g.coupon_value"
-    | "principal" -> "g.principal"
-    | "settlement_date" -> "g.settlement_date"
-    | "maturity_date" -> "g.maturity_date"
-    | "loans" -> "g.loans"
-    | "wac" -> "g.wac"
-    | "wam" -> "g.wam"
-    | _ -> "g.issue_date"
-
-let private whereClause (filter: MbsPoolFilter) =
-    let clauses = ResizeArray<string>()
-    let parameters = ResizeArray<string * obj>()
-
-    let search = filter.Search.Trim()
-
-    if not (String.IsNullOrWhiteSpace search) then
-        clauses.Add("(g.pool_number ILIKE @search OR g.cusip ILIKE @search OR g.issuer_name ILIKE @search)")
-        parameters.Add("search", box (sprintf "%%%s%%" search))
-
-    if not (String.IsNullOrWhiteSpace filter.Issuer) then
-        clauses.Add("g.issuer_name = @issuer")
-        parameters.Add("issuer", box filter.Issuer)
-
-    if not (String.IsNullOrWhiteSpace filter.RateType) then
-        clauses.Add("g.rate_type = @rate_type")
-        parameters.Add("rate_type", box filter.RateType)
-
-    if not (String.IsNullOrWhiteSpace filter.PoolType) then
-        clauses.Add("g.pool_type = @pool_type")
-        parameters.Add("pool_type", box filter.PoolType)
-
-    if not (String.IsNullOrWhiteSpace filter.Insurer) then
-        clauses.Add(
-            "EXISTS (SELECT 1 FROM nhambs.mbs_pool_insurers i WHERE i.pool_cusip = g.pool_id AND i.name = @insurer)"
-        )
-
-        parameters.Add("insurer", box filter.Insurer)
-
-    if not (String.IsNullOrWhiteSpace filter.Province) then
-        clauses.Add(
-            "EXISTS (SELECT 1 FROM nhambs.mbs_pool_locations l WHERE l.pool_cusip = g.pool_id AND l.province_name = @province AND COALESCE(l.principal_amount_percent, 0) > 0)"
-        )
-
-        parameters.Add("province", box filter.Province)
-
-    match parseDate filter.DateFrom with
-    | Some date ->
-        clauses.Add("g.issue_date >= @date_from")
-        parameters.Add("date_from", box date)
-    | None -> ()
-
-    match parseDate filter.DateTo with
-    | Some date ->
-        clauses.Add("g.issue_date <= @date_to")
-        parameters.Add("date_to", box date)
-    | None -> ()
-
-    match parseDate filter.MaturityFrom with
-    | Some date ->
-        clauses.Add("g.maturity_date >= @maturity_from")
-        parameters.Add("maturity_from", box date)
-    | None -> ()
-
-    match parseDate filter.MaturityTo with
-    | Some date ->
-        clauses.Add("g.maturity_date <= @maturity_to")
-        parameters.Add("maturity_to", box date)
-    | None -> ()
-
-    match filter.Status.ToLowerInvariant() with
-    | "active" -> clauses.Add("g.maturity_date >= CURRENT_DATE")
-    | "inactive" -> clauses.Add("g.maturity_date < CURRENT_DATE")
-    | _ -> ()
-
-    let sql =
-        if clauses.Count = 0 then
-            ""
-        else
-            " WHERE " + String.concat " AND " clauses
-
-    sql, parameters
-
-let private addParameters (command: NpgsqlCommand) (parameters: ResizeArray<string * obj>) =
-    for name, value in parameters do
-        command.Parameters.AddWithValue(name, value) |> ignore
-
-let private mapRow (reader: DbDataReader) =
-    {
-        PoolId = readString reader 0
-        Cusip = readString reader 1
-        PoolNumber = readString reader 2
-        IssuerName = readString reader 3
-        RateType = readString reader 4
-        PoolType = readString reader 5
-        PoolTypeDescription = readString reader 6
-        CouponDisplay = readString reader 7
-        CouponValue = defaultArg (readDecimalOpt reader 8) 0m
-        Principal = if reader.IsDBNull 9 then 0m else reader.GetDecimal 9
-        IssueDate = readDateText reader 10
-        SettlementDate = readDateText reader 11
-        MaturityDate = readDateText reader 12
-        Loans = readInt reader 13
-        Wac = defaultArg (readDecimalOpt reader 14) 0m
-        Wam = defaultArg (readDecimalOpt reader 15) 0m
-        Provinces = readString reader 16
-        Insurers = readString reader 17
-        SourceUrl = readString reader 18
-    }
-
-let private rowColumns =
-    """
-    g.pool_id, g.cusip, g.pool_number, g.issuer_name, g.rate_type, g.pool_type,
-    g.pool_type_description, g.coupon_display, g.coupon_value, g.principal,
-    g.issue_date, g.settlement_date, g.maturity_date, g.loans, g.wac, g.wam,
-    g.provinces, g.insurers, g.source_url
-    """
-
-let search (query: MbsPoolQuery) =
-    let whereSql, parameters = whereClause query.Filter
-    let order = sortColumn query.Filter.SortBy
-
-    let direction =
-        if query.Filter.SortDir.ToLowerInvariant() = "asc" then
-            "ASC"
-        else
-            "DESC"
-
-    Database.withConnection (fun connection ->
-        use countCommand =
-            new NpgsqlCommand($"SELECT count(*) FROM nhambs.v_mbs_pool_grid g{whereSql}", connection)
-
-        addParameters countCommand parameters
-
-        let total =
-            Convert.ToInt32(countCommand.ExecuteScalar(), CultureInfo.InvariantCulture)
-
-        use command =
-            new NpgsqlCommand(
-                $"""
-                SELECT {rowColumns}
-                FROM nhambs.v_mbs_pool_grid g
-                {whereSql}
-                ORDER BY {order} {direction} NULLS LAST, g.pool_id
-                """,
-                connection
-            )
-
-        addParameters command parameters
-
-        use reader = command.ExecuteReader()
-        let rows = ResizeArray<MbsPoolRow>()
-
-        while reader.Read() do
-            rows.Add(mapRow reader)
-
-        { Rows = rows.ToArray(); Total = total })
-
-let analytics (filter: MbsPoolFilter) =
-    let whereSql, parameters = whereClause filter
-
-    Database.withConnection (fun connection ->
-        let scalar query =
-            use command = new NpgsqlCommand(query, connection)
-            addParameters command parameters
-            command.ExecuteScalar()
-
-        let totalPrincipal =
-            Convert.ToDecimal(
-                scalar $"SELECT COALESCE(SUM(g.principal), 0) FROM nhambs.v_mbs_pool_grid g{whereSql}",
-                CultureInfo.InvariantCulture
-            )
-
-        let poolCount =
-            Convert.ToInt32(
-                scalar $"SELECT COUNT(*) FROM nhambs.v_mbs_pool_grid g{whereSql}",
-                CultureInfo.InvariantCulture
-            )
-
-        let issuerCount =
-            Convert.ToInt32(
-                scalar $"SELECT COUNT(DISTINCT g.issuer_name) FROM nhambs.v_mbs_pool_grid g{whereSql}",
-                CultureInfo.InvariantCulture
-            )
-
-        let loanCount =
-            Convert.ToInt32(
-                scalar $"SELECT COALESCE(SUM(g.loans), 0) FROM nhambs.v_mbs_pool_grid g{whereSql}",
-                CultureInfo.InvariantCulture
-            )
-
-        let averageCoupon =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT SUM(COALESCE(g.coupon_value, 0) * g.principal)
-                           / NULLIF(SUM(CASE WHEN g.coupon_value IS NULL THEN 0 ELSE g.principal END), 0)
-                    FROM nhambs.v_mbs_pool_grid g{whereSql}
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            readDecimalOptFromScalar command
-
-        let averageWam =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT SUM(COALESCE(g.wam, 0) * g.principal)
-                           / NULLIF(SUM(CASE WHEN g.wam IS NULL THEN 0 ELSE g.principal END), 0)
-                    FROM nhambs.v_mbs_pool_grid g{whereSql}
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            readDecimalOptFromScalar command
-
-        let newestIssue =
-            use command =
-                new NpgsqlCommand($"SELECT MAX(g.issue_date) FROM nhambs.v_mbs_pool_grid g{whereSql}", connection)
-
-            addParameters command parameters
-
-            match command.ExecuteScalar() with
-            | :? DateTime as date -> dateText (Some date)
-            | _ -> ""
-
-        let monthly =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT to_char(date_trunc('month', g.issue_date), 'YYYY-MM') AS label,
-                           date_trunc('month', g.issue_date)::date AS month_start,
-                           COUNT(*) AS pools,
-                           COALESCE(SUM(g.principal), 0) AS principal
-                    FROM nhambs.v_mbs_pool_grid g
-                    {whereSql}
-                      {(if whereSql = "" then
-                            "WHERE g.issue_date IS NOT NULL"
-                        else
-                            "AND g.issue_date IS NOT NULL")}
-                    GROUP BY 1, 2
-                    ORDER BY 2
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            use reader = command.ExecuteReader()
-            let values = ResizeArray<SeriesPoint>()
-
-            while reader.Read() do
-                values.Add(
-                    {
-                        Label = readString reader 0
-                        Date = readDateText reader 1
-                        Value = if reader.IsDBNull 3 then 0m else reader.GetDecimal 3
-                        Secondary = 0m
-                        Count = readInt reader 2
-                    }
-                )
-
-            values.ToArray()
-
-        let provinces =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT l.province_name,
-                           COUNT(DISTINCT g.pool_id) AS pools,
-                           COALESCE(SUM(g.principal * COALESCE(l.principal_amount_percent, 0) / 100.0), 0) AS principal
-                    FROM nhambs.v_mbs_pool_grid g
-                    JOIN nhambs.mbs_pool_locations l ON l.pool_cusip = g.pool_id
-                    {whereSql}
-                      {(if whereSql = "" then "WHERE" else "AND")} COALESCE(l.principal_amount_percent, 0) > 0
-                    GROUP BY l.province_name
-                    ORDER BY principal DESC
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            use reader = command.ExecuteReader()
-            let values = ResizeArray<ProvinceSummary>()
-
-            while reader.Read() do
-                let principal = if reader.IsDBNull 2 then 0m else reader.GetDecimal 2
-
-                let share =
-                    if totalPrincipal = 0m then
-                        0m
-                    else
-                        principal / totalPrincipal * 100m
-
-                values.Add(
-                    {
-                        Province = readString reader 0
-                        Pools = readInt reader 1
-                        Principal = principal
-                        Share = share
-                    }
-                )
-
-            values.ToArray()
-
-        let categoryQuery
-            (labelExpression: string)
-            (valueExpression: string)
-            (fromClause: string)
-            (groupBy: string)
-            (orderBy: string)
-            =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT {labelExpression}, {valueExpression}, COUNT(*) AS items
-                    FROM {fromClause}
-                    {whereSql}
-                    GROUP BY {groupBy}
-                    ORDER BY {orderBy}
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            use reader = command.ExecuteReader()
-            let values = ResizeArray<CategoryPoint>()
-
-            while reader.Read() do
-                values.Add(
-                    {
-                        Label = readString reader 0
-                        Value = if reader.IsDBNull 1 then 0m else reader.GetDecimal 1
-                        Count = readInt reader 2
-                    }
-                )
-
-            values.ToArray()
-
-        let byRateType =
-            categoryQuery
-                "COALESCE(g.rate_type, 'unknown')"
-                "COALESCE(SUM(g.principal), 0)"
-                "nhambs.v_mbs_pool_grid g"
-                "1"
-                "2 DESC"
-
-        let byPoolType =
-            categoryQuery
-                "g.pool_type || ' · ' || g.pool_type_description"
-                "COALESCE(SUM(g.principal), 0)"
-                "nhambs.v_mbs_pool_grid g"
-                "1"
-                "2 DESC"
-
-        let byInsurer =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT i.name,
-                           COALESCE(SUM(COALESCE(i.dollar_value, g.principal * COALESCE(i.percent_of_loans, 0) / 100.0)), 0) AS principal,
-                           COUNT(DISTINCT g.pool_id) AS pools
-                    FROM nhambs.v_mbs_pool_grid g
-                    JOIN nhambs.mbs_pool_insurers i ON i.pool_cusip = g.pool_id
-                    {whereSql}
-                    GROUP BY i.name
-                    ORDER BY principal DESC
-                    LIMIT 12
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            use reader = command.ExecuteReader()
-            let values = ResizeArray<CategoryPoint>()
-
-            while reader.Read() do
-                values.Add(
-                    {
-                        Label = readString reader 0
-                        Value = if reader.IsDBNull 1 then 0m else reader.GetDecimal 1
-                        Count = readInt reader 2
-                    }
-                )
-
-            values.ToArray()
-
-        let byMaturityYear =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT to_char(date_trunc('year', g.maturity_date), 'YYYY') AS label,
-                           date_trunc('year', g.maturity_date)::date AS year_start,
-                           COUNT(*) AS pools,
-                           COALESCE(SUM(g.principal), 0) AS principal
-                    FROM nhambs.v_mbs_pool_grid g
-                    {whereSql}
-                      {(if whereSql = "" then
-                            "WHERE g.maturity_date IS NOT NULL"
-                        else
-                            "AND g.maturity_date IS NOT NULL")}
-                    GROUP BY 1, 2
-                    ORDER BY 2
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            use reader = command.ExecuteReader()
-            let values = ResizeArray<SeriesPoint>()
-
-            while reader.Read() do
-                values.Add(
-                    {
-                        Label = readString reader 0
-                        Date = readDateText reader 1
-                        Value = if reader.IsDBNull 3 then 0m else reader.GetDecimal 3
-                        Secondary = 0m
-                        Count = readInt reader 2
-                    }
-                )
-
-            values.ToArray()
-
-        let trendMonths =
-            monthly
-            |> Array.map (fun point -> point.Label)
-            |> Array.rev
-            |> Array.truncate 12
-            |> Array.rev
-
-        let latestMonth =
-            match parseDate newestIssue with
-            | Some date -> Some(new DateTime(date.Year, date.Month, 1))
-            | None ->
-                monthly
-                |> Array.tryLast
-                |> Option.bind (fun point -> parseDate point.Date)
-                |> Option.map (fun date -> new DateTime(date.Year, date.Month, 1))
-
-        let periods =
-            match latestMonth with
-            | None -> [||]
-            | Some current ->
-                [|
-                    "Current", current
-                    "Previous Month", current.AddMonths(-1)
-                    "Last Year", current.AddYears(-1)
-                |]
-                |> Array.map (fun (label, month) ->
-                    use command =
-                        new NpgsqlCommand(
-                            $"""
-                            WITH period AS (
-                                SELECT @period_month::date AS month_start,
-                                       (@period_month::date + interval '1 month - 1 day')::date AS month_end
-                            )
-                            SELECT
-                                COUNT(DISTINCT g.issuer_name) FILTER (WHERE g.issue_date <= p.month_end) AS issuers,
-                                COUNT(*) FILTER (WHERE g.issue_date <= p.month_end) AS pools,
-                                COALESCE(SUM(g.principal) FILTER (WHERE g.issue_date >= p.month_start AND g.issue_date <= p.month_end), 0) AS new_principal,
-                                COALESCE(SUM(g.principal) FILTER (WHERE g.issue_date <= p.month_end), 0) AS pool_balance,
-                                SUM(COALESCE(g.coupon_value, 0) * g.principal) FILTER (WHERE g.issue_date <= p.month_end)
-                                    / NULLIF(SUM(CASE WHEN g.coupon_value IS NULL THEN 0 ELSE g.principal END) FILTER (WHERE g.issue_date <= p.month_end), 0) AS weighted_coupon,
-                                COALESCE(SUM(g.loans) FILTER (WHERE g.issue_date <= p.month_end), 0) AS loans
-                            FROM nhambs.v_mbs_pool_grid g
-                            CROSS JOIN period p
-                            {whereSql}
-                            """,
-                            connection
-                        )
-
-                    addParameters command parameters
-                    command.Parameters.AddWithValue("period_month", month) |> ignore
-                    use reader = command.ExecuteReader()
-                    let monthText = month.ToString("yyyy-MM", CultureInfo.InvariantCulture)
-
-                    if reader.Read() then
-                        {
-                            Label = label
-                            Month = monthText
-                            Issuers = readInt reader 0
-                            Pools = readInt reader 1
-                            NewPrincipal = if reader.IsDBNull 2 then 0m else reader.GetDecimal 2
-                            PoolBalance = if reader.IsDBNull 3 then 0m else reader.GetDecimal 3
-                            AverageCoupon = defaultArg (readDecimalOpt reader 4) 0m
-                            Loans = readInt reader 5
-                        }
-                    else
-                        {
-                            Label = label
-                            Month = monthText
-                            Issuers = 0
-                            Pools = 0
-                            NewPrincipal = 0m
-                            PoolBalance = 0m
-                            AverageCoupon = 0m
-                            Loans = 0
-                        })
-
-        let topIssuers =
-            use command =
-                new NpgsqlCommand(
-                    $"""
-                    SELECT g.issuer_name,
-                           COUNT(*) AS pools,
-                           COALESCE(SUM(g.principal), 0) AS principal,
-                           SUM(COALESCE(g.coupon_value, 0) * g.principal)
-                               / NULLIF(SUM(CASE WHEN g.coupon_value IS NULL THEN 0 ELSE g.principal END), 0) AS weighted_coupon,
-                           COALESCE(SUM(g.loans), 0) AS loans
-                    FROM nhambs.v_mbs_pool_grid g
-                    {whereSql}
-                    GROUP BY g.issuer_name
-                    ORDER BY principal DESC
-                    LIMIT 15
-                    """,
-                    connection
-                )
-
-            addParameters command parameters
-            use reader = command.ExecuteReader()
-            let values = ResizeArray<IssuerSummary>()
-
-            while reader.Read() do
-                values.Add(
-                    {
-                        Issuer = readString reader 0
-                        Pools = readInt reader 1
-                        Principal = if reader.IsDBNull 2 then 0m else reader.GetDecimal 2
-                        AverageCoupon = defaultArg (readDecimalOpt reader 3) 0m
-                        Loans = readInt reader 4
-                        Share = 0m
-                        Trend = [||]
-                    }
-                )
-
-            values.ToArray()
-
-        let topIssuerNames = topIssuers |> Array.map (fun issuer -> issuer.Issuer)
-
-        let topIssuersWithTrend =
-            let shareFor (issuer: IssuerSummary) =
-                if totalPrincipal = 0m then
-                    0m
-                else
-                    issuer.Principal / totalPrincipal * 100m
-
-            if topIssuerNames.Length = 0 then
-                topIssuers |> Array.map (fun issuer -> { issuer with Share = shareFor issuer })
-            else
-                let clauses = ResizeArray<string>()
-
-                if not (String.IsNullOrWhiteSpace whereSql) then
-                    clauses.Add(whereSql.Trim().Substring(6))
-
-                clauses.Add("g.issuer_name = ANY(@issuer_names)")
-
-                let trendStart, trendEnd =
-                    match trendMonths |> Array.tryHead, trendMonths |> Array.tryLast with
-                    | Some first, Some last ->
-                        match parseDate (first + "-01"), parseDate (last + "-01") with
-                        | Some startDate, Some endDate -> Some startDate, Some(endDate.AddMonths(1))
-                        | _ -> None, None
-                    | _ -> None, None
-
-                match trendStart, trendEnd with
-                | Some _, Some _ ->
-                    clauses.Add("g.issue_date >= @trend_start")
-                    clauses.Add("g.issue_date < @trend_end")
-                | _ -> ()
-
-                let trendWhere = " WHERE " + String.concat " AND " clauses
-
-                use command =
-                    new NpgsqlCommand(
-                        $"""
-                        SELECT g.issuer_name,
-                               to_char(date_trunc('month', g.issue_date), 'YYYY-MM') AS label,
-                               COALESCE(SUM(g.principal), 0) AS principal
-                        FROM nhambs.v_mbs_pool_grid g
-                        {trendWhere}
-                        GROUP BY 1, 2
-                        """,
-                        connection
-                    )
-
-                addParameters command parameters
-                command.Parameters.AddWithValue("issuer_names", topIssuerNames) |> ignore
-
-                match trendStart, trendEnd with
-                | Some startDate, Some endDate ->
-                    command.Parameters.AddWithValue("trend_start", startDate) |> ignore
-                    command.Parameters.AddWithValue("trend_end", endDate) |> ignore
-                | _ -> ()
-
-                use reader = command.ExecuteReader()
-                let trends = System.Collections.Generic.Dictionary<string, decimal[]>()
-
-                for name in topIssuerNames do
-                    trends.[name] <- Array.zeroCreate trendMonths.Length
-
-                while reader.Read() do
-                    let issuer = readString reader 0
-                    let label = readString reader 1
-                    let value = if reader.IsDBNull 2 then 0m else reader.GetDecimal 2
-
-                    match trends.TryGetValue issuer with
-                    | true, values ->
-                        match Array.IndexOf(trendMonths, label) with
-                        | -1 -> ()
-                        | index -> values.[index] <- value
-                    | _ -> ()
-
-                topIssuers
-                |> Array.map (fun issuer ->
-                    let trend =
-                        match trends.TryGetValue issuer.Issuer with
-                        | true, values -> values
-                        | _ -> [||]
-
-                    { issuer with
-                        Share = shareFor issuer
-                        Trend = trend
-                    })
-
-        {
-            TotalPrincipal = totalPrincipal
-            PoolCount = poolCount
-            IssuerCount = issuerCount
-            LoanCount = loanCount
-            AverageCoupon = defaultArg averageCoupon 0m
-            AverageWam = defaultArg averageWam 0m
-            NewestIssueDate = newestIssue
-            Monthly = monthly
-            ByProvince = provinces
-            ByRateType = byRateType
-            ByPoolType = byPoolType
-            ByInsurer = byInsurer
-            ByMaturityYear = byMaturityYear
-            TopIssuers = topIssuersWithTrend
-            Periods = periods
-            TrendMonths = trendMonths
-        })
 
 let private parseDecimalArray (json: string option) =
     match json with
@@ -743,262 +60,797 @@ let private parseByDate (json: string option) (label: string) =
             { Label = label; Values = [||] }
     | _ -> { Label = label; Values = [||] }
 
-let filterOptions () =
-    let minIssueDate, maxIssueDate =
-        Database.withConnection (fun connection ->
-            use command =
-                new NpgsqlCommand("SELECT MIN(issue_date), MAX(issue_date) FROM nhambs.v_mbs_pool_grid;", connection)
+type private InsurerFact =
+    {
+        PoolCusip: string
+        Name: string
+        DollarValue: decimal option
+        PercentOfLoans: decimal option
+    }
 
-            use reader = command.ExecuteReader()
+type private LocationFact =
+    {
+        PoolCusip: string
+        ProvinceName: string
+        PrincipalAmountPercent: decimal option
+    }
 
-            if reader.Read() then
-                let minimum =
-                    if reader.IsDBNull 0 then
-                        ""
-                    else
-                        reader.GetDateTime(0).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+type private PoolFact =
+    {
+        Row: MbsPoolRow
+        IssueDate: DateTime option
+        SettlementDate: DateTime option
+        MaturityDate: DateTime option
+        CouponValue: decimal option
+        Wam: decimal option
+    }
 
-                let maximum =
-                    if reader.IsDBNull 1 then
-                        ""
-                    else
-                        reader.GetDateTime(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
-
-                minimum, maximum
-            else
-                "", "")
-
-    Database.withContext (fun context ->
-        let issuers =
-            query {
-                for row in context.Nhambs.VMbsPoolGrid do
-                    select row.IssuerName
-            }
-            |> Seq.choose id
-            |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
-            |> Seq.distinct
-            |> Seq.sort
-            |> Seq.toArray
-
-        let rateTypes =
-            query {
-                for row in context.Nhambs.VMbsPoolGrid do
-                    select row.RateType
-            }
-            |> Seq.choose id
-            |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
-            |> Seq.distinct
-            |> Seq.sort
-            |> Seq.toArray
-
-        let poolTypes =
-            query {
-                for row in context.Nhambs.VMbsPoolGrid do
-                    select (row.PoolType, row.PoolTypeDescription)
-            }
-            |> Seq.distinct
-            |> Seq.sortBy fst
-            |> Seq.map (fun (code, label) ->
-                {
-                    Code = defaultArg code ""
-                    Label = defaultArg label ""
-                })
-            |> Seq.toArray
-
-        let insurers =
-            query {
-                for row in context.Nhambs.MbsPoolInsurers do
-                    select row.Name
-            }
-            |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
-            |> Seq.distinct
-            |> Seq.sort
-            |> Seq.toArray
-
-        let provinces =
-            query {
-                for row in context.Nhambs.MbsPoolLocations do
-                    select row.ProvinceName
-            }
-            |> Seq.distinct
-            |> Seq.sort
-            |> Seq.toArray
+let private loadPoolFacts (context: Provider.Sql.dataContext) =
+    query {
+        for row in context.Nhambs.VMbsPoolGrid do
+            select row
+    }
+    |> Seq.map (fun row ->
+        let text = Option.get
 
         {
-            Issuers = issuers
-            RateTypes = rateTypes
-            PoolTypes = poolTypes
-            Insurers = insurers
-            Provinces = provinces
-            MinIssueDate = minIssueDate
-            MaxIssueDate = maxIssueDate
+            Row =
+                {
+                    PoolId = text row.PoolId
+                    Cusip = text row.Cusip
+                    PoolNumber = text row.PoolNumber
+                    IssuerName = text row.IssuerName
+                    RateType = text row.RateType
+                    PoolType = text row.PoolType
+                    PoolTypeDescription = text row.PoolTypeDescription
+                    CouponDisplay = text row.CouponDisplay
+                    CouponValue = defaultArg row.CouponValue 0m
+                    Principal = defaultArg row.Principal 0m
+                    IssueDate = dateOption row.IssueDate
+                    SettlementDate = dateOption row.SettlementDate
+                    MaturityDate = dateOption row.MaturityDate
+                    Loans = defaultArg row.Loans 0
+                    Wac = defaultArg row.Wac 0m
+                    Wam = defaultArg row.Wam 0m
+                    Provinces = text row.Provinces
+                    Insurers = text row.Insurers
+                    SourceUrl = text row.SourceUrl
+                }
+            IssueDate = row.IssueDate
+            SettlementDate = row.SettlementDate
+            MaturityDate = row.MaturityDate
+            CouponValue = row.CouponValue
+            Wam = row.Wam
         })
+    |> Seq.toArray
 
-let getDetail (cusip: string) =
-    Database.withContext (fun context ->
-        let viewRow =
+let private loadInsurers (context: Provider.Sql.dataContext) =
+    query {
+        for row in context.Nhambs.MbsPoolInsurers do
+            select row
+    }
+    |> Seq.map (fun row ->
+        {
+            PoolCusip = row.PoolCusip
+            Name = row.Name
+            DollarValue = row.DollarValue
+            PercentOfLoans = row.PercentOfLoans
+        })
+    |> Seq.toArray
+
+let private loadLocations (context: Provider.Sql.dataContext) =
+    query {
+        for row in context.Nhambs.MbsPoolLocations do
+            select row
+    }
+    |> Seq.map (fun row ->
+        {
+            PoolCusip = row.PoolCusip
+            ProvinceName = row.ProvinceName
+            PrincipalAmountPercent = row.PrincipalAmountPercent
+        })
+    |> Seq.toArray
+
+let private matchesFilter
+    (filter: MbsPoolFilter)
+    (insurerPools: Set<string>)
+    (provincePools: Set<string>)
+    (row: MbsPoolRow)
+    =
+    let search = filter.Search.Trim()
+
+    let matchesSearch =
+        String.IsNullOrWhiteSpace search
+        || row.PoolNumber.Contains(search, StringComparison.OrdinalIgnoreCase)
+        || row.Cusip.Contains(search, StringComparison.OrdinalIgnoreCase)
+        || row.IssuerName.Contains(search, StringComparison.OrdinalIgnoreCase)
+
+    let matchesIssuer =
+        String.IsNullOrWhiteSpace filter.Issuer || row.IssuerName = filter.Issuer
+
+    let matchesRateType =
+        String.IsNullOrWhiteSpace filter.RateType || row.RateType = filter.RateType
+
+    let matchesPoolType =
+        String.IsNullOrWhiteSpace filter.PoolType || row.PoolType = filter.PoolType
+
+    let matchesInsurer =
+        String.IsNullOrWhiteSpace filter.Insurer || insurerPools.Contains row.PoolId
+
+    let matchesProvince =
+        String.IsNullOrWhiteSpace filter.Province || provincePools.Contains row.PoolId
+
+    let matchesDate =
+        match parseDate filter.DateFrom, parseDate filter.DateTo with
+        | Some fromDate, Some toDate ->
+            match row.IssueDate |> Option.bind parseDate with
+            | Some date -> date >= fromDate && date <= toDate
+            | None -> false
+        | Some fromDate, None ->
+            match row.IssueDate |> Option.bind parseDate with
+            | Some date -> date >= fromDate
+            | None -> false
+        | None, Some toDate ->
+            match row.IssueDate |> Option.bind parseDate with
+            | Some date -> date <= toDate
+            | None -> false
+        | None, None -> true
+
+    let matchesMaturity =
+        match parseDate filter.MaturityFrom, parseDate filter.MaturityTo with
+        | Some fromDate, Some toDate ->
+            match row.MaturityDate |> Option.bind parseDate with
+            | Some date -> date >= fromDate && date <= toDate
+            | None -> false
+        | Some fromDate, None ->
+            match row.MaturityDate |> Option.bind parseDate with
+            | Some date -> date >= fromDate
+            | None -> false
+        | None, Some toDate ->
+            match row.MaturityDate |> Option.bind parseDate with
+            | Some date -> date <= toDate
+            | None -> false
+        | None, None -> true
+
+    let matchesStatus =
+        match filter.Status.ToLowerInvariant() with
+        | "active" ->
+            match row.MaturityDate |> Option.bind parseDate with
+            | Some date -> date >= DateTime.UtcNow.Date
+            | None -> false
+        | "inactive" ->
+            match row.MaturityDate |> Option.bind parseDate with
+            | Some date -> date < DateTime.UtcNow.Date
+            | None -> false
+        | _ -> true
+
+    matchesSearch
+    && matchesIssuer
+    && matchesRateType
+    && matchesPoolType
+    && matchesInsurer
+    && matchesProvince
+    && matchesDate
+    && matchesMaturity
+    && matchesStatus
+
+let private filterFacts (context: Provider.Sql.dataContext) (filter: MbsPoolFilter) =
+    let facts = loadPoolFacts context
+
+    let insurerPools =
+        if String.IsNullOrWhiteSpace filter.Insurer then
+            Set.empty
+        else
+            loadInsurers context
+            |> Array.filter (fun insurer -> insurer.Name = filter.Insurer)
+            |> Array.map (fun insurer -> insurer.PoolCusip)
+            |> Set.ofArray
+
+    let provincePools =
+        if String.IsNullOrWhiteSpace filter.Province then
+            Set.empty
+        else
+            loadLocations context
+            |> Array.filter (fun location ->
+                location.ProvinceName = filter.Province
+                && (defaultArg location.PrincipalAmountPercent 0m) > 0m)
+            |> Array.map (fun location -> location.PoolCusip)
+            |> Set.ofArray
+
+    facts
+    |> Array.filter (fun fact -> matchesFilter filter insurerPools provincePools fact.Row)
+
+let private sortRows (sortBy: string) (sortDir: string) (rows: PoolFact[]) =
+    let ascending = sortDir.ToLowerInvariant() <> "desc"
+
+    let compareBy =
+        match sortBy with
+        | "pool_number" -> fun left right -> compare left.Row.PoolNumber right.Row.PoolNumber
+        | "cusip" -> fun left right -> compare left.Row.Cusip right.Row.Cusip
+        | "issuer_name" -> fun left right -> compare left.Row.IssuerName right.Row.IssuerName
+        | "rate_type" -> fun left right -> compare left.Row.RateType right.Row.RateType
+        | "pool_type" -> fun left right -> compare left.Row.PoolType right.Row.PoolType
+        | "coupon_value" -> fun left right -> compare left.Row.CouponValue right.Row.CouponValue
+        | "principal" -> fun left right -> compare left.Row.Principal right.Row.Principal
+        | "settlement_date" -> fun left right -> compare left.Row.SettlementDate right.Row.SettlementDate
+        | "maturity_date" -> fun left right -> compare left.Row.MaturityDate right.Row.MaturityDate
+        | "loans" -> fun left right -> compare left.Row.Loans right.Row.Loans
+        | "wac" -> fun left right -> compare left.Row.Wac right.Row.Wac
+        | "wam" -> fun left right -> compare left.Row.Wam right.Row.Wam
+        | _ -> fun left right -> compare left.Row.IssueDate right.Row.IssueDate
+
+    rows
+    |> Array.sortWith (fun left right ->
+        let result = compareBy left right
+
+        if result = 0 then compare left.Row.PoolId right.Row.PoolId
+        elif ascending then result
+        else -result)
+
+let search (context: Provider.Sql.dataContext) (query: MbsPoolQuery) =
+    let facts = filterFacts context query.Filter
+    let sorted = sortRows query.Filter.SortBy query.Filter.SortDir facts
+
+    {
+        Rows = sorted |> Array.map (fun fact -> fact.Row)
+        Total = facts.Length
+    }
+
+let private sumBy (projection: PoolFact -> decimal) (rows: PoolFact[]) = rows |> Array.sumBy projection
+
+let private weightedAverage (value: PoolFact -> decimal option) (principal: PoolFact -> decimal) (rows: PoolFact[]) =
+    let numerator =
+        rows
+        |> Array.sumBy (fun row ->
+            match value row with
+            | Some amount -> amount * principal row
+            | None -> 0m)
+
+    let denominator =
+        rows |> Array.filter (fun row -> (value row).IsSome) |> Array.sumBy principal
+
+    if denominator = 0m then 0m else numerator / denominator
+
+let private monthStart (date: DateTime) = DateTime(date.Year, date.Month, 1)
+
+let private seriesPoint (label: string) (date: string) (value: decimal) (count: int) =
+    {
+        Label = label
+        Date = date
+        Value = value
+        Secondary = 0m
+        Count = count
+    }
+
+let private analyticsFor (context: Provider.Sql.dataContext) (filter: MbsPoolFilter) =
+    let facts = filterFacts context filter
+    let insurers = loadInsurers context
+    let locations = loadLocations context
+
+    let totalPrincipal = facts |> sumBy (fun row -> row.Row.Principal)
+    let poolCount = facts.Length
+
+    let issuerCount =
+        facts
+        |> Array.map (fun row -> row.Row.IssuerName)
+        |> Array.filter (fun value -> not (String.IsNullOrWhiteSpace value))
+        |> Array.distinct
+        |> Array.length
+
+    let loanCount = facts |> Array.sumBy (fun row -> row.Row.Loans)
+
+    let averageCoupon =
+        weightedAverage (fun row -> row.CouponValue) (fun row -> row.Row.Principal) facts
+
+    let averageWam =
+        weightedAverage (fun row -> row.Wam) (fun row -> row.Row.Principal) facts
+
+    let issueDates = facts |> Array.choose (fun row -> row.IssueDate) |> Array.sort
+
+    let newestIssueDate =
+        issueDates
+        |> Array.tryLast
+        |> Option.map (fun date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+
+    let monthly =
+        facts
+        |> Array.choose (fun row ->
+            row.IssueDate
+            |> Option.map (fun date ->
+                let month = monthStart date
+
+                month,
+                {
+                    Label = month.ToString("yyyy-MM", CultureInfo.InvariantCulture)
+                    Date = month.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    Value = row.Row.Principal
+                    Secondary = 0m
+                    Count = 1
+                }))
+        |> Array.groupBy fst
+        |> Array.map (fun (month, values) ->
+            let points = values |> Array.map snd
+
+            seriesPoint
+                points.[0].Label
+                points.[0].Date
+                (points |> Array.sumBy (fun point -> point.Value))
+                points.Length)
+        |> Array.sortBy (fun point -> point.Date)
+
+    let byProvince =
+        let rowsById = facts |> Array.map (fun row -> row.Row.PoolId, row) |> dict
+
+        locations
+        |> Array.filter (fun location ->
+            (defaultArg location.PrincipalAmountPercent 0m) > 0m
+            && rowsById.ContainsKey location.PoolCusip)
+        |> Array.groupBy (fun location -> location.ProvinceName)
+        |> Array.map (fun (province, values) ->
+            let poolIds =
+                values |> Array.map (fun location -> location.PoolCusip) |> Array.distinct
+
+            let principal =
+                values
+                |> Array.sumBy (fun location ->
+                    let fact = rowsById.[location.PoolCusip]
+
+                    fact.Row.Principal * (defaultArg location.PrincipalAmountPercent 0m) / 100m)
+
+            {
+                Province = province
+                Pools = poolIds.Length
+                Principal = principal
+                Share =
+                    if totalPrincipal = 0m then
+                        0m
+                    else
+                        principal / totalPrincipal * 100m
+            })
+        |> Array.sortByDescending (fun row -> row.Principal)
+
+    let byRateType =
+        facts
+        |> Array.groupBy (fun row ->
+            if String.IsNullOrWhiteSpace row.Row.RateType then
+                "unknown"
+            else
+                row.Row.RateType)
+        |> Array.map (fun (label, values) ->
+            {
+                Label = label
+                Value = values |> Array.sumBy (fun row -> row.Row.Principal)
+                Count = values.Length
+            })
+        |> Array.sortByDescending (fun point -> point.Value)
+
+    let byPoolType =
+        facts
+        |> Array.groupBy (fun row -> row.Row.PoolType + " · " + row.Row.PoolTypeDescription)
+        |> Array.map (fun (label, values) ->
+            {
+                Label = label
+                Value = values |> Array.sumBy (fun row -> row.Row.Principal)
+                Count = values.Length
+            })
+        |> Array.sortByDescending (fun point -> point.Value)
+
+    let byInsurer =
+        let rowsById = facts |> Array.map (fun row -> row.Row.PoolId, row) |> dict
+
+        insurers
+        |> Array.filter (fun insurer -> rowsById.ContainsKey insurer.PoolCusip)
+        |> Array.groupBy (fun insurer -> insurer.Name)
+        |> Array.map (fun (name, values) ->
+            let pools = values |> Array.map (fun insurer -> insurer.PoolCusip) |> Array.distinct
+
+            let principal =
+                values
+                |> Array.sumBy (fun insurer ->
+                    let fact = rowsById.[insurer.PoolCusip]
+
+                    match insurer.DollarValue with
+                    | Some value -> value
+                    | None -> fact.Row.Principal * (defaultArg insurer.PercentOfLoans 0m) / 100m)
+
+            name, principal, pools.Length)
+        |> Array.sortByDescending (fun (_, principal, _) -> principal)
+        |> Array.truncate 12
+        |> Array.map (fun (label, principal, count) ->
+            {
+                Label = label
+                Value = principal
+                Count = count
+            })
+
+    let byMaturityYear =
+        facts
+        |> Array.choose (fun row ->
+            row.MaturityDate
+            |> Option.map (fun date ->
+                let yearStart = DateTime(date.Year, 1, 1)
+
+                yearStart,
+                {
+                    Label = date.Year.ToString(CultureInfo.InvariantCulture)
+                    Date = yearStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    Value = row.Row.Principal
+                    Secondary = 0m
+                    Count = 1
+                }))
+        |> Array.groupBy fst
+        |> Array.map (fun (_, values) ->
+            let points = values |> Array.map snd
+
+            seriesPoint
+                points.[0].Label
+                points.[0].Date
+                (points |> Array.sumBy (fun point -> point.Value))
+                points.Length)
+        |> Array.sortBy (fun point -> point.Date)
+
+    let trendMonths =
+        monthly
+        |> Array.map (fun point -> point.Label)
+        |> Array.rev
+        |> Array.truncate 12
+        |> Array.rev
+
+    let latestMonth =
+        match issueDates |> Array.tryLast with
+        | Some date -> Some(monthStart date)
+        | None -> monthly |> Array.tryLast |> Option.bind (fun point -> parseDate point.Date)
+
+    let periods =
+        match latestMonth with
+        | None -> [||]
+        | Some current ->
+            [|
+                "Current", current
+                "Previous Month", current.AddMonths(-1)
+                "Last Year", current.AddYears(-1)
+            |]
+            |> Array.map (fun (label, month) ->
+                let monthEnd = month.AddMonths(1).AddDays(-1.0)
+
+                let upToMonth =
+                    facts
+                    |> Array.filter (fun row ->
+                        match row.IssueDate with
+                        | Some date -> date <= monthEnd
+                        | None -> false)
+
+                let newPrincipal =
+                    upToMonth
+                    |> Array.filter (fun row ->
+                        match row.IssueDate with
+                        | Some date -> date >= month && date <= monthEnd
+                        | None -> false)
+                    |> Array.sumBy (fun row -> row.Row.Principal)
+
+                {
+                    Label = label
+                    Month = month.ToString("yyyy-MM", CultureInfo.InvariantCulture)
+                    Issuers =
+                        upToMonth
+                        |> Array.map (fun row -> row.Row.IssuerName)
+                        |> Array.distinct
+                        |> Array.length
+                    Pools = upToMonth.Length
+                    NewPrincipal = newPrincipal
+                    PoolBalance = upToMonth |> Array.sumBy (fun row -> row.Row.Principal)
+                    AverageCoupon =
+                        weightedAverage (fun row -> row.CouponValue) (fun row -> row.Row.Principal) upToMonth
+                    Loans = upToMonth |> Array.sumBy (fun row -> row.Row.Loans)
+                })
+
+    let topIssuers =
+        facts
+        |> Array.groupBy (fun row -> row.Row.IssuerName)
+        |> Array.map (fun (issuer, values) ->
+            let principal = values |> Array.sumBy (fun row -> row.Row.Principal)
+
+            {
+                Issuer = issuer
+                Pools = values.Length
+                Principal = principal
+                AverageCoupon = weightedAverage (fun row -> row.CouponValue) (fun row -> row.Row.Principal) values
+                Loans = values |> Array.sumBy (fun row -> row.Row.Loans)
+                Share =
+                    if totalPrincipal = 0m then
+                        0m
+                    else
+                        principal / totalPrincipal * 100m
+                Trend = [||]
+            })
+        |> Array.sortByDescending (fun issuer -> issuer.Principal)
+        |> Array.truncate 15
+
+    let topIssuerNames = topIssuers |> Array.map (fun issuer -> issuer.Issuer)
+
+    let topIssuersWithTrend =
+        topIssuers
+        |> Array.map (fun issuer ->
+            let trend =
+                trendMonths
+                |> Array.map (fun label ->
+                    facts
+                    |> Array.filter (fun row ->
+                        row.Row.IssuerName = issuer.Issuer
+                        && match row.IssueDate with
+                           | Some date -> date.Year.ToString("yyyy-MM", CultureInfo.InvariantCulture) = label
+                           | None -> false)
+                    |> Array.sumBy (fun row -> row.Row.Principal))
+
+            { issuer with Trend = trend })
+
+    {
+        TotalPrincipal = totalPrincipal
+        PoolCount = poolCount
+        IssuerCount = issuerCount
+        LoanCount = loanCount
+        AverageCoupon = averageCoupon
+        AverageWam = averageWam
+        NewestIssueDate = newestIssueDate
+        Monthly = monthly
+        ByProvince = byProvince
+        ByRateType = byRateType
+        ByPoolType = byPoolType
+        ByInsurer = byInsurer
+        ByMaturityYear = byMaturityYear
+        TopIssuers = topIssuersWithTrend
+        Periods = periods
+        TrendMonths = trendMonths
+    }
+
+let analytics (context: Provider.Sql.dataContext) (filter: MbsPoolFilter) = analyticsFor context filter
+
+let filterOptions (context: Provider.Sql.dataContext) =
+    let issuers =
+        query {
+            for row in context.Nhambs.VMbsPoolGrid do
+                select row.IssuerName
+        }
+        |> Seq.choose id
+        |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
+        |> Seq.distinct
+        |> Seq.sort
+        |> Seq.toArray
+
+    let rateTypes =
+        query {
+            for row in context.Nhambs.VMbsPoolGrid do
+                select row.RateType
+        }
+        |> Seq.choose id
+        |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
+        |> Seq.distinct
+        |> Seq.sort
+        |> Seq.toArray
+
+    let poolTypes =
+        query {
+            for row in context.Nhambs.VMbsPoolGrid do
+                select (row.PoolType, row.PoolTypeDescription)
+        }
+        |> Seq.distinct
+        |> Seq.sortBy fst
+        |> Seq.map (fun (code, label) ->
+            {
+                Code = Option.get code
+                Label = Option.get label
+            })
+        |> Seq.toArray
+
+    let insurers =
+        query {
+            for row in context.Nhambs.MbsPoolInsurers do
+                select row.Name
+        }
+        |> Seq.filter (fun value -> not (String.IsNullOrWhiteSpace value))
+        |> Seq.distinct
+        |> Seq.sort
+        |> Seq.toArray
+
+    let provinces =
+        query {
+            for row in context.Nhambs.MbsPoolLocations do
+                select row.ProvinceName
+        }
+        |> Seq.distinct
+        |> Seq.sort
+        |> Seq.toArray
+
+    let issueDates =
+        query {
+            for row in context.Nhambs.VMbsPoolGrid do
+                select row.IssueDate
+        }
+        |> Seq.choose id
+        |> Seq.sort
+        |> Seq.toArray
+
+    {
+        Issuers = issuers
+        RateTypes = rateTypes
+        PoolTypes = poolTypes
+        Insurers = insurers
+        Provinces = provinces
+        MinIssueDate =
+            issueDates
+            |> Array.tryHead
+            |> Option.map (fun date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+        MaxIssueDate =
+            issueDates
+            |> Array.tryLast
+            |> Option.map (fun date -> date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture))
+    }
+
+let getDetail (context: Provider.Sql.dataContext) (cusip: string) =
+
+    let viewRow =
+        query {
+            for row in context.Nhambs.VMbsPoolGrid do
+                where (row.Cusip = Some cusip)
+                select row
+        }
+        |> Seq.tryHead
+
+    match viewRow with
+    | None -> None
+    | Some view ->
+        let text = Option.get
+
+        let poolRow =
+            {
+                PoolId = text view.PoolId
+                Cusip = text view.Cusip
+                PoolNumber = text view.PoolNumber
+                IssuerName = text view.IssuerName
+                RateType = text view.RateType
+                PoolType = text view.PoolType
+                PoolTypeDescription = text view.PoolTypeDescription
+                CouponDisplay = text view.CouponDisplay
+                CouponValue = defaultArg view.CouponValue 0m
+                Principal = defaultArg view.Principal 0m
+                IssueDate = dateOption view.IssueDate
+                SettlementDate = dateOption view.SettlementDate
+                MaturityDate = dateOption view.MaturityDate
+                Loans = defaultArg view.Loans 0
+                Wac = defaultArg view.Wac 0m
+                Wam = defaultArg view.Wam 0m
+                Provinces = text view.Provinces
+                Insurers = text view.Insurers
+                SourceUrl = text view.SourceUrl
+            }
+
+        let pool =
             query {
-                for row in context.Nhambs.VMbsPoolGrid do
-                    where (row.Cusip = Some cusip)
+                for row in context.Nhambs.MbsPools do
+                    where (row.Cusip = cusip)
                     select row
             }
             |> Seq.tryHead
 
-        match viewRow with
+        match pool with
         | None -> None
-        | Some view ->
-            let text (value: string option) = defaultArg value ""
-
-            let poolRow =
-                {
-                    PoolId = text view.PoolId
-                    Cusip = text view.Cusip
-                    PoolNumber = text view.PoolNumber
-                    IssuerName = text view.IssuerName
-                    RateType = text view.RateType
-                    PoolType = text view.PoolType
-                    PoolTypeDescription = text view.PoolTypeDescription
-                    CouponDisplay = text view.CouponDisplay
-                    CouponValue = defaultArg view.CouponValue 0m
-                    Principal = defaultArg view.Principal 0m
-                    IssueDate = dateText view.IssueDate
-                    SettlementDate = dateText view.SettlementDate
-                    MaturityDate = dateText view.MaturityDate
-                    Loans = defaultArg view.Loans 0
-                    Wac = defaultArg view.Wac 0m
-                    Wam = defaultArg view.Wam 0m
-                    Provinces = text view.Provinces
-                    Insurers = text view.Insurers
-                    SourceUrl = text view.SourceUrl
-                }
-
-            let pool =
+        | Some pool ->
+            let insurers =
                 query {
-                    for row in context.Nhambs.MbsPools do
-                        where (row.Cusip = cusip)
+                    for row in context.Nhambs.MbsPoolInsurers do
+                        where (row.PoolCusip = cusip)
                         select row
                 }
-                |> Seq.tryHead
-
-            match pool with
-            | None -> None
-            | Some p ->
-                let insurers =
-                    query {
-                        for row in context.Nhambs.MbsPoolInsurers do
-                            where (row.PoolCusip = cusip)
-                            select row
-                    }
-                    |> Seq.sortByDescending (fun row -> row.DollarValue |> Option.defaultValue 0m)
-                    |> Seq.map (fun row ->
-                        {
-                            Name = row.Name
-                            DollarValue = defaultArg row.DollarValue 0m
-                            PercentOfLoans = defaultArg row.PercentOfLoans 0m
-                        })
-                    |> Seq.toArray
-
-                let locations =
-                    query {
-                        for row in context.Nhambs.MbsPoolLocations do
-                            where (row.PoolCusip = cusip)
-                            select row
-                    }
-                    |> Seq.sortByDescending (fun row -> row.PrincipalAmountPercent |> Option.defaultValue 0m)
-                    |> Seq.map (fun row ->
-                        {
-                            Province = row.ProvinceName
-                            LoansPercent = defaultArg row.LoansPercent 0m
-                            PrincipalAmountPercent = defaultArg row.PrincipalAmountPercent 0m
-                        })
-                    |> Seq.toArray
-
-                let bucketOrder =
-                    dict
-                        [
-                            "5 months", 0
-                            "4 months", 1
-                            "3 months", 2
-                            "2 months", 3
-                            "1 month", 4
-                            "At maturity", 5
-                            "Total", 6
-                        ]
-
-                let buckets =
-                    query {
-                        for row in context.Nhambs.MbsPoolScheduledMaturity do
-                            where (row.PoolCusip = cusip)
-                            select row
-                    }
-                    |> Seq.sortBy (fun row ->
-                        match bucketOrder.TryGetValue row.Bucket with
-                        | true, value -> value
-                        | _ -> 99)
-                    |> Seq.map (fun row ->
-                        {
-                            Bucket = row.Bucket
-                            RemainingFaceValue = defaultArg row.RemainingFaceValue 0m
-                            WeightedAverageRate = defaultArg row.WeightedAverageRate 0m
-                            WeightedAverageAmortization = defaultArg row.WeightedAverageAmortization 0m
-                            IndexSpreadTotal = defaultArg row.IndexSpreadTotal 0m
-                            IndexSpreadFullTerm = defaultArg row.IndexSpreadFullTerm 0m
-                            MonthlyPayment = defaultArg row.MonthlyPayment 0m
-                        })
-                    |> Seq.toArray
-
-                let bands =
-                    query {
-                        for row in context.Nhambs.MbsPoolRateBands do
-                            where (row.PoolCusip = cusip)
-                            select row
-                    }
-                    |> Seq.sortBy (fun row -> row.Id)
-                    |> Seq.map (fun row ->
-                        {
-                            RateBand = row.RateBand
-                            Total = defaultArg row.Total 0m
-                            PercentOfTotal = defaultArg row.PercentOfTotal 0m
-                            RemainingFaceValueByDate = parseDecimalArray row.RemainingFaceValueByDate
-                        })
-                    |> Seq.toArray
-
-                Some
+                |> Seq.sortByDescending (fun row -> row.DollarValue |> Option.defaultValue 0m)
+                |> Seq.map (fun row ->
                     {
-                        Row = poolRow
-                        Custodian = p.Custodian |> Option.defaultValue ""
-                        MortgageInsurer = p.MortgageInsurer |> Option.defaultValue ""
-                        FormVersion = p.FormVersion |> Option.defaultValue ""
-                        CouponKind = p.CouponKind |> Option.defaultValue ""
-                        CouponIndex = p.CouponIndex |> Option.defaultValue ""
-                        CouponSpread = defaultArg p.CouponSpreadPercent 0m
-                        CouponFixedRate = defaultArg p.CouponFixedRatePercent 0m
-                        FirstPaymentDue = dateText p.FirstPaymentDue
-                        FinalPaymentDue = dateText p.FinalPaymentDue
-                        WeightedAverageInterestAdjustmentDate = dateText p.WeightedAverageInterestAdjustmentDate
-                        WeightedAverageMaturityDate = dateText p.WeightedAverageMaturityDate
-                        ScheduledRemainingFaceValue = defaultArg p.ScheduledRemainingFaceValue 0m
-                        ScheduledWac = defaultArg p.ScheduledWac 0m
-                        ScheduledWam = defaultArg p.ScheduledWam 0m
-                        ScheduledIndexSpreadTotal = defaultArg p.ScheduledIndexSpreadTotal 0m
-                        ScheduledMonthlyPayment = defaultArg p.ScheduledMonthlyPayment 0m
-                        HomeownerPercent = defaultArg p.HomeownerPercent 0m
-                        MultipleFamilyPercent = defaultArg p.MultipleFamilyPercent 0m
-                        SocialHousingPercent = defaultArg p.SocialHousingPercent 0m
-                        RamByAmortization = parseDecimalArray p.RamByAmortization
-                        RamByTerm = parseDecimalArray p.RamByTerm
-                        InterestAdjustmentDates = parseStringArray p.InterestAdjustmentDates
-                        InterestTotals = [| parseByDate p.InterestAdjustmentTotals "Remaining face value" |]
-                        InterestPercent = [| parseByDate p.InterestAdjustmentPercent "Percent of total" |]
-                        InterestWac = parseDecimalArray p.InterestAdjustmentWac
-                        MaturityBuckets = buckets
-                        Insurers = insurers
-                        Locations = locations
-                        RateBands = bands
-                        PrepaymentBonaFideExempt = p.PrepaymentBonaFideExempt |> Option.defaultValue false
-                        PrepaymentSectionA = p.PrepaymentSectionA |> Option.defaultValue ""
-                        PrepaymentSectionB = p.PrepaymentSectionB |> Option.defaultValue ""
-                        PrepaymentOther = p.PrepaymentOtherDisclosures |> Option.defaultValue ""
-                        SourceFile = p.SourceFile |> Option.defaultValue ""
-                        IngestedAt = p.IngestedAt.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture)
+                        Name = row.Name
+                        DollarValue = defaultArg row.DollarValue 0m
+                        PercentOfLoans = defaultArg row.PercentOfLoans 0m
                     })
+                |> Seq.toArray
+
+            let locations =
+                query {
+                    for row in context.Nhambs.MbsPoolLocations do
+                        where (row.PoolCusip = cusip)
+                        select row
+                }
+                |> Seq.sortByDescending (fun row -> row.PrincipalAmountPercent |> Option.defaultValue 0m)
+                |> Seq.map (fun row ->
+                    {
+                        Province = row.ProvinceName
+                        LoansPercent = defaultArg row.LoansPercent 0m
+                        PrincipalAmountPercent = defaultArg row.PrincipalAmountPercent 0m
+                    })
+                |> Seq.toArray
+
+            let bucketOrder =
+                dict
+                    [
+                        "5 months", 0
+                        "4 months", 1
+                        "3 months", 2
+                        "2 months", 3
+                        "1 month", 4
+                        "At maturity", 5
+                        "Total", 6
+                    ]
+
+            let buckets =
+                query {
+                    for row in context.Nhambs.MbsPoolScheduledMaturity do
+                        where (row.PoolCusip = cusip)
+                        select row
+                }
+                |> Seq.sortBy (fun row ->
+                    match bucketOrder.TryGetValue row.Bucket with
+                    | true, value -> value
+                    | _ -> 99)
+                |> Seq.map (fun row ->
+                    {
+                        Bucket = row.Bucket
+                        RemainingFaceValue = defaultArg row.RemainingFaceValue 0m
+                        WeightedAverageRate = defaultArg row.WeightedAverageRate 0m
+                        WeightedAverageAmortization = defaultArg row.WeightedAverageAmortization 0m
+                        IndexSpreadTotal = defaultArg row.IndexSpreadTotal 0m
+                        IndexSpreadFullTerm = defaultArg row.IndexSpreadFullTerm 0m
+                        MonthlyPayment = defaultArg row.MonthlyPayment 0m
+                    })
+                |> Seq.toArray
+
+            let bands =
+                query {
+                    for row in context.Nhambs.MbsPoolRateBands do
+                        where (row.PoolCusip = cusip)
+                        select row
+                }
+                |> Seq.sortBy (fun row -> row.Id)
+                |> Seq.map (fun row ->
+                    {
+                        RateBand = row.RateBand
+                        Total = defaultArg row.Total 0m
+                        PercentOfTotal = defaultArg row.PercentOfTotal 0m
+                        RemainingFaceValueByDate = parseDecimalArray row.RemainingFaceValueByDate
+                    })
+                |> Seq.toArray
+
+            Some
+                {
+                    Row = poolRow
+                    Custodian = pool.Custodian
+                    MortgageInsurer = pool.MortgageInsurer
+                    FormVersion = pool.FormVersion
+                    CouponKind = pool.CouponKind
+                    CouponIndex = pool.CouponIndex
+                    CouponSpread = defaultArg pool.CouponSpreadPercent 0m
+                    CouponFixedRate = defaultArg pool.CouponFixedRatePercent 0m
+                    FirstPaymentDue = dateOption pool.FirstPaymentDue
+                    FinalPaymentDue = dateOption pool.FinalPaymentDue
+                    WeightedAverageInterestAdjustmentDate = dateOption pool.WeightedAverageInterestAdjustmentDate
+                    WeightedAverageMaturityDate = dateOption pool.WeightedAverageMaturityDate
+                    ScheduledRemainingFaceValue = defaultArg pool.ScheduledRemainingFaceValue 0m
+                    ScheduledWac = defaultArg pool.ScheduledWac 0m
+                    ScheduledWam = defaultArg pool.ScheduledWam 0m
+                    ScheduledIndexSpreadTotal = defaultArg pool.ScheduledIndexSpreadTotal 0m
+                    ScheduledMonthlyPayment = defaultArg pool.ScheduledMonthlyPayment 0m
+                    HomeownerPercent = defaultArg pool.HomeownerPercent 0m
+                    MultipleFamilyPercent = defaultArg pool.MultipleFamilyPercent 0m
+                    SocialHousingPercent = defaultArg pool.SocialHousingPercent 0m
+                    RamByAmortization = parseDecimalArray pool.RamByAmortization
+                    RamByTerm = parseDecimalArray pool.RamByTerm
+                    InterestAdjustmentDates = parseStringArray pool.InterestAdjustmentDates
+                    InterestTotals = [| parseByDate pool.InterestAdjustmentTotals "Remaining face value" |]
+                    InterestPercent = [| parseByDate pool.InterestAdjustmentPercent "Percent of total" |]
+                    InterestWac = parseDecimalArray pool.InterestAdjustmentWac
+                    MaturityBuckets = buckets
+                    Insurers = insurers
+                    Locations = locations
+                    RateBands = bands
+                    PrepaymentBonaFideExempt = pool.PrepaymentBonaFideExempt |> Option.defaultValue false
+                    PrepaymentSectionA = pool.PrepaymentSectionA
+                    PrepaymentSectionB = pool.PrepaymentSectionB
+                    PrepaymentOther = pool.PrepaymentOtherDisclosures
+                    SourceFile = pool.SourceFile
+                    IngestedAt = pool.IngestedAt.ToString("yyyy-MM-dd HH:mm 'UTC'", CultureInfo.InvariantCulture)
+                }

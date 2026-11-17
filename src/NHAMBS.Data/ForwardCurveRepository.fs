@@ -57,7 +57,7 @@ let private text (name: string) (element: JsonElement) =
             None
         else
             Some(value.ToString()))
-    |> Option.defaultValue ""
+    |> Option.toObj
 
 let private decimalValue (name: string) (element: JsonElement) =
     tryProperty name element

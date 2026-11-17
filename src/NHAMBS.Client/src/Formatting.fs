@@ -111,6 +111,16 @@ let months (value: decimal) =
     else
         sprintf "%s mo" (value.ToString("N0"))
 
+let textOrEmpty (value: string option) =
+    match value with
+    | Some text -> text
+    | None -> ""
+
+let optionText (value: string option) =
+    match value with
+    | Some text when not (String.IsNullOrWhiteSpace text) -> text
+    | _ -> "—"
+
 let dateShort (value: string) =
     if String.IsNullOrWhiteSpace value || value.Length < 10 then
         "—"
@@ -142,6 +152,16 @@ let titleCase (value: string) =
         ""
     else
         value.Substring(0, 1).ToUpperInvariant() + value.Substring(1)
+
+let dateShortOption (value: string option) =
+    match value with
+    | Some text -> dateShort text
+    | None -> "—"
+
+let titleCaseOption (value: string option) =
+    match value with
+    | Some text -> titleCase text
+    | None -> "—"
 
 let poolTypeLabel (code: string) (description: string) =
     if String.IsNullOrWhiteSpace code then

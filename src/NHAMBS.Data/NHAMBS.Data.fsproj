@@ -6,7 +6,6 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="10.1.404" />
     <Compile Include="Provider.fs" />
-    <Compile Include="Database.fs" />
     <Compile Include="MbsRepository.fs" />
     <Compile Include="ChtRepository.fs" />
     <Compile Include="CoveredBondRepository.fs" />

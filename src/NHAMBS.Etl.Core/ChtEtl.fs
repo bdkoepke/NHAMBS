@@ -24,6 +24,7 @@ let private designationFromFile (path: string) =
 let private insertIssue
     (connection: NpgsqlConnection)
     (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
     (root: JsonElement)
     (asOf: string)
     =
@@ -34,12 +35,12 @@ let private insertIssue
                 (series, settlement_date, coupon_display, coupon_kind, coupon_fixed_rate_percent,
                  coupon_index, coupon_spread_percent, maturity_date, currency, interest_payment_frequency,
                  issued_to_investors, issued_to_government_of_canada, total_issuance, outstanding,
-                 identifier, outstanding_history_url, source_url, as_of_date, raw)
+                 identifier, outstanding_history_url, source_url, as_of_date, source_file_id, raw)
             VALUES
                 (@series, @settlement_date, @coupon_display, @coupon_kind, @coupon_fixed,
                  @coupon_index, @coupon_spread, @maturity_date, @currency, @frequency,
                  @issued_investors, @issued_government, @total_issuance, @outstanding,
-                 @identifier, @history_url, @source_url, @as_of_date, @raw::jsonb)
+                 @identifier, @history_url, @source_url, @as_of_date, @source_file_id, @raw::jsonb)
             RETURNING id;
             """,
             connection,
@@ -89,6 +90,7 @@ let private insertIssue
          | Some d -> box d
          | None -> box DBNull.Value)
 
+    add "source_file_id" sourceFileId
     add "raw" (root.GetRawText())
 
     command.ExecuteScalar() :?> int
@@ -118,20 +120,30 @@ let private insertOffering
         command.Parameters.AddWithValue("url", stringOr [ "url" ] "" offering) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-let private loadIssues (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (path: string) =
+let private loadIssues
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (path: string)
+    =
     use document = readJson path
     let root = document.RootElement
     let asOf = stringOr [ "asOfDate" ] "" root
     let mutable count = 0
 
     for issue in arrayItems [ "issues" ] root do
-        let id = insertIssue connection transaction issue asOf
+        let id = insertIssue connection transaction sourceFileId issue asOf
         insertOffering connection transaction id issue
         count <- count + 1
 
     count
 
-let private insertCircular (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (path: string) =
+let private insertCircular
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (path: string)
+    =
     use document = readJson path
     let root = document.RootElement
     let series = stringOr [ "series" ] "" root
@@ -145,13 +157,15 @@ let private insertCircular (connection: NpgsqlConnection) (transaction: NpgsqlTr
                  coupon_display, coupon_kind, coupon_fixed_rate_percent, coupon_index, coupon_spread_percent,
                  maturity_date, issue_price_percent, yield_percent, settlement_date, first_interest_payment_date,
                  interest_payment_frequency, minimum_denomination, issuer_name, guarantor_name,
-                 legal_entity_identifier, listing_exchange, common_code, isin, cusip, source_url, raw)
+                 legal_entity_identifier, listing_exchange, common_code, isin, cusip, source_url,
+                 source_file_id, raw)
             VALUES
                 (@series, @designation, @document_date, @currency, @aggregate_principal,
                  @coupon_display, @coupon_kind, @coupon_fixed, @coupon_index, @coupon_spread,
                  @maturity_date, @issue_price, @yield, @settlement_date, @first_interest,
                  @frequency, @minimum_denomination, @issuer_name, @guarantor_name,
-                 @lei, @listing_exchange, @common_code, @isin, @cusip, @source_url, @raw::jsonb)
+                 @lei, @listing_exchange, @common_code, @isin, @cusip, @source_url,
+                 @source_file_id, @raw::jsonb)
             RETURNING id;
             """,
             connection,
@@ -202,6 +216,7 @@ let private insertCircular (connection: NpgsqlConnection) (transaction: NpgsqlTr
     addText "isin" [ "identifiers"; "isin" ]
     addText "cusip" [ "identifiers"; "cusip" ]
     addText "source_url" [ "sourceUrl" ]
+    add "source_file_id" sourceFileId
     add "raw" (root.GetRawText())
 
     let id = command.ExecuteScalar() :?> int
@@ -242,7 +257,12 @@ let private insertCircular (connection: NpgsqlConnection) (transaction: NpgsqlTr
 
     id
 
-let private insertHistory (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (path: string) =
+let private insertHistory
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (path: string)
+    =
     use document = readJson path
     let root = document.RootElement
 
@@ -251,10 +271,12 @@ let private insertHistory (connection: NpgsqlConnection) (transaction: NpgsqlTra
             """
             INSERT INTO nhambs.cht_outstanding_history
                 (series, title, as_of_date, coupon_display, coupon_kind, coupon_fixed_rate_percent,
-                 coupon_index, coupon_spread_percent, maturity_date, identifier, source_url, raw)
+                 coupon_index, coupon_spread_percent, maturity_date, identifier, source_url,
+                 source_file_id, raw)
             VALUES
                 (@series, @title, @as_of_date, @coupon_display, @coupon_kind, @coupon_fixed,
-                 @coupon_index, @coupon_spread, @maturity_date, @identifier, @source_url, @raw::jsonb)
+                 @coupon_index, @coupon_spread, @maturity_date, @identifier, @source_url,
+                 @source_file_id, @raw::jsonb)
             RETURNING id;
             """,
             connection,
@@ -291,6 +313,7 @@ let private insertHistory (connection: NpgsqlConnection) (transaction: NpgsqlTra
     addDate "maturity_date" [ "maturityDate" ]
     addText "identifier" [ "identifier" ]
     addText "source_url" [ "sourceUrl" ]
+    add "source_file_id" sourceFileId
     add "raw" (root.GetRawText())
 
     let historyId = command.ExecuteScalar() :?> int
@@ -340,8 +363,13 @@ let private insertHistory (connection: NpgsqlConnection) (transaction: NpgsqlTra
 
     historyId, cancellations.Length
 
-let private loadHistory (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) (path: string) =
-    insertHistory connection transaction path
+let private loadHistory
+    (connection: NpgsqlConnection)
+    (transaction: NpgsqlTransaction)
+    (sourceFileId: int64)
+    (path: string)
+    =
+    insertHistory connection transaction sourceFileId path
 
 let run (dataDir: string) =
     let debtPath = Path.Combine(dataDir, "debt-issues.json")
@@ -375,6 +403,15 @@ let run (dataDir: string) =
     let stopwatch = Stopwatch.StartNew()
 
     try
+        log "  landing source files in raw..."
+
+        let sourceIds =
+            writeRawFiles
+                runConnection
+                runId
+                "cht"
+                ([ debtPath ] @ (circularFiles |> Array.toList) @ (historyFiles |> Array.toList))
+
         use connection = new NpgsqlConnection(connectionStringValue)
         connection.Open()
 
@@ -388,7 +425,10 @@ let run (dataDir: string) =
 
         use transaction = connection.BeginTransaction()
         log "  loading CHT outstanding issues..."
-        let issueCount = loadIssues connection transaction debtPath
+
+        let issueCount =
+            loadIssues connection transaction (sourceFileId sourceIds debtPath) debtPath
+
         log "  loading CHT offering circulars..."
 
         let mutable circularCount = 0
@@ -396,7 +436,9 @@ let run (dataDir: string) =
 
         for path in circularFiles do
             try
-                insertCircular connection transaction path |> ignore
+                insertCircular connection transaction (sourceFileId sourceIds path) path
+                |> ignore
+
                 circularCount <- circularCount + 1
             with ex ->
                 skipped <- skipped + 1
@@ -409,7 +451,9 @@ let run (dataDir: string) =
 
         for path in historyFiles do
             try
-                let _, cancellations = loadHistory connection transaction path
+                let _, cancellations =
+                    loadHistory connection transaction (sourceFileId sourceIds path) path
+
                 historyCount <- historyCount + 1
                 cancellationCount <- cancellationCount + cancellations
             with ex ->

@@ -127,6 +127,15 @@ let ``parseText parses an OCR digit in the mortgage loan count`` () =
     Assert.Equal(41, (at [ "addendum"; "totalNumberOfMortgageLoans" ] root).GetValue<int>())
 
 [<Fact>]
+let ``parseText normalizes a roman-numeral OCR day in the weighted-average maturity`` () =
+    let mangled =
+        Regex.Replace(text, @"(Weighted Average Maturity Date:\s+)May 5, 2021", "${1}May V1, 2081")
+
+    let root = CircularPdf.parseText mangled
+
+    Assert.Equal("2081-05-11", stringAt [ "addendum"; "weightedAverageMaturityDate" ] root)
+
+[<Fact>]
 let ``parseTextWithPoolNumber prefers the manifest pool number`` () =
     let root = CircularPdf.parseTextWithPoolNumber (Some "97-007-371") text
 

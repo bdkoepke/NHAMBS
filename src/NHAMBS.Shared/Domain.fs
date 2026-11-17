@@ -53,9 +53,9 @@ module Domain =
             CouponDisplay: string
             CouponValue: decimal
             Principal: decimal
-            IssueDate: string
-            SettlementDate: string
-            MaturityDate: string
+            IssueDate: string option
+            SettlementDate: string option
+            MaturityDate: string option
             Loans: int
             Wac: decimal
             Wam: decimal
@@ -124,7 +124,7 @@ module Domain =
             LoanCount: int
             AverageCoupon: decimal
             AverageWam: decimal
-            NewestIssueDate: string
+            NewestIssueDate: string option
             Monthly: SeriesPoint[]
             ByProvince: ProvinceSummary[]
             ByRateType: CategoryPoint[]
@@ -144,8 +144,8 @@ module Domain =
             PoolTypes: CodeLabel[]
             Insurers: string[]
             Provinces: string[]
-            MinIssueDate: string
-            MaxIssueDate: string
+            MinIssueDate: string option
+            MaxIssueDate: string option
         }
 
     and CodeLabel = { Code: string; Label: string }
@@ -188,17 +188,17 @@ module Domain =
     type MbsPoolDetail =
         {
             Row: MbsPoolRow
-            Custodian: string
-            MortgageInsurer: string
-            FormVersion: string
-            CouponKind: string
-            CouponIndex: string
+            Custodian: string option
+            MortgageInsurer: string option
+            FormVersion: string option
+            CouponKind: string option
+            CouponIndex: string option
             CouponSpread: decimal
             CouponFixedRate: decimal
-            FirstPaymentDue: string
-            FinalPaymentDue: string
-            WeightedAverageInterestAdjustmentDate: string
-            WeightedAverageMaturityDate: string
+            FirstPaymentDue: string option
+            FinalPaymentDue: string option
+            WeightedAverageInterestAdjustmentDate: string option
+            WeightedAverageMaturityDate: string option
             ScheduledRemainingFaceValue: decimal
             ScheduledWac: decimal
             ScheduledWam: decimal
@@ -218,10 +218,10 @@ module Domain =
             Locations: LocationAllocation[]
             RateBands: RateBand[]
             PrepaymentBonaFideExempt: bool
-            PrepaymentSectionA: string
-            PrepaymentSectionB: string
-            PrepaymentOther: string
-            SourceFile: string
+            PrepaymentSectionA: string option
+            PrepaymentSectionB: string option
+            PrepaymentOther: string option
+            SourceFile: string option
             IngestedAt: string
         }
 
@@ -229,29 +229,29 @@ module Domain =
         {
             IssueId: int
             Series: string
-            SettlementDate: string
-            CouponDisplay: string
-            CouponKind: string
+            SettlementDate: string option
+            CouponDisplay: string option
+            CouponKind: string option
             CouponValue: decimal
-            MaturityDate: string
-            Currency: string
-            InterestPaymentFrequency: string
+            MaturityDate: string option
+            Currency: string option
+            InterestPaymentFrequency: string option
             IssuedToInvestors: decimal
             IssuedToGovernment: decimal
             TotalIssuance: decimal
             Outstanding: decimal
-            Identifier: string
+            Identifier: string option
             CircularCount: int
             HistoryAvailable: bool
             CancellationCount: int
             CancelledMillions: decimal
-            SourceUrl: string
+            SourceUrl: string option
         }
 
     type ChtCancellationRow =
         {
-            FromDate: string
-            ToDate: string
+            FromDate: string option
+            ToDate: string option
             CancelledAmount: decimal
         }
 
@@ -259,19 +259,19 @@ module Domain =
         {
             HistoryId: int
             Series: string
-            AsOfDate: string
-            Title: string
-            CouponDisplay: string
-            CouponKind: string
+            AsOfDate: string option
+            Title: string option
+            CouponDisplay: string option
+            CouponKind: string option
             CouponValue: decimal
-            MaturityDate: string
-            Identifier: string
+            MaturityDate: string option
+            Identifier: string option
             CancellationCount: int
             CancelledMillions: decimal
-            FirstCancellationDate: string
-            LastCancellationDate: string
+            FirstCancellationDate: string option
+            LastCancellationDate: string option
             Cancellations: ChtCancellationRow[]
-            SourceUrl: string
+            SourceUrl: string option
         }
 
     type ChtCircularRow =
@@ -279,27 +279,27 @@ module Domain =
             CircularId: int
             Series: string
             Designation: string
-            DocumentDate: string
-            Currency: string
+            DocumentDate: string option
+            Currency: string option
             AggregatePrincipalAmount: decimal
-            CouponDisplay: string
-            CouponKind: string
+            CouponDisplay: string option
+            CouponKind: string option
             CouponValue: decimal
-            MaturityDate: string
+            MaturityDate: string option
             IssuePricePercent: decimal
-            SettlementDate: string
-            FirstInterestPaymentDate: string
-            InterestPaymentFrequency: string
+            SettlementDate: string option
+            FirstInterestPaymentDate: string option
+            InterestPaymentFrequency: string option
             MinimumDenomination: decimal
-            IssuerName: string
-            Isin: string
-            Cusip: string
-            CommonCode: string
-            LegalEntityIdentifier: string
-            ListingExchange: string
+            IssuerName: string option
+            Isin: string option
+            Cusip: string option
+            CommonCode: string option
+            LegalEntityIdentifier: string option
+            ListingExchange: string option
             Ratings: string
             YieldPercent: decimal
-            SourceUrl: string
+            SourceUrl: string option
         }
 
     type ChtAnalytics =
@@ -309,11 +309,11 @@ module Domain =
             IssueCount: int
             CircularCount: int
             AverageCoupon: decimal
-            NextMaturityDate: string
+            NextMaturityDate: string option
             HistoryCount: int
             CancellationCount: int
             CancelledMillions: decimal
-            HistoryAsOfDate: string
+            HistoryAsOfDate: string option
             ByMaturityYear: SeriesPoint[]
             ByCouponBucket: CategoryPoint[]
             ByCurrency: CategoryPoint[]
@@ -330,12 +330,12 @@ module Domain =
     type CoveredBondRegistryRow =
         {
             Name: string
-            Status: string
-            RegistrationDate: string
-            BusinessAddress: string
-            WebsiteUrl: string
-            ProgramPage: string
-            ProgramName: string
+            Status: string option
+            RegistrationDate: string option
+            BusinessAddress: string option
+            WebsiteUrl: string option
+            ProgramPage: string option
+            ProgramName: string option
             MinimumAssetPercentage: decimal
             MaximumAssetPercentage: decimal
             BondCount: int
@@ -350,9 +350,9 @@ module Domain =
             MaximumAssetPercentage: decimal
             BondCount: int
             Currencies: string
-            EarliestMaturity: string
-            LatestMaturity: string
-            SourceUrl: string
+            EarliestMaturity: string option
+            LatestMaturity: string option
+            SourceUrl: string option
         }
 
     type CoveredBondRow =
@@ -361,20 +361,20 @@ module Domain =
             ProgramId: int
             IssuerName: string
             ProgramName: string
-            SeriesDesignation: string
-            IssueCurrency: string
+            SeriesDesignation: string option
+            IssueCurrency: string option
             NominalAmount: decimal
-            Isin: string
-            CouponDisplay: string
-            CouponKind: string
+            Isin: string option
+            CouponDisplay: string option
+            CouponKind: string option
             CouponValue: decimal
-            IssueDate: string
-            RegistrationDate: string
-            MaturityDate: string
-            ExtendedMaturityDate: string
-            BulletType: string
-            InterestPaymentFrequency: string
-            ListingAuthority: string
+            IssueDate: string option
+            RegistrationDate: string option
+            MaturityDate: string option
+            ExtendedMaturityDate: string option
+            BulletType: string option
+            InterestPaymentFrequency: string option
+            ListingAuthority: string option
         }
 
     type CoveredBondAnalytics =
@@ -383,8 +383,8 @@ module Domain =
             BondCount: int
             CurrencyCount: int
             IssuerCount: int
-            EarliestMaturity: string
-            LatestMaturity: string
+            EarliestMaturity: string option
+            LatestMaturity: string option
             ByCurrency: CategoryPoint[]
             ByMaturityYear: SeriesPoint[]
             ByProgram: CategoryPoint[]

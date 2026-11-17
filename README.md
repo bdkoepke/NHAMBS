@@ -34,11 +34,11 @@ NHAMBS.Etl (Elsa CLI)      NHAMBS.ElsaServer (Elsa Server + Studio)
 NHAMBS.Workflows (Elsa workflows + activities)
         │
         ▼
-NHAMBS.Etl.Core ── bulk COPY ──▶ PostgreSQL (schemas: nhambs, elsa)
+NHAMBS.Etl.Core ── bulk COPY ──▶ PostgreSQL (schemas: raw, nhambs, elsa)
         │                         │
         │                         ├── FluentMigrator migrations
-        │                         ├── typed reads via SQLProvider
-        │                         └── reporting queries via parameterized SQL
+        │                         ├── typed reads via SQLProvider LINQ
+        │                         └── tables and analytics views in nhambs
         ▼
 NHAMBS.Server (Saturn + Fable.Remoting)
         │
@@ -312,14 +312,30 @@ the server and open `http://localhost:8085`.
 
 ## Database model
 
-Schema `nhambs`:
+The warehouse keeps raw source documents in `raw` and all conformed tables and
+analytics views in `nhambs`. See
+[`docs/data-lineage.md`](docs/data-lineage.md) for the layer boundaries,
+retention policy and full lineage diagram.
+
+**Raw (`raw`)**
+
+- `source_files` — one raw JSON document per source file with path, filename,
+  SHA-256 checksum, size, source timestamp, ETL run id and load timestamp.
+
+**Conformed tables (`nhambs`)**
 
 - `mbs_pools` — one row per NHA MBS pool keyed by CUSIP, with issuer, coupon,
   principal, dates, loan counts, scheduled maturity totals and JSONB series.
+  `source_file_id` points back to the raw document.
 - `mbs_pool_insurers` — insurer dollar and percentage allocations.
 - `mbs_pool_locations` — provincial loan and principal allocations.
 - `mbs_pool_scheduled_maturity` — 1/2/3/4/5-month, at-maturity and total buckets.
 - `mbs_pool_rate_bands` — interest-rate bands and remaining face values by date.
+- `issuers` / `insurers` — canonical entity reference tables with stable
+  surrogate ids; facts link through `issuer_id` / `insurer_id`.
+- `issuer_aliases` — normalized source-name key to canonical issuer key/name.
+  The ETL and `nhambs` views join through this table rather than a hard-coded
+  application map.
 - `cht_issues` / `cht_offering_circulars` — outstanding CHT series and circular
   links.
 - `cht_circulars` / `cht_circular_ratings` / `cht_circular_payment_dates` —
@@ -328,22 +344,33 @@ Schema `nhambs`:
   per-series history of bond purchases for cancellation and its periods.
 - `covered_bond_programs` / `covered_bond_parties` / `covered_bonds` /
   `covered_bond_isins` / `covered_bond_registry` — covered bond registry.
+
+**Analytics views (`nhambs`)**
+
+Dashboard views are built from the `nhambs` tables only: `v_mbs_pool_grid`, `v_mbs_monthly`,
+`v_mbs_issuer_summary`, `v_mbs_province_summary`, `v_mbs_rate_type_summary`,
+`v_mbs_pool_type_summary`, `v_mbs_insurer_summary`, `v_mbs_maturity_summary`,
+`v_mbs_unresolved_entities`, `v_covered_bond_program_summary`,
+`v_covered_bond_registry_summary`, `v_cht_summary` and
+`v_cht_history_summary`.
+
+**Operations (`nhambs` / `elsa`)**
+
 - `etl_runs` — loader audit trail.
 - `etl_anomalies` — detected data-quality issues, including corrected values.
 - `elsa.*` — Elsa workflow definitions, runtime instances, triggers, users and
   operational history maintained by `NHAMBS.ElsaServer` in the `elsa` schema.
 
-Dashboard views include `v_mbs_pool_grid`, `v_mbs_monthly`,
-`v_mbs_issuer_summary`, `v_mbs_province_summary`, `v_mbs_rate_type_summary`,
-`v_mbs_pool_type_summary`, `v_mbs_insurer_summary`, `v_mbs_maturity_summary`,
-`v_covered_bond_program_summary`, `v_covered_bond_registry_summary`,
-`v_cht_summary` and `v_cht_history_summary`.
-
-The ETL normalizes issuer names before load so variants such as
-`The Bank of Nova Scotia` and `Bank of Nova Scotia`, or upper/lower-case
-`MERRILL LYNCH CANADA INC.`, group together in the issuer views. It also
-repairs a recurring font-encoding artifact found in a small number of source
-circulars so the issuer filters stay readable.
+The ETL cleans issuer names and stores the normalized key plus the source
+display text. Canonical names are resolved from `nhambs.issuer_aliases`; add a
+row there for a new spelling or OCR variant. Exact aliases win, and near
+matches use PostgreSQL's built-in `fuzzystrmatch` functions
+(`levenshtein_less_equal` plus a `dmetaphone` guard) rather than a custom
+edit-distance implementation. Insurer labels are normalized
+across case, spacing, legal suffixes and common boilerplate; combined labels
+such as `CMHC and Sagen` are expanded to the canonical names.
+`nhambs.v_mbs_unresolved_entities` is the review queue for anything that still
+cannot be resolved.
 
 ## SQLProvider offline schema
 
@@ -362,11 +389,11 @@ The helper opens the local database, touches every table and view, and writes
 the schema used at compile time. Runtime data access still uses
 `NHAMBS_CONNECTION`.
 
-SQLProvider is used for typed entity reads (pool detail, filter options, ETL
-metadata and other low-cardinality reads). The high-cardinality, dynamically
-filtered reporting endpoints use parameterized `NpgsqlCommand` queries through
-the same data layer, with sort columns and directions selected from a
-whitelist.
+SQLProvider is used for all repository reads: pool search and detail, filter
+options, analytics inputs, CHT, covered bonds and ETL metadata. The data layer
+uses LINQ queries against the `nhambs` tables and analytics views; filtering and
+presentation aggregation that SQLProvider cannot express cleanly are done in F#
+over those typed results.
 
 ## API contract
 

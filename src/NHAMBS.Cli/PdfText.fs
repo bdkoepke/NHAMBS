@@ -333,6 +333,8 @@ let private normalizeOcr (text: string) =
             "Febuary", "February"
             "Srptember", "September"
             "Welghted", "Weighted"
+            "Wieghted", "Weighted"
+            "Mave", "May"
             "Maturlty", "Maturity"
             "MBS Maturlty", "MBS Maturity"
             "Sacial", "Social"

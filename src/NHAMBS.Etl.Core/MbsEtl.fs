@@ -68,51 +68,11 @@ let private iterPools (files: PoolFile[]) (action: PoolFile -> JsonElement -> un
 
     processed, skipped
 
-let private canonicalIssuers (files: PoolFile[]) =
-    let variants = Dictionary<string, Dictionary<string, int>>()
-    let mutable skipped = 0
-
-    for file in files do
-        try
-            use document = readJson file.Path
-            let root = document.RootElement
-
-            match optString [ "parties"; "issuerName" ] root with
-            | Some rawIssuer when not (String.IsNullOrWhiteSpace rawIssuer) ->
-                let issuer = repairShiftedName rawIssuer
-                let key = normalizeIssuer issuer
-
-                if not (variants.ContainsKey key) then
-                    variants.[key] <- Dictionary<string, int>()
-
-                let counts = variants.[key]
-
-                if counts.ContainsKey issuer then
-                    counts.[issuer] <- counts.[issuer] + 1
-                else
-                    counts.[issuer] <- 1
-            | _ -> ()
-        with _ ->
-            skipped <- skipped + 1
-
-    let canonical = Dictionary<string, string>()
-
-    for kv in variants do
-        let best =
-            kv.Value
-            |> Seq.sortBy (fun pair -> -pair.Value, pair.Key)
-            |> Seq.head
-            |> fun pair -> pair.Key
-
-        canonical.[kv.Key] <- best
-
-    canonical, skipped
-
 let private writeMbsPools
     (connection: NpgsqlConnection)
     (files: PoolFile[])
     (urls: Dictionary<string, string>)
-    (issuers: Dictionary<string, string>)
+    (sourceIds: Dictionary<string, int64>)
     =
     let started = DateTime.UtcNow
 
@@ -165,6 +125,7 @@ let private writeMbsPools
             "prepayment_other_disclosures"
             "source_url"
             "source_file"
+            "source_file_id"
             "source_modified_at"
             "ingested_at"
             "raw"
@@ -200,15 +161,10 @@ let private writeMbsPools
 
             let issuer =
                 optString [ "parties"; "issuerName" ] root
-                |> Option.map repairShiftedName
+                |> Option.map issuerDisplayName
                 |> Option.defaultValue "Unknown issuer"
 
             let issuerKey = normalizeIssuer issuer
-
-            let canonical =
-                match issuers.TryGetValue issuerKey with
-                | true, value -> value
-                | _ -> issuer
 
             let sourceUrl =
                 match urls.TryGetValue file.Cusip with
@@ -257,10 +213,16 @@ let private writeMbsPools
 
             writer.Write(file.Cusip)
             writer.Write(stringOr [ "mbs"; "poolNumber" ] "" root)
-            writer.Write(canonical)
+            writer.Write(issuer)
             writer.Write(issuerKey)
             stringOpt [ "parties"; "custodian" ] root
-            stringOpt [ "parties"; "mortgageInsurer" ] root
+
+            writeOption
+                writer
+                (optString [ "parties"; "mortgageInsurer" ] root
+                 |> Option.map canonicalInsurerName)
+                (fun value -> writer.Write(value))
+
             stringOpt [ "rateType" ] root
             stringOpt [ "poolType" ] root
             stringOpt [ "formVersion" ] root
@@ -316,6 +278,7 @@ let private writeMbsPools
             stringOpt [ "prepaymentProvisions"; "otherDisclosures" ] root
             writeOption writer sourceUrl (fun value -> writer.Write(value))
             writer.Write(Path.GetFileName(file.Path))
+            writer.Write(sourceFileId sourceIds file.Path)
             writer.WriteTimestampTz(modified)
             writer.WriteTimestampTz(started)
             writer.WriteJson(root.GetRawText()))
@@ -335,7 +298,7 @@ let private writeInsurers (connection: NpgsqlConnection) (files: PoolFile[]) =
         for insurer in arrayItems [ "addendum"; "insurerProfile"; "insurers" ] root do
             writer.StartRow()
             writer.Write(file.Cusip)
-            writer.Write(stringOr [ "name" ] "" insurer)
+            writer.Write(canonicalInsurerName (stringOr [ "name" ] "" insurer))
             writeOption writer (optDecimal [ "dollarValue" ] insurer) (fun value -> writer.Write(value))
             writeOption writer (optDecimal [ "percentOfLoans" ] insurer) (fun value -> writer.Write(value)))
     |> ignore
@@ -476,6 +439,72 @@ let private writeRateBands (connection: NpgsqlConnection) (files: PoolFile[]) =
 
     writer.Complete()
 
+let private refreshReferenceEntities (connection: NpgsqlConnection) (transaction: NpgsqlTransaction) =
+    use command =
+        new NpgsqlCommand(
+            """
+            WITH raw AS (
+                SELECT DISTINCT issuer_key, issuer_name
+                FROM nhambs.mbs_pools
+            ),
+            resolved AS (
+                SELECT
+                    r.issuer_key AS raw_key,
+                    COALESCE(a.canonical_key, r.issuer_key) AS canonical_key,
+                    COALESCE(a.canonical_name, r.issuer_name) AS canonical_name
+                FROM raw r
+                LEFT JOIN LATERAL nhambs.resolve_issuer_alias(r.issuer_key) a ON true
+            ),
+            canonical AS (
+                SELECT DISTINCT ON (canonical_key) canonical_key, canonical_name
+                FROM resolved
+                ORDER BY canonical_key, canonical_name
+            )
+            INSERT INTO nhambs.issuers (issuer_key, canonical_name)
+            SELECT canonical_key, canonical_name
+            FROM canonical
+            ON CONFLICT (issuer_key) DO UPDATE SET canonical_name = EXCLUDED.canonical_name;
+
+            WITH raw AS (
+                SELECT DISTINCT issuer_key, issuer_name
+                FROM nhambs.mbs_pools
+            ),
+            resolved AS (
+                SELECT
+                    r.issuer_key AS raw_key,
+                    COALESCE(a.canonical_key, r.issuer_key) AS canonical_key
+                FROM raw r
+                LEFT JOIN LATERAL nhambs.resolve_issuer_alias(r.issuer_key) a ON true
+            )
+            UPDATE nhambs.mbs_pools p
+            SET issuer_id = i.issuer_id
+            FROM resolved r
+            JOIN nhambs.issuers i ON i.issuer_key = r.canonical_key
+            WHERE p.issuer_key = r.raw_key;
+
+            DELETE FROM nhambs.issuers i
+            WHERE NOT EXISTS (SELECT 1 FROM nhambs.mbs_pools p WHERE p.issuer_id = i.issuer_id);
+
+            INSERT INTO nhambs.insurers (insurer_key, canonical_name)
+            SELECT lower(name), MIN(name)
+            FROM nhambs.mbs_pool_insurers
+            GROUP BY lower(name)
+            ON CONFLICT (insurer_key) DO UPDATE SET canonical_name = EXCLUDED.canonical_name;
+
+            UPDATE nhambs.mbs_pool_insurers x
+            SET insurer_id = i.insurer_id
+            FROM nhambs.insurers i
+            WHERE i.insurer_key = lower(x.name);
+
+            DELETE FROM nhambs.insurers i
+            WHERE NOT EXISTS (SELECT 1 FROM nhambs.mbs_pool_insurers x WHERE x.insurer_id = i.insurer_id);
+            """,
+            connection,
+            Transaction = transaction
+        )
+
+    command.ExecuteNonQuery() |> ignore
+
 let private writeAnomalies
     (connection: NpgsqlConnection)
     (transaction: NpgsqlTransaction)
@@ -522,6 +551,11 @@ let run (poolsDir: string) (manifestPath: string) =
     let stopwatch = Stopwatch.StartNew()
 
     try
+        log "  landing source files in raw..."
+
+        let sourceIds =
+            writeRawFiles runConnection runId "mbs" (files |> Array.map (fun file -> file.Path))
+
         use connection = new NpgsqlConnection(connectionStringValue)
         connection.Open()
 
@@ -532,12 +566,9 @@ let run (poolsDir: string) (manifestPath: string) =
 
         truncate.ExecuteNonQuery() |> ignore
 
-        log "  resolving issuer aliases..."
-        let issuers, issuerSkipped = canonicalIssuers files
-        log (sprintf "  %d canonical issuers (%d unreadable files)" issuers.Count issuerSkipped)
-
         log "  loading pool headers..."
-        let written, skipped, anomalies = writeMbsPools connection files urls issuers
+
+        let written, skipped, anomalies = writeMbsPools connection files urls sourceIds
 
         log (sprintf "  recording %d data anomalies..." anomalies.Length)
         writeAnomalies connection transaction runId anomalies
@@ -553,6 +584,9 @@ let run (poolsDir: string) (manifestPath: string) =
 
         log "  loading interest-rate bands..."
         writeRateBands connection files |> ignore
+
+        log "  refreshing issuer and insurer reference entities..."
+        refreshReferenceEntities connection transaction
 
         transaction.Commit()
         stopwatch.Stop()

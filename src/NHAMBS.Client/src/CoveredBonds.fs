@@ -26,9 +26,9 @@ let private programRows (programs: CoveredBondProgramRow[]) =
                 "maximum" ==> program.MaximumAssetPercentage
                 "bonds" ==> program.BondCount
                 "currencies" ==> program.Currencies
-                "earliest" ==> program.EarliestMaturity
-                "latest" ==> program.LatestMaturity
-                "sourceUrl" ==> program.SourceUrl
+                "earliest" ==> textOrEmpty program.EarliestMaturity
+                "latest" ==> textOrEmpty program.LatestMaturity
+                "sourceUrl" ==> textOrEmpty program.SourceUrl
             ])
 
 let private programColumns =
@@ -51,18 +51,18 @@ let private bondRows (bonds: CoveredBondRow[]) =
             [
                 "issuer" ==> bond.IssuerName
                 "program" ==> bond.ProgramName
-                "series" ==> bond.SeriesDesignation
-                "currency" ==> bond.IssueCurrency
+                "series" ==> textOrEmpty bond.SeriesDesignation
+                "currency" ==> textOrEmpty bond.IssueCurrency
                 "nominal" ==> bond.NominalAmount
-                "isin" ==> bond.Isin
-                "coupon" ==> bond.CouponDisplay
+                "isin" ==> textOrEmpty bond.Isin
+                "coupon" ==> textOrEmpty bond.CouponDisplay
                 "couponValue" ==> bond.CouponValue
-                "issueDate" ==> bond.IssueDate
-                "maturityDate" ==> bond.MaturityDate
-                "extendedMaturityDate" ==> bond.ExtendedMaturityDate
-                "bullet" ==> titleCase bond.BulletType
-                "frequency" ==> titleCase bond.InterestPaymentFrequency
-                "listing" ==> bond.ListingAuthority
+                "issueDate" ==> textOrEmpty bond.IssueDate
+                "maturityDate" ==> textOrEmpty bond.MaturityDate
+                "extendedMaturityDate" ==> textOrEmpty bond.ExtendedMaturityDate
+                "bullet" ==> titleCaseOption bond.BulletType
+                "frequency" ==> titleCaseOption bond.InterestPaymentFrequency
+                "listing" ==> textOrEmpty bond.ListingAuthority
             ])
 
 let private bondColumns =
@@ -97,15 +97,15 @@ let private registryRows (registry: CoveredBondRegistryRow[]) =
         createObj
             [
                 "name" ==> issuer.Name
-                "status" ==> titleCase issuer.Status
-                "registrationDate" ==> issuer.RegistrationDate
-                "program" ==> issuer.ProgramName
+                "status" ==> titleCaseOption issuer.Status
+                "registrationDate" ==> textOrEmpty issuer.RegistrationDate
+                "program" ==> textOrEmpty issuer.ProgramName
                 "minimum" ==> issuer.MinimumAssetPercentage
                 "maximum" ==> issuer.MaximumAssetPercentage
                 "bonds" ==> issuer.BondCount
-                "address" ==> issuer.BusinessAddress
-                "websiteUrl" ==> absoluteUrl issuer.WebsiteUrl
-                "programPage" ==> absoluteUrl issuer.ProgramPage
+                "address" ==> textOrEmpty issuer.BusinessAddress
+                "websiteUrl" ==> absoluteUrl (textOrEmpty issuer.WebsiteUrl)
+                "programPage" ==> absoluteUrl (textOrEmpty issuer.ProgramPage)
             ])
 
 let private registryColumns =
@@ -171,12 +171,12 @@ let CoveredBondsPage (props: CoveredBondsProps) =
                                                             "#93c54b"
                                                         KpiCard
                                                             "Earliest maturity"
-                                                            (dateShort analytics.EarliestMaturity)
+                                                            (dateShortOption analytics.EarliestMaturity)
                                                             "Nearest outstanding bond"
                                                             "#29abe0"
                                                         KpiCard
                                                             "Latest maturity"
-                                                            (dateShort analytics.LatestMaturity)
+                                                            (dateShortOption analytics.LatestMaturity)
                                                             "Longest-dated bond"
                                                             "#d9534f"
                                                     ]
@@ -237,11 +237,12 @@ let CoveredBondsPage (props: CoveredBondsProps) =
                                                                                     ))
                                                                                 MiniLabel
                                                                                     "Earliest"
-                                                                                    (dateShort
+                                                                                    (dateShortOption
                                                                                         analytics.EarliestMaturity)
                                                                                 MiniLabel
                                                                                     "Latest"
-                                                                                    (dateShort analytics.LatestMaturity)
+                                                                                    (dateShortOption
+                                                                                        analytics.LatestMaturity)
                                                                             ]
                                                                     ]
                                                                 Html.p

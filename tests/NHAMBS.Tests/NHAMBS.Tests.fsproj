@@ -15,6 +15,7 @@
   <ItemGroup>
     <Compile Include="Tests.fs" />
     <Compile Include="AnomalyTests.fs" />
+    <Compile Include="NormalizationTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

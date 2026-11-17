@@ -273,6 +273,10 @@ let private normalizeDateText (value: string) =
     let text =
         Regex.Replace(text, @"\b([A-Za-z]{3,})\s+[tIl|!](\s*,)", "$1 1$2", RegexOptions.IgnoreCase)
 
+    // Roman-numeral OCR in the day position ("Mave V1, 2081"). The earlier
+    // letter/digit spacing pass may have turned this into "V 1".
+    let text = Regex.Replace(text, @"\bV\s*[1Il]\b", "11", RegexOptions.IgnoreCase)
+
     let text =
         Regex.Replace(text, @"(?<=\d{3})\s+(?=\d\b)", "", RegexOptions.CultureInvariant)
 
@@ -832,8 +836,15 @@ let private tryFuzzyDateField (label: string) (text: string) =
             else
                 normalized.Substring(0, min normalized.Length target.Length)
 
+        let distinctiveWord =
+            [ "FINAL"; "MATURITY"; "SETTLEMENT"; "ISSUE"; "FIRST" ]
+            |> List.tryFind target.Contains
+
+        let hasDistinctiveWord = distinctiveWord |> Option.forall normalized.Contains
+
         let labelLike =
-            normalized.Length >= max 4 (target.Length / 2)
+            hasDistinctiveWord
+            && normalized.Length >= max 4 (target.Length / 2)
             && (editDistance comparable target <= threshold
                 || editDistance normalized target <= threshold)
 
